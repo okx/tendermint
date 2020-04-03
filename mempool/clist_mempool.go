@@ -66,6 +66,8 @@ type CListMempool struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	proxyAppQueryConn proxy.AppConnQuery
 }
 
 var _ Mempool = &CListMempool{}
@@ -77,6 +79,7 @@ type CListMempoolOption func(*CListMempool)
 func NewCListMempool(
 	config *cfg.MempoolConfig,
 	proxyAppConn proxy.AppConnMempool,
+	proxyAppQueryConn proxy.AppConnQuery,
 	height int64,
 	options ...CListMempoolOption,
 ) *CListMempool {
@@ -90,6 +93,7 @@ func NewCListMempool(
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
 		metrics:       NopMetrics(),
+		proxyAppQueryConn: proxyAppQueryConn,
 	}
 	if config.CacheSize > 0 {
 		mempool.cache = newMapTxCache(config.CacheSize)
@@ -232,8 +236,8 @@ func (mem *CListMempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), t
 	// The size of the corresponding amino-encoded TxMessage
 	// can't be larger than the maxMsgSize, otherwise we can't
 	// relay it to peers.
-	if txSize > mem.config.MaxTxBytes {
-		return ErrTxTooLarge{mem.config.MaxTxBytes, txSize}
+	if max := calcMaxMsgSize(mem.config.MaxTxBytes); txSize > max {
+		return ErrTxTooLarge{max, txSize}
 	}
 
 	if mem.preCheck != nil {
@@ -460,6 +464,10 @@ func (mem *CListMempool) notifyTxsAvailable() {
 }
 
 func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
+
+	logger := mem.logger.With("module", "mempool")
+	txNumPerBlock := mem.GetMaxTxNumPerBlock()
+
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
@@ -473,7 +481,8 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
 	// txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), max/mem.avgTxSize))
-	txs := make([]types.Tx, 0, mem.txs.Len())
+	//txs := make([]types.Tx, 0, mem.txs.Len())
+	txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), txNumPerBlock))
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		// Check total size requirement
@@ -491,8 +500,15 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 			return txs
 		}
 		totalGas = newTotalGas
+		//Check total tx num requirement
+		if len(txs) >= txNumPerBlock {
+			logger.Info("reapMaxBytesMaxGas", "mempoolTxNum",
+				mem.txs.Len(), "reapTxNum", len(txs), "maxNumPerBlock", txNumPerBlock)
+			return txs
+		}
 		txs = append(txs, memTx.tx)
 	}
+	logger.Info("reapMaxBytesMaxGas", "mempoolTxNum", mem.txs.Len(), "reapTxNum", len(txs), "maxNumPerBlock", txNumPerBlock)
 	return txs
 }
 

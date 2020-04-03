@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
@@ -106,6 +107,13 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
+	maxTxNumPerBlock := blockExec.mempool.GetMaxTxNumPerBlock()
+	if len(block.Data.Txs) > maxTxNumPerBlock {
+		return fmt.Errorf("Wrong Block.Data.Txs Number. MaxTxNumPerBlock %v, got %v",
+			maxTxNumPerBlock,
+			len(block.Data.Txs),
+		)
+	}
 	return validateBlock(blockExec.evpool, blockExec.db, state, block)
 }
 
@@ -296,6 +304,14 @@ func execBlockOnProxyApp(
 		return nil, err
 	}
 
+	// todo: cm36
+	// check how to use Events
+	for _, event := range abciResponses.EndBlock.Events {
+		if bytes.Equal([]byte(event.Type), []byte(UpgradeFailureTagKey)) {
+			return nil, fmt.Errorf(string(event.Attributes[0].Value))
+		}
+	}
+
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 
 	return abciResponses, nil
@@ -306,7 +322,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCo
 	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
 	var lastValSet *types.ValidatorSet
 	var err error
-	if block.Height > 1 {
+	if block.Height > types.GetStartBlockHeight() + 1 {
 		lastValSet, err = LoadValidators(stateDB, block.Height-1)
 		if err != nil {
 			panic(err) // shouldn't happen

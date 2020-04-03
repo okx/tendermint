@@ -126,7 +126,7 @@ func (wal *baseWAL) OnStart() error {
 	if err != nil {
 		return err
 	} else if size == 0 {
-		wal.WriteSync(EndHeightMessage{0})
+		wal.WriteSync(EndHeightMessage{types.GetStartBlockHeight()})
 	}
 	err = wal.group.Start()
 	if err != nil {
