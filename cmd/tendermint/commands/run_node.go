@@ -59,6 +59,8 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"consensus.create_empty_blocks",
 		config.Consensus.CreateEmptyBlocks,
 		"Set this to false to only produce blocks when there are txs or when the AppHash changes")
+	addMoreFlags(cmd)
+
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.

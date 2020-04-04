@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -39,6 +40,13 @@ func NewBlockStore(db dbm.DB) *BlockStore {
 	bsjson := LoadBlockStoreStateJSON(db)
 	return &BlockStore{
 		height: bsjson.Height,
+		db:     db,
+	}
+}
+
+func NewRecoverStore(db dbm.DB, height int64) *BlockStore {
+	return &BlockStore{
+		height: height,
 		db:     db,
 	}
 }
@@ -237,13 +245,16 @@ func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	bytes := db.Get(blockStoreKey)
 	if len(bytes) == 0 {
 		return BlockStoreStateJSON{
-			Height: 0,
+			Height: types.GetStartBlockHeight(),
 		}
 	}
 	bsj := BlockStoreStateJSON{}
 	err := cdc.UnmarshalJSON(bytes, &bsj)
 	if err != nil {
 		panic(fmt.Sprintf("Could not unmarshal bytes: %X", bytes))
+	}
+	if recoverHeight := viper.GetInt64("recover"); recoverHeight != 0 {
+		bsj.Height = recoverHeight
 	}
 	return bsj
 }

@@ -2,8 +2,9 @@ package proxy
 
 import (
 	"github.com/pkg/errors"
-
-	log "github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/config"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/lite"
 	lclient "github.com/tendermint/tendermint/lite/client"
 	dbm "github.com/tendermint/tm-db"
@@ -19,6 +20,10 @@ func NewVerifier(
 
 	logger = logger.With("module", "lite/proxy")
 	logger.Info("lite/proxy/NewVerifier()...", "chainID", chainID, "rootDir", rootDir, "client", client)
+	err := cmn.EnsureDir(rootDir, config.DefaultDirPerm)
+	if err != nil {
+		return nil, cmn.ErrorWrap(err, "ensure db path")
+	}
 
 	memProvider := lite.NewDBProvider("trusted.mem", dbm.NewMemDB()).SetLimit(cacheSize)
 	lvlProvider := lite.NewDBProvider("trusted.lvl", dbm.NewDB("trust-base", dbm.GoLevelDBBackend, rootDir))
@@ -31,7 +36,7 @@ func NewVerifier(
 	cert.SetLogger(logger) // Sets logger recursively.
 
 	// TODO: Make this more secure, e.g. make it interactive in the console?
-	_, err := trust.LatestFullCommit(chainID, 1, 1<<63-1)
+	_, err = trust.LatestFullCommit(chainID, 1, 1<<63-1)
 	if err != nil {
 		logger.Info("lite/proxy/NewVerifier found no trusted full commit, initializing from source from height 1...")
 		fc, err := source.LatestFullCommit(chainID, 1, 1)
