@@ -72,19 +72,19 @@ func UpdateFilter(defaultOption Option, options ...Option) {
 	loggers.update(defaultOption, options...)
 }
 
-func (l *CacheLoggers) get(key string) Logger {
-	l.RLock()
-	defer l.RUnlock()
-	if value, ok := l.loggersMap[key]; ok {
+func (cl *CacheLoggers) get(key string) Logger {
+	cl.RLock()
+	defer cl.RUnlock()
+	if value, ok := cl.loggersMap[key]; ok {
 		return value
 	}
 	return nil
 }
 
-func (l *CacheLoggers) set(key string, logger Logger) {
-	l.Lock()
-	defer l.Unlock()
-	l.loggersMap[key] = logger
+func (cl *CacheLoggers) set(key string, logger Logger) {
+	cl.Lock()
+	defer cl.Unlock()
+	cl.loggersMap[key] = logger
 }
 
 func getLoggers() *CacheLoggers {
@@ -128,7 +128,7 @@ func (l *filter) UpdateWith(keyvals ...string) {
 
 func UpdateLogLevel(lvl string) error {
 	if lvl == "" {
-		return fmt.Errorf("Empty log level")
+		return fmt.Errorf("empty log level")
 	}
 
 	defaultLogLevelKey := "*"
@@ -149,7 +149,7 @@ func UpdateLogLevel(lvl string) error {
 		moduleAndLevel := strings.Split(item, ":")
 
 		if len(moduleAndLevel) != 2 {
-			return fmt.Errorf("Expected list in a form of \"module:level\" pairs, given pair %s, list %s", item, list)
+			return fmt.Errorf("expected list in a form of \"module:level\" pairs, given pair %s, list %s", item, list)
 		}
 
 		module := moduleAndLevel[0]
@@ -172,7 +172,7 @@ func UpdateLogLevel(lvl string) error {
 			case "none":
 				option = AllowNoneWith("module", module)
 			default:
-				return fmt.Errorf("Expected either \"info\", \"debug\", \"error\" or \"none\" log level, given %s (pair %s, list %s)",
+				return fmt.Errorf("expected either \"info\", \"debug\", \"error\" or \"none\" log level, given %s (pair %s, list %s)",
 					level, item, list)
 			}
 			options = append(options, option)

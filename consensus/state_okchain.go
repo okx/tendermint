@@ -2,8 +2,9 @@ package consensus
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/types"
 	"time"
+
+	"github.com/tendermint/tendermint/types"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -27,7 +28,6 @@ type coreData struct {
 	precommitSteps      int
 	precommitAddress    []string
 	proposeNode         string
-	totalValidators     int
 	isProposer          bool
 }
 
@@ -48,11 +48,9 @@ func (c *consensusTrack) increaseCount(height int64, opt types.SignedMsgType, ad
 		case types.PrevoteType:
 			core.prevoteSteps++
 			core.prevoteAddress = append(core.prevoteAddress, addr)
-			break
 		case types.PrecommitType:
 			core.precommitSteps++
 			core.precommitAddress = append(core.precommitAddress, addr)
-			break
 		}
 	}
 }
