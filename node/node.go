@@ -48,8 +48,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 )
 
-//------------------------------------------------------------------------------
-
 // DBContext specifies config information for loading a new DB.
 type DBContext struct {
 	ID     string
@@ -323,6 +321,7 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 	mempool := mempl.NewCListMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
+		proxyApp.Query(),
 		state.LastBlockHeight,
 		mempl.WithMetrics(memplMetrics),
 		mempl.WithPreCheck(sm.TxPreCheck(state)),

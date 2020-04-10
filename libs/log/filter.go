@@ -1,6 +1,9 @@
 package log
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type level byte
 
@@ -14,7 +17,7 @@ type filter struct {
 	next             Logger
 	allowed          level            // XOR'd levels for default case
 	initiallyAllowed level            // XOR'd levels for initial case
-	allowedKeyvals   map[keyval]level // When key-value match, use this level
+	allowedKV        *allowedKeyvalMap // When key-value match, use this level
 }
 
 type keyval struct {
@@ -27,13 +30,24 @@ type keyval struct {
 // no options are provided, all leveled log events created with Debug, Info or
 // Error helper methods are squelched.
 func NewFilter(next Logger, options ...Option) Logger {
+
+	allowedKV := &allowedKeyvalMap{data: make(map[keyval]level)}
+	kv := keyval{"module", ""}
+	allowedKV.data[kv] = levelError
+
+	loggerMap := getLoggers()
+	loggerMap.allowedKV = allowedKV
+
+
 	l := &filter{
-		next:           next,
-		allowedKeyvals: make(map[keyval]level),
+		next:      next,
+		allowedKV: loggerMap.allowedKV,
 	}
+
 	for _, option := range options {
 		option(l)
 	}
+
 	l.initiallyAllowed = l.allowed
 	return l
 }
@@ -82,45 +96,76 @@ func (l *filter) Error(msg string, keyvals ...interface{}) {
 // 				log.AllowInfoWith("module", "crypto"), log.AllowNoneWith("user", "Sam"))
 //		 logger.With("user", "Sam").With("module", "crypto").Info("Hello") # produces "I... Hello module=crypto user=Sam"
 func (l *filter) With(keyvals ...interface{}) Logger {
-	keyInAllowedKeyvals := false
+	keyInallowedKeyvalMap := false
+	var keyvalsStr string
+	for _, kv := range keyvals {
+		s, ok := kv.(string)
+		if !ok {
+			return &filter{
+				next:             l.next.With(keyvals...),
+				allowed:          l.allowed, // simply continue with the current level
+				allowedKV:        l.allowedKV,
+				initiallyAllowed: l.initiallyAllowed,
+			}
+		}
+		keyvalsStr += s
+		keyvalsStr += keyvalsSplit
+	}
+	keyvalsStr = strings.Trim(keyvalsStr, keyvalsSplit)
+	loggers := getLoggers()
+	log := loggers.get(keyvalsStr)
+	if log != nil {
+		return log
+	}
 
 	for i := len(keyvals) - 2; i >= 0; i -= 2 {
-		for kv, allowed := range l.allowedKeyvals {
+		traverseFunc := func(kv keyval, allowed level) (bool, *filter) {
 			if keyvals[i] == kv.key {
-				keyInAllowedKeyvals = true
+				keyInallowedKeyvalMap = true
 				// Example:
 				//		logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"))
 				//		logger.With("module", "crypto")
 				if keyvals[i+1] == kv.value {
-					return &filter{
+					f := &filter{
 						next:             l.next.With(keyvals...),
 						allowed:          allowed, // set the desired level
-						allowedKeyvals:   l.allowedKeyvals,
+						allowedKV:        l.allowedKV,
 						initiallyAllowed: l.initiallyAllowed,
 					}
+					return true, f
 				}
 			}
+			return false, nil
+		}
+
+		re, f := l.allowedKV.traverse(traverseFunc)
+		if re {
+			loggers.set(keyvalsStr, f)
+			return f
 		}
 	}
 
 	// Example:
 	//		logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"))
 	//		logger.With("module", "main")
-	if keyInAllowedKeyvals {
-		return &filter{
+	if keyInallowedKeyvalMap {
+		f := &filter{
 			next:             l.next.With(keyvals...),
 			allowed:          l.initiallyAllowed, // return back to initially allowed
-			allowedKeyvals:   l.allowedKeyvals,
+			allowedKV:        l.allowedKV,
 			initiallyAllowed: l.initiallyAllowed,
 		}
+		loggers.set(keyvalsStr, f)
+		return f
 	}
 
-	return &filter{
+	f := &filter{
 		next:             l.next.With(keyvals...),
 		allowed:          l.allowed, // simply continue with the current level
-		allowedKeyvals:   l.allowedKeyvals,
+		allowedKV:        l.allowedKV,
 		initiallyAllowed: l.initiallyAllowed,
 	}
+	return f
 }
 
 //--------------------------------------------------------------------------------
@@ -176,20 +221,28 @@ func allowed(allowed level) Option {
 
 // AllowDebugWith allows error, info and debug level log events to pass for a specific key value pair.
 func AllowDebugWith(key interface{}, value interface{}) Option {
-	return func(l *filter) { l.allowedKeyvals[keyval{key, value}] = levelError | levelInfo | levelDebug }
+	return func(l *filter) {
+		l.allowedKV.set(key, value, levelError|levelInfo|levelDebug)
+	}
 }
 
 // AllowInfoWith allows error and info level log events to pass for a specific key value pair.
 func AllowInfoWith(key interface{}, value interface{}) Option {
-	return func(l *filter) { l.allowedKeyvals[keyval{key, value}] = levelError | levelInfo }
+	return func(l *filter) {
+		l.allowedKV.set(key, value, levelError|levelInfo)
+	}
 }
 
 // AllowErrorWith allows only error level log events to pass for a specific key value pair.
 func AllowErrorWith(key interface{}, value interface{}) Option {
-	return func(l *filter) { l.allowedKeyvals[keyval{key, value}] = levelError }
+	return func(l *filter) {
+		l.allowedKV.set(key, value, levelError)
+	}
 }
 
 // AllowNoneWith allows no leveled log events to pass for a specific key value pair.
 func AllowNoneWith(key interface{}, value interface{}) Option {
-	return func(l *filter) { l.allowedKeyvals[keyval{key, value}] = 0 }
+	return func(l *filter) {
+		l.allowedKV.set(key, value, 0)
+	}
 }
