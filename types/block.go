@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"strconv"
 
 	"github.com/pkg/errors"
 
@@ -31,6 +32,34 @@ const (
 	// Data.Txs field:                      1 byte
 	MaxAminoOverheadForBlock int64 = 11
 )
+
+// GetStartBlockHeight() is the block height from which the chain starts
+var (
+	startBlockHeightStr = "0"
+	startBlockHeight int64 = 0
+	once sync.Once
+)
+
+func initStartBlockHeight() {
+	once.Do(func() {
+		var err error
+		if len(startBlockHeightStr) == 0 {
+			startBlockHeightStr = "0"
+		}
+		startBlockHeight, err = strconv.ParseInt(startBlockHeightStr, 10, 64)
+		if err != nil {
+			panic(err)
+		}
+	})
+}
+
+func init()  {
+	initStartBlockHeight()
+}
+
+func GetStartBlockHeight() int64 {
+	return startBlockHeight
+}
 
 // Block defines the atomic unit of a Tendermint blockchain.
 type Block struct {
@@ -84,7 +113,7 @@ func (b *Block) ValidateBasic() error {
 	}
 
 	// Validate the last commit and its hash.
-	if b.Header.Height > 1 {
+	if b.Header.Height > GetStartBlockHeight() + 1 {
 		if b.LastCommit == nil {
 			return errors.New("nil LastCommit")
 		}

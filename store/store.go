@@ -237,7 +237,7 @@ func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	bytes := db.Get(blockStoreKey)
 	if len(bytes) == 0 {
 		return BlockStoreStateJSON{
-			Height: 0,
+			Height: types.GetStartBlockHeight(),
 		}
 	}
 	bsj := BlockStoreStateJSON{}
