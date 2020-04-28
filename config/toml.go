@@ -385,7 +385,7 @@ max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
 namespace = "{{ .Instrumentation.Namespace }}"
 
 # Log file
-log_file = "{{ .BaseConfig.LogFile }}"
+log_file = "{{ js .BaseConfig.LogFile }}"
 
 # Log stdout
 log_stdout = "{{ .BaseConfig.LogStdout }}"
