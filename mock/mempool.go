@@ -4,11 +4,14 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/clist"
 	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
 // Mempool is an empty implementation of a Mempool, useful for testing.
-type Mempool struct{}
+type Mempool struct{
+	proxyAppQueryConn proxy.AppConnQuery
+}
 
 var _ mempl.Mempool = Mempool{}
 
@@ -40,4 +43,4 @@ func (Mempool) TxsWaitChan() <-chan struct{} { return nil }
 
 func (Mempool) InitWAL()  {}
 func (Mempool) CloseWAL() {}
-func (Mempool) GetMaxTxNumPerBlock() int { return 0}
+func (Mempool) GetMaxTxNumPerBlock() int { return mempl.MaxTxNumPerBlock}
