@@ -4,13 +4,11 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/clist"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
 // Mempool is an empty implementation of a Mempool, useful for testing.
 type Mempool struct{
-	proxyAppQueryConn proxy.AppConnQuery
 }
 
 var _ mempl.Mempool = Mempool{}
