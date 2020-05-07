@@ -67,8 +67,6 @@ type CListMempool struct {
 	logger log.Logger
 
 	metrics *Metrics
-
-	proxyAppQueryConn proxy.AppConnQuery
 }
 
 var _ Mempool = &CListMempool{}
@@ -80,7 +78,6 @@ type CListMempoolOption func(*CListMempool)
 func NewCListMempool(
 	config *cfg.MempoolConfig,
 	proxyAppConn proxy.AppConnMempool,
-	proxyAppQueryConn proxy.AppConnQuery,
 	height int64,
 	options ...CListMempoolOption,
 ) *CListMempool {
@@ -94,7 +91,6 @@ func NewCListMempool(
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
 		metrics:       NopMetrics(),
-		proxyAppQueryConn: proxyAppQueryConn,
 	}
 	if config.CacheSize > 0 {
 		mempool.cache = newMapTxCache(config.CacheSize)

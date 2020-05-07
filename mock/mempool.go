@@ -40,4 +40,4 @@ func (Mempool) TxsWaitChan() <-chan struct{} { return nil }
 
 func (Mempool) InitWAL()  {}
 func (Mempool) CloseWAL() {}
-func (Mempool) GetMaxTxNumPerBlock() int { return 0}
+func (Mempool) GetMaxTxNumPerBlock() int { return mempl.MaxTxNumPerBlock}
