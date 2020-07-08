@@ -1883,6 +1883,7 @@ func (cs *ConsensusState) voteTime() time.Time {
 
 // sign the vote and publish on internalMsgQueue
 func (cs *ConsensusState) signAddVote(type_ types.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+	cs.Logger.Debug("print validators info", "validators", cs.Validators)
 	// if we don't have a key or we're not in the validator set, do nothing
 	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetPubKey().Address()) {
 		return nil
