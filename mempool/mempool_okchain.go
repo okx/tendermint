@@ -1,7 +1,7 @@
 package mempool
 
 const (
-	MaxTxNumPerBlock = 2000
+	MaxTxNumPerBlock = 50
 )
 
 //	query the MaxTxNumPerBlock from app
