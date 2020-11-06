@@ -3,8 +3,8 @@ package proxy
 import (
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/lite"
 	lclient "github.com/tendermint/tendermint/lite/client"
 	"github.com/tendermint/tendermint/types"
@@ -21,9 +21,9 @@ func NewVerifier(
 
 	logger = logger.With("module", "lite/proxy")
 	logger.Info("lite/proxy/NewVerifier()...", "chainID", chainID, "rootDir", rootDir, "client", client)
-	err := cmn.EnsureDir(rootDir, config.DefaultDirPerm)
+	err := tmos.EnsureDir(rootDir, config.DefaultDirPerm)
 	if err != nil {
-		return nil, cmn.ErrorWrap(err, "ensure db path")
+		return nil, errors.Wrap(err, "ensure db path")
 	}
 
 	memProvider := lite.NewDBProvider("trusted.mem", dbm.NewMemDB()).SetLimit(cacheSize)
