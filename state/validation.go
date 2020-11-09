@@ -15,16 +15,15 @@ import (
 // Validate block
 
 func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block *types.Block) error {
-	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
 	}
 
-	// Validate basic info.
-	if block.Version != state.Version.Consensus {
+	// allow for different app versions rather than block versions
+	if block.Version.Block != state.Version.Consensus.Block {
 		return fmt.Errorf("wrong Block.Header.Version. Expected %v, got %v",
-			state.Version.Consensus,
-			block.Version,
+			state.Version.Consensus.Block,
+			block.Version.Block,
 		)
 	}
 	if block.ChainID != state.ChainID {
@@ -81,9 +80,9 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Validate block LastCommit.
-	if block.Height == 1 {
+	if block.Height == types.GetStartBlockHeight()+1 {
 		if len(block.LastCommit.Signatures) != 0 {
-			return errors.New("block at height 1 can't have LastCommit signatures")
+			return errors.New(fmt.Sprintf("block at height %d can't have LastCommit precommits", types.GetStartBlockHeight()+1))
 		}
 	} else {
 		if len(block.LastCommit.Signatures) != state.LastValidators.Size() {
@@ -97,7 +96,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Validate block Time
-	if block.Height > 1 {
+	if block.Height > types.GetStartBlockHeight()+1 {
 		if !block.Time.After(state.LastBlockTime) {
 			return fmt.Errorf("block time %v not greater than last block time %v",
 				block.Time,
@@ -112,7 +111,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				block.Time,
 			)
 		}
-	} else if block.Height == 1 {
+	} else if block.Height == types.GetStartBlockHeight()+1 {
 		genesisTime := state.LastBlockTime
 		if !block.Time.Equal(genesisTime) {
 			return fmt.Errorf("block time %v is not equal to genesis time %v",

@@ -132,7 +132,7 @@ func (wal *BaseWAL) OnStart() error {
 	if err != nil {
 		return err
 	} else if size == 0 {
-		wal.WriteSync(EndHeightMessage{0})
+		wal.WriteSync(EndHeightMessage{types.GetStartBlockHeight()})
 	}
 	err = wal.group.Start()
 	if err != nil {
@@ -208,7 +208,7 @@ func (wal *BaseWAL) WriteSync(msg WALMessage) error {
 	}
 
 	if err := wal.FlushAndSync(); err != nil {
-		wal.Logger.Error(`WriteSync failed to flush consensus wal. 
+		wal.Logger.Error(`WriteSync failed to flush consensus wal.
 		WARNING: may result in creating alternative proposals / votes for the current height iff the node restarted`,
 			"err", err)
 		return err
