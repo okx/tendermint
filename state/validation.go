@@ -15,15 +15,16 @@ import (
 // Validate block
 
 func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block *types.Block) error {
+	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
 	}
 
-	// allow for different app versions rather than block versions
-	if block.Version.Block != state.Version.Consensus.Block {
+	// Validate basic info.
+	if block.Version != state.Version.Consensus {
 		return fmt.Errorf("wrong Block.Header.Version. Expected %v, got %v",
-			state.Version.Consensus.Block,
-			block.Version.Block,
+			state.Version.Consensus,
+			block.Version,
 		)
 	}
 	if block.ChainID != state.ChainID {
@@ -82,7 +83,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	// Validate block LastCommit.
 	if block.Height == types.GetStartBlockHeight()+1 {
 		if len(block.LastCommit.Signatures) != 0 {
-			return errors.New(fmt.Sprintf("block at height %d can't have LastCommit precommits", types.GetStartBlockHeight()+1))
+			return errors.New(fmt.Sprintf("block at height %d can't have LastCommit signatures", types.GetStartBlockHeight()+1))
 		}
 	} else {
 		if len(block.LastCommit.Signatures) != state.LastValidators.Size() {
