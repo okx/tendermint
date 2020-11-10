@@ -1,7 +1,6 @@
 package state
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 
@@ -313,14 +312,6 @@ func execBlockOnProxyApp(
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
-	}
-
-	// todo: cm36
-	// check how to use Events
-	for _, event := range abciResponses.EndBlock.Events {
-		if bytes.Equal([]byte(event.Type), []byte(UpgradeFailureTagKey)) {
-			return nil, fmt.Errorf(string(event.Attributes[0].Value))
-		}
 	}
 
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
