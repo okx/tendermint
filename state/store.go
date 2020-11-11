@@ -104,7 +104,7 @@ func saveState(db dbm.DB, state State, key []byte) {
 	if nextHeight == types.GetStartBlockHeight()+1 {
 		// This extra logic due to Tendermint validator set changes being delayed 1 block.
 		// It may get overwritten due to InitChain validator updates.
-		lastHeightVoteChanged := int64(types.GetStartBlockHeight() + 1)
+		lastHeightVoteChanged := types.GetStartBlockHeight() + 1
 		saveValidatorsInfo(db, nextHeight, lastHeightVoteChanged, state.Validators)
 	}
 	// Save next validators.

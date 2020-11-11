@@ -149,7 +149,7 @@ func (c *consensusTrack) display(height int64) {
 		logFunc = c.l.Info
 	}
 
-	logFunc("================================================consensus track=========================================================")
+	logFunc("==========================consensus track==========================")
 	logFunc(fmt.Sprintf("Height：[%v] - RoundStepNewRound<%vms>,S:%vms,E:%vms",
 		height, c.calcPeriod(core.newRoundStepTime, core.newRoundStepTimeEnd),
 		core.newRoundStepTime, core.newRoundStepTimeEnd))
