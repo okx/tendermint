@@ -510,7 +510,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	var (
 		totalBytes int64
 		totalGas   int64
-		totalTxNum int
+		totalTxNum int64
 	)
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
