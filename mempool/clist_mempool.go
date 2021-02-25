@@ -510,7 +510,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	var (
 		totalBytes int64
 		totalGas   int64
-		totalNum   int
+		totalTxNum int
 	)
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
@@ -532,10 +532,10 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		if maxGas > -1 && newTotalGas > maxGas {
 			return txs
 		}
-		if totalNum >= mem.GetMaxTxNumPerBlock() {
+		if totalTxNum >= mem.GetMaxTxNumPerBlock() {
 			return txs
 		}
-		totalNum++
+		totalTxNum++
 		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
 	}
