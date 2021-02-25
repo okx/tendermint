@@ -5,9 +5,13 @@ import (
 	"sync"
 )
 
+const (
+	defaultMaxTxNum      int64 = 300
+)
+
 var (
-	MaxTxNumPerBlockStr       = "300"
-	MaxTxNum            int64 = 300
+	MaxTxNumPerBlock    string
+	MaxTxNum            int64
 	once                sync.Once
 )
 
@@ -25,7 +29,7 @@ func string2number(input string, defaultRes int64) int64 {
 
 func init() {
 	once.Do(func() {
-		MaxTxNum = string2number(MaxTxNumPerBlockStr, 300)
+		MaxTxNum = string2number(MaxTxNumPerBlock, defaultMaxTxNum)
 	})
 }
 
