@@ -11,7 +11,7 @@ const (
 
 var (
 	MaxTxNumPerBlock    string
-	MaxTxNum            int64
+	maxTxNum            int64
 	once                sync.Once
 )
 
@@ -29,11 +29,11 @@ func string2number(input string, defaultRes int64) int64 {
 
 func init() {
 	once.Do(func() {
-		MaxTxNum = string2number(MaxTxNumPerBlock, defaultMaxTxNum)
+		maxTxNum = string2number(MaxTxNumPerBlock, defaultMaxTxNum)
 	})
 }
 
 //	query the MaxTxNumPerBlock from app
 func (mem *CListMempool) GetMaxTxNumPerBlock() int64 {
-	return MaxTxNum
+	return maxTxNum
 }
