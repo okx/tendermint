@@ -90,7 +90,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Int64(
 		"mempool.max_tx_num_per_block",
 		config.Mempool.MaxTxNumPerBlock,
-		"Maximum number of transactions in the a block",
+		"Maximum number of transactions in a block",
 	)
 
 	// db flags
