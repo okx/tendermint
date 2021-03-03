@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"strconv"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -37,7 +38,7 @@ func calcABCIResponsesKey(height int64) []byte {
 // or creates a new one from the given genesisFilePath and persists the result
 // to the database.
 func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State, error) {
-	state := LoadState(stateDB)
+	state := LoadStateStartHeight(stateDB)
 	if state.IsEmpty() {
 		var err error
 		state, err = MakeGenesisStateFromFile(genesisFilePath)
@@ -54,7 +55,7 @@ func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State
 // or creates a new one from the given genesisDoc and persists the result
 // to the database.
 func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (State, error) {
-	state := LoadState(stateDB)
+	state := LoadStateStartHeight(stateDB)
 	if state.IsEmpty() {
 		var err error
 		state, err = MakeGenesisState(genesisDoc)
@@ -112,6 +113,8 @@ func saveState(db dbm.DB, state State, key []byte) {
 	// Save next consensus params.
 	saveConsensusParamsInfo(db, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
 	db.SetSync(key, state.Bytes())
+	startHeightKey := append(PrefixStartHeight, []byte(strconv.Itoa(int(state.LastBlockHeight)))...)
+	db.SetSync(startHeightKey, state.Bytes())
 }
 
 //------------------------------------------------------------------------

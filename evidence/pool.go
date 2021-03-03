@@ -33,7 +33,7 @@ func NewPool(stateDB, evidenceDB dbm.DB) *Pool {
 	store := NewStore(evidenceDB)
 	evpool := &Pool{
 		stateDB:      stateDB,
-		state:        sm.LoadState(stateDB),
+		state:        sm.LoadStateStartHeight(stateDB),
 		logger:       log.NewNopLogger(),
 		store:        store,
 		evidenceList: clist.New(),

@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"github.com/spf13/viper"
 	"hash/crc32"
 	"io"
 	"reflect"
@@ -291,6 +292,11 @@ func (h *Handshaker) ReplayBlocks(
 	storeBlockBase := h.store.Base()
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := state.LastBlockHeight
+	assignedStartHeight := viper.GetString("start_height")
+	if assignedStartHeight != "0" {
+		appBlockHeight = state.LastBlockHeight - 1
+		storeBlockHeight = stateBlockHeight
+	}
 	h.logger.Info(
 		"ABCI Replay Blocks",
 		"appHeight",
@@ -360,9 +366,9 @@ func (h *Handshaker) ReplayBlocks(
 		// the state should never be ahead of the store (this is under tendermint's control)
 		panic(fmt.Sprintf("StateBlockHeight (%d) > StoreBlockHeight (%d)", stateBlockHeight, storeBlockHeight))
 
-	case storeBlockHeight > stateBlockHeight+1:
-		// store should be at most one ahead of the state (this is under tendermint's control)
-		panic(fmt.Sprintf("StoreBlockHeight (%d) > StateBlockHeight + 1 (%d)", storeBlockHeight, stateBlockHeight+1))
+	//case storeBlockHeight > stateBlockHeight+1:
+	//	// store should be at most one ahead of the state (this is under tendermint's control)
+	//	panic(fmt.Sprintf("StoreBlockHeight (%d) > StateBlockHeight + 1 (%d)", storeBlockHeight, stateBlockHeight+1))
 	}
 
 	var err error

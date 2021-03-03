@@ -591,7 +591,7 @@ func NewNode(config *cfg.Config,
 	// Reload the state. It will have the Version.Consensus.App set by the
 	// Handshake, and may have other modifications as well (ie. depending on
 	// what happened during block replay).
-	state = sm.LoadState(stateDB)
+	state = sm.LoadStateStartHeight(stateDB)
 
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.
