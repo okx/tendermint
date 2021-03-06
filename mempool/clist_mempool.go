@@ -40,7 +40,7 @@ type CListMempool struct {
 
 	// Exclusive mutex for Update method to prevent concurrent execution of
 	// CheckTx or ReapMaxBytesMaxGas(ReapMaxTxs) methods.
-	updateMtx sync.RWMutex
+	updateMtx sync.Mutex
 	preCheck  PreCheckFunc
 	postCheck PostCheckFunc
 
@@ -149,6 +149,9 @@ func (mem *CListMempool) InitWAL() error {
 }
 
 func (mem *CListMempool) CloseWAL() {
+	mem.updateMtx.Lock()
+	defer mem.updateMtx.Unlock()
+
 	if err := mem.wal.Close(); err != nil {
 		mem.logger.Error("Error closing WAL", "err", err)
 	}
@@ -182,8 +185,8 @@ func (mem *CListMempool) FlushAppConn() error {
 
 // XXX: Unsafe! Calling Flush may leave mempool in inconsistent state.
 func (mem *CListMempool) Flush() {
-	mem.updateMtx.RLock()
-	defer mem.updateMtx.RUnlock()
+	mem.updateMtx.Lock()
+	defer mem.updateMtx.Unlock()
 
 	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 	mem.cache.Reset()
@@ -224,9 +227,9 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 //
 // Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) error {
-	mem.updateMtx.RLock()
+	mem.updateMtx.Lock()
 	// use defer to unlock mutex because application (*local client*) might panic
-	defer mem.updateMtx.RUnlock()
+	defer mem.updateMtx.Unlock()
 
 	txSize := len(tx)
 
@@ -504,8 +507,8 @@ func (mem *CListMempool) notifyTxsAvailable() {
 
 // Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
-	mem.updateMtx.RLock()
-	defer mem.updateMtx.RUnlock()
+	mem.updateMtx.Lock()
+	defer mem.updateMtx.Unlock()
 
 	var (
 		totalBytes int64
@@ -544,8 +547,8 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 
 // Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
-	mem.updateMtx.RLock()
-	defer mem.updateMtx.RUnlock()
+	mem.updateMtx.Lock()
+	defer mem.updateMtx.Unlock()
 
 	if max < 0 {
 		max = mem.txs.Len()
