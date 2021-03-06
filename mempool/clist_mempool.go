@@ -48,6 +48,7 @@ type CListMempool struct {
 	// Exclusive mutex for Update method to prevent concurrent execution of
 	// CheckTx or ReapMaxBytesMaxGas(ReapMaxTxs) methods.
 	updateMtx tmsync.RWMutex
+	mtx       tmsync.Mutex
 	preCheck  PreCheckFunc
 	postCheck PostCheckFunc
 
@@ -294,14 +295,15 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	if txInfo.Context != nil {
 		ctx = txInfo.Context
 	}
-
+	mem.mtx.Lock()
 	reqRes, err := mem.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		mem.cache.Remove(tx)
+		mem.mtx.Unlock()
 		return err
 	}
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
-
+	mem.mtx.Unlock()
 	return nil
 }
 
