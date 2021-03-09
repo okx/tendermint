@@ -26,9 +26,9 @@ func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadca
 	if err != nil {
 		return nil, err
 	}
-	
+
 	env.EventBus.PublishEventPendingTx(types.EventDataTx{TxResult: types.TxResult{
-		Tx:     tx,
+		Tx: tx,
 	}})
 	return &ctypes.ResultBroadcastTx{Hash: tx.Hash()}, nil
 }
@@ -48,7 +48,7 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 	r := res.GetCheckTx()
 
 	env.EventBus.PublishEventPendingTx(types.EventDataTx{TxResult: types.TxResult{
-		Tx:     tx,
+		Tx: tx,
 	}})
 	return &ctypes.ResultBroadcastTx{
 		Code:      r.Code,
@@ -102,7 +102,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	}
 
 	env.EventBus.PublishEventPendingTx(types.EventDataTx{TxResult: types.TxResult{
-		Tx:     tx,
+		Tx: tx,
 	}})
 
 	// Wait for the tx to be included in a block or timeout.
