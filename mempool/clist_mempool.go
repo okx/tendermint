@@ -362,7 +362,7 @@ func (mem *CListMempool) addTx(memTx *mempoolTx) {
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
 	mem.eventBus.PublishEventPendingTx(types.EventDataTx{TxResult: types.TxResult{
 		Height: memTx.height,
-		Tx: 	memTx.tx,
+		Tx:     memTx.tx,
 	}})
 }
 
