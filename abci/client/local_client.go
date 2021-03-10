@@ -201,8 +201,10 @@ func (app *localClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCh
 }
 
 func (app *localClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	/* remove lock
+		app.mtx.Lock()
+		defer app.mtx.Unlock()
+	 */
 
 	res := app.Application.Query(req)
 	return &res, nil
