@@ -65,9 +65,6 @@ func (app *localClient) EchoAsync(msg string) *ReqRes {
 }
 
 func (app *localClient) InfoAsync(req types.RequestInfo) *ReqRes {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
-
 	app.queryMtx.Lock()
 	defer app.queryMtx.Unlock()
 
@@ -112,9 +109,6 @@ func (app *localClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
 }
 
 func (app *localClient) QueryAsync(req types.RequestQuery) *ReqRes {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
-
 	app.queryMtx.Lock()
 	defer app.queryMtx.Unlock()
 
@@ -180,9 +174,6 @@ func (app *localClient) EchoSync(msg string) (*types.ResponseEcho, error) {
 }
 
 func (app *localClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
-
 	app.queryMtx.Lock()
 	defer app.queryMtx.Unlock()
 
@@ -215,9 +206,6 @@ func (app *localClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCh
 }
 
 func (app *localClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
-
 	app.queryMtx.Lock()
 	defer app.queryMtx.Unlock()
 
