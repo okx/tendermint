@@ -51,6 +51,10 @@ type CElement struct {
 	nextWaitCh chan struct{}
 	removed    bool
 
+	Nonce    uint64
+	GasPrice int64
+	Address  string
+
 	Value interface{} // immutable
 }
 
@@ -225,6 +229,7 @@ type CList struct {
 	tail   *CElement // last element
 	len    int       // list length
 	maxLen int       // max list length
+
 }
 
 func (l *CList) Init() *CList {
@@ -404,4 +409,133 @@ func waitGroup1() (wg *sync.WaitGroup) {
 	wg = &sync.WaitGroup{}
 	wg.Add(1)
 	return
+}
+
+// ===============================================
+
+// head -> tail: gasPrice(大 -> 小)
+func (l *CList) InsertElement(ele *CElement) *CList {
+	fmt.Println("Insert -> Address: ", ele.Address, " , GasPrice: ", ele.GasPrice, " , Nonce: ", ele.Nonce)
+
+	if l.head == nil {
+		l.head = ele
+		l.tail = ele
+		return l
+	}
+
+	cur := l.tail
+	for cur != nil {
+		if cur.Address == ele.Address {
+			// 地址相同，先看Nonce
+			if ele.Nonce < cur.Nonce {
+				// 小Nonce往前
+				cur = cur.prev
+			} else {
+				// 大Nonce的交易，不管gasPrice怎么样，都得靠后排
+				ele.prev = cur
+				ele.next = cur.next
+
+				if cur.next != nil {
+					cur.next.prev = ele
+				} else {
+					l.tail = ele
+				}
+				cur.next = ele
+
+				return l
+			}
+		} else {
+			// 地址不同，就按gasPrice排序
+			if ele.GasPrice <= cur.GasPrice {
+				tmp := cur
+				for cur.prev != nil && cur.prev.Address == cur.Address {
+					cur = cur.prev
+				}
+
+				// 如果同一个addr, 连续出现，nonce最小gasPrice比要插入的元素的gasPrice还要大，则要插入的元素排在后面
+				if ele.GasPrice <= cur.GasPrice {
+					ele.prev = tmp
+					ele.next = tmp.next
+
+					if tmp.next != nil {
+						tmp.next.prev = ele
+					} else {
+						l.tail = ele
+					}
+					tmp.next = ele
+
+					return l
+				} else {
+					cur = cur.prev
+				}
+			} else {
+				// gasPrice大的往前
+				cur = cur.prev
+			}
+		}
+	}
+
+	ele.next = l.head
+	if l.head != nil {
+		l.head.prev = ele
+	} else {
+		l.tail = ele
+	}
+	l.head = ele
+
+	return l
+}
+
+func (l *CList) DetachElement(node *CElement) *CList {
+	fmt.Println("Detach Node, Address: ", node.Address, ", nonce: ", node.Nonce, ", gasPrice: ", node.GasPrice)
+	if node.prev != nil {
+		node.prev.next = node.next
+	} else {
+		l.head = node.next
+	}
+
+	if node.next != nil {
+		node.next.prev = node.prev
+	} else {
+		l.tail = node.prev
+	}
+
+	node.prev = nil
+	node.next = nil
+
+	return l
+}
+
+func (l *CList) AddTxWithExInfo(v interface{}, addr string, gasPrice int64, nonce uint64) *CElement {
+	l.mtx.Lock()
+
+	// Construct a new element
+	e := &CElement{
+		prev:       nil,
+		prevWg:     waitGroup1(),
+		prevWaitCh: make(chan struct{}),
+		next:       nil,
+		nextWg:     waitGroup1(),
+		nextWaitCh: make(chan struct{}),
+		removed:    false,
+		Value:      v,
+		Address:    addr,
+		GasPrice:   gasPrice,
+		Nonce:      nonce,
+	}
+
+	// Release waiters on FrontWait/BackWait maybe
+	if l.len == 0 {
+		l.wg.Done()
+		close(l.waitCh)
+	}
+	if l.len >= l.maxLen {
+		panic(fmt.Sprintf("clist: maximum length list reached %d", l.maxLen))
+	}
+
+	l.InsertElement(e)
+	l.len++
+
+	l.mtx.Unlock()
+	return e
 }

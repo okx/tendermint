@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"container/list"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 
@@ -67,6 +69,8 @@ type CListMempool struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	AddressRecord map[string]map[string]*clist.CElement // Address -> (txHash -> *CElement)
 }
 
 var _ Mempool = &CListMempool{}
@@ -101,6 +105,8 @@ func NewCListMempool(
 	for _, option := range options {
 		option(mempool)
 	}
+	mempool.AddressRecord = make(map[string]map[string]*clist.CElement)
+
 	return mempool
 }
 
@@ -355,6 +361,23 @@ func (mem *CListMempool) reqResCb(
 
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
+func (mem *CListMempool) insertTx(memTx *mempoolTx, info ExTxInfo) {
+	// 删除同一个账号，相同Nonce的交易
+	mem.checkNode(info)
+	e := mem.txs.AddTxWithExInfo(memTx, info.Sender, info.GasPrice, info.Nonce)
+	mem.AddressRecord[info.Sender][txID(memTx.tx)] = e
+
+	mem.txsMap.Store(txKey(memTx.tx), e)
+	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
+	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
+	mem.eventBus.PublishEventPendingTx(types.EventDataTx{TxResult: types.TxResult{
+		Height: memTx.height,
+		Tx:     memTx.tx,
+	}})
+}
+
+// Called from:
+//  - resCbFirstTime (lock not held) if tx is valid
 func (mem *CListMempool) addTx(memTx *mempoolTx) {
 	e := mem.txs.PushBack(memTx)
 	mem.txsMap.Store(txKey(memTx.tx), e)
@@ -422,13 +445,29 @@ func (mem *CListMempool) resCbFirstTime(
 				return
 			}
 
+			var exTxInfo ExTxInfo
+			if err := json.Unmarshal(r.CheckTx.Data, &exTxInfo); err != nil {
+				// remove from cache (mempool might have a space later)
+				mem.cache.Remove(tx)
+				mem.logger.Error(err.Error())
+				return
+			}
+			if exTxInfo.GasPrice == 0 {
+				// remove from cache (mempool might have a space later)
+				mem.cache.Remove(tx)
+				mem.logger.Error("Failed to get extra info for this tx!")
+				return
+			}
+			fmt.Println("CheckTx -> sender is: ", exTxInfo.Sender, ", gasPrice is: ", exTxInfo.GasPrice, ", nonce is: ", exTxInfo.Nonce)
+
 			memTx := &mempoolTx{
 				height:    mem.height,
 				gasWanted: r.CheckTx.GasWanted,
 				tx:        tx,
 			}
 			memTx.senders.Store(peerID, true)
-			mem.addTx(memTx)
+			//mem.addTx(memTx)
+			mem.insertTx(memTx, exTxInfo)
 			mem.logger.Info("Added good transaction",
 				"tx", txID(tx),
 				"res", r,
@@ -655,6 +694,60 @@ func (mem *CListMempool) recheckTxs() {
 	mem.proxyAppConn.FlushAsync()
 }
 
+// 重新对地址为：addr的交易进行reorg排序
+func (l *CListMempool) reOrgTxs(addr string) *CListMempool {
+	if userMap, ok := l.AddressRecord[addr]; ok {
+		if len(userMap) == 0 {
+			return l
+		}
+
+		tmpMap := make(map[uint64]*clist.CElement)
+		var keys []uint64
+
+		for _, node := range userMap {
+			l.txs.DetachElement(node)
+
+			tmpMap[node.Nonce] = node
+			keys = append(keys, node.Nonce)
+		}
+
+		// 进行插入排序时，也得严格按照nonce的大小先后插入，不然会出现tx不按nonce出现，导致执行时失败
+		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+
+		for _, key := range keys {
+			l.txs.InsertElement(tmpMap[key])
+		}
+	}
+
+	return l
+}
+
+func (l *CListMempool) checkNode(info ExTxInfo) bool {
+	repeatNode := false
+
+	userMap, ok := l.AddressRecord[info.Sender]
+	if !ok {
+		l.AddressRecord[info.Sender] = make(map[string]*clist.CElement)
+	} else {
+		for nodeHash, node := range userMap {
+			if node.Nonce == info.Nonce {
+				l.removeTx(node.Value.(mempoolTx).tx, node, true)
+				delete(userMap, nodeHash)
+
+				repeatNode = true
+				break
+			}
+		}
+	}
+
+	// 如果账号nonce重复，删除重复节点后，还得将该账户的所有其他节点进行reorg重排序
+	if repeatNode {
+		l.reOrgTxs(info.Sender)
+	}
+
+	return repeatNode
+}
+
 //--------------------------------------------------------------------------------
 
 // mempoolTx is a transaction that successfully ran
@@ -766,4 +859,11 @@ func txKey(tx types.Tx) [sha256.Size]byte {
 // txID is the hex encoded hash of the bytes as a types.Tx.
 func txID(tx []byte) string {
 	return fmt.Sprintf("%X", types.Tx(tx).Hash())
+}
+
+//--------------------------------------------------------------------------------
+type ExTxInfo struct {
+	Sender   string `json:"sender"`
+	GasPrice int64  `json:"gas_price"`
+	Nonce    uint64 `json:"nonce"`
 }
