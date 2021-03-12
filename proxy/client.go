@@ -21,18 +21,20 @@ type ClientCreator interface {
 
 type localClientCreator struct {
 	mtx *sync.RWMutex
+	queryMtx *sync.Mutex
 	app types.Application
 }
 
 func NewLocalClientCreator(app types.Application) ClientCreator {
 	return &localClientCreator{
 		mtx: new(sync.RWMutex),
+		queryMtx: new(sync.Mutex),
 		app: app,
 	}
 }
 
 func (l *localClientCreator) NewABCIClient() (abcicli.Client, error) {
-	return abcicli.NewLocalClient(l.mtx, l.app), nil
+	return abcicli.NewLocalClient(l.mtx, l.queryMtx, l.app), nil
 }
 
 //---------------------------------------------------------------
