@@ -20,19 +20,21 @@ type ClientCreator interface {
 // local proxy uses a mutex on an in-proc app
 
 type localClientCreator struct {
-	mtx *sync.Mutex
+	mtx *sync.RWMutex
+	queryMtx *sync.Mutex
 	app types.Application
 }
 
 func NewLocalClientCreator(app types.Application) ClientCreator {
 	return &localClientCreator{
-		mtx: new(sync.Mutex),
+		mtx: new(sync.RWMutex),
+		queryMtx: new(sync.Mutex),
 		app: app,
 	}
 }
 
 func (l *localClientCreator) NewABCIClient() (abcicli.Client, error) {
-	return abcicli.NewLocalClient(l.mtx, l.app), nil
+	return abcicli.NewLocalClient(l.mtx, l.queryMtx, l.app), nil
 }
 
 //---------------------------------------------------------------
