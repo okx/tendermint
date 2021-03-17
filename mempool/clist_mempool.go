@@ -367,6 +367,10 @@ func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
 	// 删除同一个账号，相同Nonce的交易
 	mem.checkElement(info)
 	e := mem.txs.AddTxWithExInfo(memTx, info.Sender, info.GasPrice, info.Nonce)
+
+	if _, ok := mem.AddressRecord[info.Sender]; !ok {
+		mem.AddressRecord[info.Sender] = make(map[string]*clist.CElement)
+	}
 	mem.AddressRecord[info.Sender][txID(memTx.tx)] = e
 
 	mem.txsMap.Store(txKey(memTx.tx), e)
@@ -735,13 +739,10 @@ func (l *CListMempool) reOrgTxs(addr string) *CListMempool {
 func (l *CListMempool) checkElement(info ExTxInfo) bool {
 	repeatNode := false
 
-	userMap, ok := l.AddressRecord[info.Sender]
-	if !ok {
-		l.AddressRecord[info.Sender] = make(map[string]*clist.CElement)
-	} else {
+	if userMap, ok := l.AddressRecord[info.Sender]; ok {
 		for _, node := range userMap {
 			if node.Nonce == info.Nonce {
-				l.removeTx(node.Value.(types.Tx), node, true)
+				l.removeTx(node.Value.(*mempoolTx).tx, node, true)
 
 				repeatNode = true
 				break

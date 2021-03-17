@@ -445,8 +445,6 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 	}
 	l.len++
 
-	fmt.Println("Insert -> Address: ", ele.Address, " , GasPrice: ", ele.GasPrice, " , Nonce: ", ele.Nonce)
-
 	if l.tail == nil {
 		l.head = ele
 		l.tail = ele
@@ -474,6 +472,14 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 				//}
 				//cur.next = ele
 
+				ele.SetPrev(cur)
+				ele.SetNext(cur.next)
+
+				if cur.next != nil {
+					cur.next.SetPrev(ele)
+				} else {
+					l.tail = ele
+				}
 				cur.SetNext(ele)
 
 				return ele
@@ -498,7 +504,16 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 					//}
 					//tmp.next = ele
 
+					ele.SetPrev(tmp)
+					ele.SetNext(tmp.next)
+
+					if tmp.next != nil {
+						tmp.next.SetPrev(ele)
+					} else {
+						l.tail = ele
+					}
 					tmp.SetNext(ele)
+
 
 					return ele
 				} else {
@@ -511,8 +526,12 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 		}
 	}
 
-	l.head.SetPrev(ele)
 	ele.SetNext(l.head)
+	if l.head != nil {
+		l.head.SetPrev(ele)
+	} else {
+		l.tail = ele
+	}
 	l.head = ele
 
 	//ele.next = l.head
@@ -527,7 +546,7 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 }
 
 func (l *CList) DetachElement(ele *CElement) interface{} {
-	fmt.Println("Detach Node, Address: ", ele.Address, ", nonce: ", ele.Nonce, ", gasPrice: ", ele.GasPrice)
+	//fmt.Println("Detach Node, Address: ", ele.Address, ", nonce: ", ele.Nonce, ", gasPrice: ", ele.GasPrice)
 	//if ele.prev != nil {
 	//	ele.prev.next = ele.next
 	//} else {
@@ -586,6 +605,9 @@ func (l *CList) DetachElement(ele *CElement) interface{} {
 
 	// Set .Done() on e, otherwise waiters will wait forever.
 	ele.setDetach()
+
+	ele.prev = nil
+	ele.next = nil
 
 	l.mtx.Unlock()
 	return ele.Value

@@ -9,8 +9,11 @@ import (
 	mrand "math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/clist"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -265,6 +268,7 @@ func TestSerialReap(t *testing.T) {
 
 	mempool, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
+	mempool.config.MaxTxNumPerBlock = 10000
 
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
@@ -612,4 +616,177 @@ func abciResponses(n int, code uint32) []*abci.ResponseDeliverTx {
 		responses = append(responses, &abci.ResponseDeliverTx{Code: code})
 	}
 	return responses
+}
+
+func TestAddAndSortTx(t *testing.T) {
+	app := kvstore.NewApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	config := cfg.ResetTestRoot("mempool_test")
+	mempool, cleanup := newMempoolWithAppAndConfig(cc, config)
+	defer cleanup()
+
+	//tx := &mempoolTx{height: 1, gasWanted: 1, tx:[]byte{0x01}}
+	testCases := []struct {
+		Tx   *mempoolTx
+		Info ExTxInfo
+	}{
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("1")}, ExTxInfo{"18", 9740, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("2")}, ExTxInfo{"6", 5853, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("3")}, ExTxInfo{"7", 8315, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("4")}, ExTxInfo{"10", 9526, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("5")}, ExTxInfo{"15", 9140, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("6")}, ExTxInfo{"9", 9227, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("7")}, ExTxInfo{"3", 761, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("8")}, ExTxInfo{"18", 3780, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("9")}, ExTxInfo{"1", 6574, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("10")}, ExTxInfo{"8", 9656, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("11")}, ExTxInfo{"12", 6554, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("12")}, ExTxInfo{"16", 5609, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("13")}, ExTxInfo{"6", 2791, 1}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("14")}, ExTxInfo{"18", 2698, 1}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("15")}, ExTxInfo{"1", 6925, 1}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("16")}, ExTxInfo{"3", 3171, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("17")}, ExTxInfo{"1", 2965, 2}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("18")}, ExTxInfo{"19", 2484, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("19")}, ExTxInfo{"13", 9722, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("20")}, ExTxInfo{"7", 4236, 1}},
+	}
+
+	for _, exInfo := range testCases {
+		mempool.addAndSortTx(exInfo.Tx, exInfo.Info)
+	}
+	require.Equal(t, 18, mempool.txs.Len(), fmt.Sprintf("Expected to txs length %v but got %v", 18, mempool.txs.Len()))
+
+	// The txs in mempool should sorted, the output should be (head -> tail):
+	//
+	//Address:  13  , GasPrice:  9722  , Nonce:  0
+	//Address:  8  , GasPrice:  9656  , Nonce:  0
+	//Address:  10  , GasPrice:  9526  , Nonce:  0
+	//Address:  9  , GasPrice:  9227  , Nonce:  0
+	//Address:  15  , GasPrice:  9140  , Nonce:  0
+	//Address:  7  , GasPrice:  8315  , Nonce:  0
+	//Address:  1  , GasPrice:  6574  , Nonce:  0
+	//Address:  1  , GasPrice:  6925  , Nonce:  1
+	//Address:  12  , GasPrice:  6554  , Nonce:  0
+	//Address:  6  , GasPrice:  5853  , Nonce:  0
+	//Address:  16  , GasPrice:  5609  , Nonce:  0
+	//Address:  7  , GasPrice:  4236  , Nonce:  1
+	//Address:  18  , GasPrice:  3780  , Nonce:  0
+	//Address:  3  , GasPrice:  3171  , Nonce:  0
+	//Address:  1  , GasPrice:  2965  , Nonce:  2
+	//Address:  6  , GasPrice:  2791  , Nonce:  1
+	//Address:  18  , GasPrice:  2698  , Nonce:  1
+	//Address:  19  , GasPrice:  2484  , Nonce:  0
+
+	require.Equal(t, 3, len(mempool.AddressRecord["1"]))
+	require.Equal(t, 1, len(mempool.AddressRecord["15"]))
+	require.Equal(t, 2, len(mempool.AddressRecord["18"]))
+
+	require.Equal(t, "13", mempool.txs.Front().Address)
+	require.Equal(t, int64(9722), mempool.txs.Front().GasPrice)
+	require.Equal(t, uint64(0), mempool.txs.Front().Nonce)
+
+	require.Equal(t, "19", mempool.txs.Back().Address)
+	require.Equal(t, int64(2484), mempool.txs.Back().GasPrice)
+	require.Equal(t, uint64(0), mempool.txs.Back().Nonce)
+
+	require.Equal(t, true, checkTx(mempool.txs.Front()))
+	for addr, _ := range mempool.AddressRecord {
+		require.Equal(t, true, checkAccNonce(addr, mempool.txs.Front()))
+	}
+
+	txs := mempool.ReapMaxBytesMaxGas(-1, -1)
+	require.Equal(t, 18, len(txs), fmt.Sprintf("Expected to reap %v txs but got %v", 18, len(txs)))
+
+	mempool.Flush()
+	require.Equal(t, 0, mempool.txs.Len())
+	require.Equal(t, 0, len(mempool.AddressRecord))
+}
+
+func TestAddAndSortTxByRandom(t *testing.T) {
+	app := kvstore.NewApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	config := cfg.ResetTestRoot("mempool_test")
+	mempool, cleanup := newMempoolWithAppAndConfig(cc, config)
+	defer cleanup()
+
+	AddrNonce := make(map[string]int)
+	for i := 0; i < 1000; i++ {
+		mempool.addAndSortTx(GenerateNode(AddrNonce, i))
+	}
+
+	require.Equal(t, true, checkTx(mempool.txs.Front()))
+	for addr, _ := range mempool.AddressRecord {
+		require.Equal(t, true, checkAccNonce(addr, mempool.txs.Front()))
+	}
+}
+
+func GenerateNode(addrNonce map[string]int, idx int) (*mempoolTx, ExTxInfo) {
+	mrand.Seed(int64(time.Now().UnixNano()))
+	addr := strconv.Itoa(mrand.Int()%1000 + 1)
+	gasPrice := mrand.Int()%100000 + 1
+
+	nonce := 0
+	if n, ok := addrNonce[addr]; ok {
+		if gasPrice%177 == 0 {
+			nonce = n - 1
+		} else {
+			nonce = n
+		}
+	}
+	addrNonce[addr] = nonce + 1
+
+	tx := &mempoolTx{
+		height:    1,
+		gasWanted: int64(idx),
+		tx:        []byte(strconv.Itoa(idx)),
+	}
+
+	exInfo := ExTxInfo{
+		Sender:   addr,
+		GasPrice: int64(gasPrice),
+		Nonce:    uint64(nonce),
+	}
+
+	return tx, exInfo
+}
+
+func checkAccNonce(addr string, head *clist.CElement) bool {
+	nonce := uint64(0)
+
+	for head != nil {
+		if head.Address == addr {
+			if head.Nonce != nonce {
+				return false
+			}
+			nonce += 1
+		}
+
+		head = head.Next()
+	}
+
+	return true
+}
+
+func checkTx(head *clist.CElement) bool {
+	for head != nil {
+		next := head.Next()
+		if next == nil {
+			break
+		}
+
+		if head.Address == next.Address {
+			if head.Nonce >= next.Nonce {
+				return false
+			}
+		} else {
+			if head.GasPrice < next.GasPrice {
+				return false
+			}
+		}
+
+		head = head.Next()
+	}
+
+	return true
 }
