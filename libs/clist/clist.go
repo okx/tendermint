@@ -215,6 +215,21 @@ func (e *CElement) SetRemoved() {
 	e.mtx.Unlock()
 }
 
+func (e *CElement) setDetach() {
+	e.mtx.Lock()
+
+	// This wakes up anyone waiting in either direction.
+	if e.prev == nil {
+		e.prevWg.Done()
+		close(e.prevWaitCh)
+	}
+	if e.next == nil {
+		e.nextWg.Done()
+		close(e.nextWaitCh)
+	}
+	e.mtx.Unlock()
+}
+
 //--------------------------------------------------------------------------------
 
 // CList represents a linked list.
@@ -414,13 +429,29 @@ func waitGroup1() (wg *sync.WaitGroup) {
 // ===============================================
 
 // head -> tail: gasPrice(大 -> 小)
-func (l *CList) InsertElement(ele *CElement) *CList {
+func (l *CList) InsertElement(ele *CElement) *CElement {
+	l.mtx.Lock()
+	defer func() {
+		l.mtx.Unlock()
+	}()
+
+	// Release waiters on FrontWait/BackWait maybe
+	if l.len == 0 {
+		l.wg.Done()
+		close(l.waitCh)
+	}
+	if l.len >= l.maxLen {
+		panic(fmt.Sprintf("clist: maximum length list reached %d", l.maxLen))
+	}
+	l.len++
+
 	fmt.Println("Insert -> Address: ", ele.Address, " , GasPrice: ", ele.GasPrice, " , Nonce: ", ele.Nonce)
 
-	if l.head == nil {
+	if l.tail == nil {
 		l.head = ele
 		l.tail = ele
-		return l
+
+		return ele
 	}
 
 	cur := l.tail
@@ -431,18 +462,21 @@ func (l *CList) InsertElement(ele *CElement) *CList {
 				// 小Nonce往前
 				cur = cur.prev
 			} else {
-				// 大Nonce的交易，不管gasPrice怎么样，都得靠后排
-				ele.prev = cur
-				ele.next = cur.next
+				//// 相同Nonce的tx已经在checkElement中处理过了，这里只有大于的case
+				//// 大Nonce的交易，不管gasPrice怎么样，都得靠后排
+				//ele.prev = cur
+				//ele.next = cur.next
+				//
+				//if cur.next != nil {
+				//	cur.next.prev = ele
+				//} else {
+				//	l.tail = ele
+				//}
+				//cur.next = ele
 
-				if cur.next != nil {
-					cur.next.prev = ele
-				} else {
-					l.tail = ele
-				}
-				cur.next = ele
+				cur.SetNext(ele)
 
-				return l
+				return ele
 			}
 		} else {
 			// 地址不同，就按gasPrice排序
@@ -454,17 +488,19 @@ func (l *CList) InsertElement(ele *CElement) *CList {
 
 				// 如果同一个addr, 连续出现，nonce最小gasPrice比要插入的元素的gasPrice还要大，则要插入的元素排在后面
 				if ele.GasPrice <= cur.GasPrice {
-					ele.prev = tmp
-					ele.next = tmp.next
+					//ele.prev = tmp
+					//ele.next = tmp.next
+					//
+					//if tmp.next != nil {
+					//	tmp.next.prev = ele
+					//} else {
+					//	l.tail = ele
+					//}
+					//tmp.next = ele
 
-					if tmp.next != nil {
-						tmp.next.prev = ele
-					} else {
-						l.tail = ele
-					}
-					tmp.next = ele
+					tmp.SetNext(ele)
 
-					return l
+					return ele
 				} else {
 					cur = cur.prev
 				}
@@ -475,40 +511,87 @@ func (l *CList) InsertElement(ele *CElement) *CList {
 		}
 	}
 
-	ele.next = l.head
-	if l.head != nil {
-		l.head.prev = ele
-	} else {
-		l.tail = ele
-	}
+	l.head.SetPrev(ele)
+	ele.SetNext(l.head)
 	l.head = ele
 
-	return l
+	//ele.next = l.head
+	//if l.head != nil {
+	//	l.head.prev = ele
+	//} else {
+	//	l.tail = ele
+	//}
+	//l.head = ele
+
+	return ele
 }
 
-func (l *CList) DetachElement(node *CElement) *CList {
-	fmt.Println("Detach Node, Address: ", node.Address, ", nonce: ", node.Nonce, ", gasPrice: ", node.GasPrice)
-	if node.prev != nil {
-		node.prev.next = node.next
-	} else {
-		l.head = node.next
+func (l *CList) DetachElement(ele *CElement) interface{} {
+	fmt.Println("Detach Node, Address: ", ele.Address, ", nonce: ", ele.Nonce, ", gasPrice: ", ele.GasPrice)
+	//if ele.prev != nil {
+	//	ele.prev.next = ele.next
+	//} else {
+	//	l.head = ele.next
+	//}
+	//
+	//if ele.next != nil {
+	//	ele.next.prev = ele.prev
+	//} else {
+	//	l.tail = ele.prev
+	//}
+	//
+	//ele.prev = nil
+	//ele.next = nil
+	//
+	//return l
+
+	l.mtx.Lock()
+
+	prev := ele.Prev()
+	next := ele.Next()
+
+	if l.head == nil || l.tail == nil {
+		l.mtx.Unlock()
+		panic("Remove(e) on empty CList")
+	}
+	if prev == nil && l.head != ele {
+		l.mtx.Unlock()
+		panic("Remove(e) with false head")
+	}
+	if next == nil && l.tail != ele {
+		l.mtx.Unlock()
+		panic("Remove(e) with false tail")
 	}
 
-	if node.next != nil {
-		node.next.prev = node.prev
-	} else {
-		l.tail = node.prev
+	// If we're removing the only item, make CList FrontWait/BackWait wait.
+	if l.len == 1 {
+		l.wg = waitGroup1() // WaitGroups are difficult to re-use.
+		l.waitCh = make(chan struct{})
 	}
 
-	node.prev = nil
-	node.next = nil
+	// Update l.len
+	l.len--
 
-	return l
+	// Connect next/prev and set head/tail
+	if prev == nil {
+		l.head = next
+	} else {
+		prev.SetNext(next)
+	}
+	if next == nil {
+		l.tail = prev
+	} else {
+		next.SetPrev(prev)
+	}
+
+	// Set .Done() on e, otherwise waiters will wait forever.
+	ele.setDetach()
+
+	l.mtx.Unlock()
+	return ele.Value
 }
 
 func (l *CList) AddTxWithExInfo(v interface{}, addr string, gasPrice int64, nonce uint64) *CElement {
-	l.mtx.Lock()
-
 	// Construct a new element
 	e := &CElement{
 		prev:       nil,
@@ -524,18 +607,7 @@ func (l *CList) AddTxWithExInfo(v interface{}, addr string, gasPrice int64, nonc
 		Nonce:      nonce,
 	}
 
-	// Release waiters on FrontWait/BackWait maybe
-	if l.len == 0 {
-		l.wg.Done()
-		close(l.waitCh)
-	}
-	if l.len >= l.maxLen {
-		panic(fmt.Sprintf("clist: maximum length list reached %d", l.maxLen))
-	}
-
 	l.InsertElement(e)
-	l.len++
 
-	l.mtx.Unlock()
 	return e
 }

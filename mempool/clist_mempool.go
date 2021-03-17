@@ -205,6 +205,8 @@ func (mem *CListMempool) Flush() {
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		mem.txs.Remove(e)
 		e.DetachPrev()
+
+		mem.deleteAddrRecord(e)
 	}
 
 	mem.txsMap.Range(func(key, _ interface{}) bool {
@@ -361,9 +363,9 @@ func (mem *CListMempool) reqResCb(
 
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
-func (mem *CListMempool) insertTx(memTx *mempoolTx, info ExTxInfo) {
+func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
 	// 删除同一个账号，相同Nonce的交易
-	mem.checkNode(info)
+	mem.checkElement(info)
 	e := mem.txs.AddTxWithExInfo(memTx, info.Sender, info.GasPrice, info.Nonce)
 	mem.AddressRecord[info.Sender][txID(memTx.tx)] = e
 
@@ -395,6 +397,9 @@ func (mem *CListMempool) addTx(memTx *mempoolTx) {
 func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
 	mem.txs.Remove(elem)
 	elem.DetachPrev()
+
+	mem.deleteAddrRecord(elem)
+
 	mem.txsMap.Delete(txKey(tx))
 	atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
 
@@ -445,29 +450,34 @@ func (mem *CListMempool) resCbFirstTime(
 				return
 			}
 
-			var exTxInfo ExTxInfo
-			if err := json.Unmarshal(r.CheckTx.Data, &exTxInfo); err != nil {
-				// remove from cache (mempool might have a space later)
-				mem.cache.Remove(tx)
-				mem.logger.Error(err.Error())
-				return
-			}
-			if exTxInfo.GasPrice == 0 {
-				// remove from cache (mempool might have a space later)
-				mem.cache.Remove(tx)
-				mem.logger.Error("Failed to get extra info for this tx!")
-				return
-			}
-			fmt.Println("CheckTx -> sender is: ", exTxInfo.Sender, ", gasPrice is: ", exTxInfo.GasPrice, ", nonce is: ", exTxInfo.Nonce)
-
 			memTx := &mempoolTx{
 				height:    mem.height,
 				gasWanted: r.CheckTx.GasWanted,
 				tx:        tx,
 			}
 			memTx.senders.Store(peerID, true)
-			//mem.addTx(memTx)
-			mem.insertTx(memTx, exTxInfo)
+
+			if mem.config.EnableSort {
+				var exTxInfo ExTxInfo
+				if err := json.Unmarshal(r.CheckTx.Data, &exTxInfo); err != nil {
+					// remove from cache (mempool might have a space later)
+					mem.cache.Remove(tx)
+					mem.logger.Error(err.Error())
+					return
+				}
+				if exTxInfo.GasPrice == 0 {
+					// remove from cache (mempool might have a space later)
+					mem.cache.Remove(tx)
+					mem.logger.Error("Failed to get extra info for this tx!")
+					return
+				}
+				fmt.Println("CheckTx -> sender is: ", exTxInfo.Sender, ", gasPrice is: ", exTxInfo.GasPrice, ", nonce is: ", exTxInfo.Nonce)
+
+				mem.addAndSortTx(memTx, exTxInfo)
+			} else {
+				mem.addTx(memTx)
+			}
+
 			mem.logger.Info("Added good transaction",
 				"tx", txID(tx),
 				"res", r,
@@ -722,17 +732,16 @@ func (l *CListMempool) reOrgTxs(addr string) *CListMempool {
 	return l
 }
 
-func (l *CListMempool) checkNode(info ExTxInfo) bool {
+func (l *CListMempool) checkElement(info ExTxInfo) bool {
 	repeatNode := false
 
 	userMap, ok := l.AddressRecord[info.Sender]
 	if !ok {
 		l.AddressRecord[info.Sender] = make(map[string]*clist.CElement)
 	} else {
-		for nodeHash, node := range userMap {
+		for _, node := range userMap {
 			if node.Nonce == info.Nonce {
-				l.removeTx(node.Value.(mempoolTx).tx, node, true)
-				delete(userMap, nodeHash)
+				l.removeTx(node.Value.(types.Tx), node, true)
 
 				repeatNode = true
 				break
@@ -746,6 +755,19 @@ func (l *CListMempool) checkNode(info ExTxInfo) bool {
 	}
 
 	return repeatNode
+}
+
+func (l *CListMempool) deleteAddrRecord(e *clist.CElement) {
+	if userMap, ok := l.AddressRecord[e.Address]; ok {
+		txHash := txID(e.Value.(*mempoolTx).tx)
+		if _, ok = userMap[txHash]; ok {
+			delete(userMap, txHash)
+		}
+
+		if len(userMap) == 0 {
+			delete(l.AddressRecord, e.Address)
+		}
+	}
 }
 
 //--------------------------------------------------------------------------------
