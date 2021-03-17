@@ -365,7 +365,7 @@ func (mem *CListMempool) reqResCb(
 //  - resCbFirstTime (lock not held) if tx is valid
 func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
 	// 删除同一个账号，相同Nonce的交易
-	mem.checkElement(info)
+	mem.checkRepeatedElement(info)
 	e := mem.txs.AddTxWithExInfo(memTx, info.Sender, info.GasPrice, info.Nonce)
 
 	if _, ok := mem.AddressRecord[info.Sender]; !ok {
@@ -736,26 +736,26 @@ func (l *CListMempool) reOrgTxs(addr string) *CListMempool {
 	return l
 }
 
-func (l *CListMempool) checkElement(info ExTxInfo) bool {
-	repeatNode := false
+func (l *CListMempool) checkRepeatedElement(info ExTxInfo) bool {
+	repeatElement := false
 
 	if userMap, ok := l.AddressRecord[info.Sender]; ok {
 		for _, node := range userMap {
 			if node.Nonce == info.Nonce {
 				l.removeTx(node.Value.(*mempoolTx).tx, node, true)
 
-				repeatNode = true
+				repeatElement = true
 				break
 			}
 		}
 	}
 
 	// 如果账号nonce重复，删除重复节点后，还得将该账户的所有其他节点进行reorg重排序
-	if repeatNode {
+	if repeatElement {
 		l.reOrgTxs(info.Sender)
 	}
 
-	return repeatNode
+	return repeatElement
 }
 
 func (l *CListMempool) deleteAddrRecord(e *clist.CElement) {

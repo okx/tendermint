@@ -460,18 +460,8 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 				// 小Nonce往前
 				cur = cur.prev
 			} else {
-				//// 相同Nonce的tx已经在checkElement中处理过了，这里只有大于的case
-				//// 大Nonce的交易，不管gasPrice怎么样，都得靠后排
-				//ele.prev = cur
-				//ele.next = cur.next
-				//
-				//if cur.next != nil {
-				//	cur.next.prev = ele
-				//} else {
-				//	l.tail = ele
-				//}
-				//cur.next = ele
-
+				// 相同Nonce的tx已经在checkElement中处理过了，这里只有大于的case
+				// 大Nonce的交易，不管gasPrice怎么样，都得靠后排
 				ele.SetPrev(cur)
 				ele.SetNext(cur.next)
 
@@ -494,16 +484,6 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 
 				// 如果同一个addr, 连续出现，nonce最小gasPrice比要插入的元素的gasPrice还要大，则要插入的元素排在后面
 				if ele.GasPrice <= cur.GasPrice {
-					//ele.prev = tmp
-					//ele.next = tmp.next
-					//
-					//if tmp.next != nil {
-					//	tmp.next.prev = ele
-					//} else {
-					//	l.tail = ele
-					//}
-					//tmp.next = ele
-
 					ele.SetPrev(tmp)
 					ele.SetNext(tmp.next)
 
@@ -534,36 +514,10 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 	}
 	l.head = ele
 
-	//ele.next = l.head
-	//if l.head != nil {
-	//	l.head.prev = ele
-	//} else {
-	//	l.tail = ele
-	//}
-	//l.head = ele
-
 	return ele
 }
 
 func (l *CList) DetachElement(ele *CElement) interface{} {
-	//fmt.Println("Detach Node, Address: ", ele.Address, ", nonce: ", ele.Nonce, ", gasPrice: ", ele.GasPrice)
-	//if ele.prev != nil {
-	//	ele.prev.next = ele.next
-	//} else {
-	//	l.head = ele.next
-	//}
-	//
-	//if ele.next != nil {
-	//	ele.next.prev = ele.prev
-	//} else {
-	//	l.tail = ele.prev
-	//}
-	//
-	//ele.prev = nil
-	//ele.next = nil
-	//
-	//return l
-
 	l.mtx.Lock()
 
 	prev := ele.Prev()
