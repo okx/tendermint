@@ -691,8 +691,8 @@ func TestAddAndSortTx(t *testing.T) {
 	require.Equal(t, uint64(0), mempool.txs.Back().Nonce)
 
 	require.Equal(t, true, checkTx(mempool.txs.Front()))
-	
-	for addr, _ := range mempool.AddressRecord {
+
+	for addr := range mempool.AddressRecord {
 		require.Equal(t, true, checkAccNonce(addr, mempool.txs.Front()))
 	}
 
@@ -717,7 +717,7 @@ func TestAddAndSortTxByRandom(t *testing.T) {
 	}
 
 	require.Equal(t, true, checkTx(mempool.txs.Front()))
-	for addr, _ := range mempool.AddressRecord {
+	for addr := range mempool.AddressRecord {
 		require.Equal(t, true, checkAccNonce(addr, mempool.txs.Front()))
 	}
 }

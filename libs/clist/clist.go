@@ -560,9 +560,6 @@ func (l *CList) DetachElement(ele *CElement) interface{} {
 	// Set .Done() on e, otherwise waiters will wait forever.
 	ele.setDetach()
 
-	ele.prev = nil
-	ele.next = nil
-
 	l.mtx.Unlock()
 	return ele.Value
 }
