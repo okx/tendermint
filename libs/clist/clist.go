@@ -495,9 +495,10 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 					tmp.SetNext(ele)
 
 					return ele
-				} else {
-					cur = cur.prev
 				}
+
+				// 否则，就可以排到前面去
+				cur = cur.prev
 			} else {
 				// gasPrice大的往前
 				cur = cur.prev
