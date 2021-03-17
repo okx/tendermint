@@ -92,6 +92,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.Mempool.MaxTxNumPerBlock,
 		"Maximum number of transactions in a block",
 	)
+	cmd.Flags().Bool(
+		"mempool.enable_sort",
+		config.Mempool.EnableSort,
+		"Enable txs sort by gasPrice in mempool",
+	)
 
 	// db flags
 	cmd.Flags().String(
