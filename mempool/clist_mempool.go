@@ -709,17 +709,17 @@ func (mem *CListMempool) recheckTxs() {
 }
 
 // 重新对地址为：addr的交易进行reorg排序
-func (l *CListMempool) reOrgTxs(addr string) *CListMempool {
-	if userMap, ok := l.AddressRecord[addr]; ok {
+func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
+	if userMap, ok := mem.AddressRecord[addr]; ok {
 		if len(userMap) == 0 {
-			return l
+			return mem
 		}
 
 		tmpMap := make(map[uint64]*clist.CElement)
 		var keys []uint64
 
 		for _, node := range userMap {
-			l.txs.DetachElement(node)
+			mem.txs.DetachElement(node)
 
 			tmpMap[node.Nonce] = node
 			keys = append(keys, node.Nonce)
@@ -729,20 +729,20 @@ func (l *CListMempool) reOrgTxs(addr string) *CListMempool {
 		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 
 		for _, key := range keys {
-			l.txs.InsertElement(tmpMap[key])
+			mem.txs.InsertElement(tmpMap[key])
 		}
 	}
 
-	return l
+	return mem
 }
 
-func (l *CListMempool) checkRepeatedElement(info ExTxInfo) bool {
+func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) bool {
 	repeatElement := false
 
-	if userMap, ok := l.AddressRecord[info.Sender]; ok {
+	if userMap, ok := mem.AddressRecord[info.Sender]; ok {
 		for _, node := range userMap {
 			if node.Nonce == info.Nonce {
-				l.removeTx(node.Value.(*mempoolTx).tx, node, true)
+				mem.removeTx(node.Value.(*mempoolTx).tx, node, true)
 
 				repeatElement = true
 				break
@@ -752,21 +752,21 @@ func (l *CListMempool) checkRepeatedElement(info ExTxInfo) bool {
 
 	// 如果账号nonce重复，删除重复节点后，还得将该账户的所有其他节点进行reorg重排序
 	if repeatElement {
-		l.reOrgTxs(info.Sender)
+		mem.reOrgTxs(info.Sender)
 	}
 
 	return repeatElement
 }
 
-func (l *CListMempool) deleteAddrRecord(e *clist.CElement) {
-	if userMap, ok := l.AddressRecord[e.Address]; ok {
+func (mem *CListMempool) deleteAddrRecord(e *clist.CElement) {
+	if userMap, ok := mem.AddressRecord[e.Address]; ok {
 		txHash := txID(e.Value.(*mempoolTx).tx)
 		if _, ok = userMap[txHash]; ok {
 			delete(userMap, txHash)
 		}
 
 		if len(userMap) == 0 {
-			delete(l.AddressRecord, e.Address)
+			delete(mem.AddressRecord, e.Address)
 		}
 	}
 }

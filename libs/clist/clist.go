@@ -494,7 +494,6 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 					}
 					tmp.SetNext(ele)
 
-
 					return ele
 				} else {
 					cur = cur.prev

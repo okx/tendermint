@@ -712,7 +712,7 @@ func TestAddAndSortTxByRandom(t *testing.T) {
 
 	AddrNonce := make(map[string]int)
 	for i := 0; i < 1000; i++ {
-		mempool.addAndSortTx(GenerateNode(AddrNonce, i))
+		mempool.addAndSortTx(generateNode(AddrNonce, i))
 	}
 
 	require.Equal(t, true, checkTx(mempool.txs.Front()))
@@ -721,8 +721,8 @@ func TestAddAndSortTxByRandom(t *testing.T) {
 	}
 }
 
-func GenerateNode(addrNonce map[string]int, idx int) (*mempoolTx, ExTxInfo) {
-	mrand.Seed(int64(time.Now().UnixNano()))
+func generateNode(addrNonce map[string]int, idx int) (*mempoolTx, ExTxInfo) {
+	mrand.Seed(time.Now().UnixNano())
 	addr := strconv.Itoa(mrand.Int()%1000 + 1)
 	gasPrice := mrand.Int()%100000 + 1
 
@@ -759,7 +759,7 @@ func checkAccNonce(addr string, head *clist.CElement) bool {
 			if head.Nonce != nonce {
 				return false
 			}
-			nonce += 1
+			nonce++
 		}
 
 		head = head.Next()
