@@ -475,7 +475,6 @@ func (mem *CListMempool) resCbFirstTime(
 					mem.logger.Error("Failed to get extra info for this tx!")
 					return
 				}
-				fmt.Println("CheckTx -> sender is: ", exTxInfo.Sender, ", gasPrice is: ", exTxInfo.GasPrice, ", nonce is: ", exTxInfo.Nonce)
 
 				mem.addAndSortTx(memTx, exTxInfo)
 			} else {
@@ -604,6 +603,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
 	}
+
 	return txs
 }
 
