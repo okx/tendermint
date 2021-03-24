@@ -704,6 +704,32 @@ func TestAddAndSortTx(t *testing.T) {
 	require.Equal(t, 0, len(mempool.AddressRecord))
 }
 
+func TestReplaceTx(t *testing.T) {
+	app := kvstore.NewApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	config := cfg.ResetTestRoot("mempool_test")
+	mempool, cleanup := newMempoolWithAppAndConfig(cc, config)
+	defer cleanup()
+
+	//tx := &mempoolTx{height: 1, gasWanted: 1, tx:[]byte{0x01}}
+	testCases := []struct {
+		Tx   *mempoolTx
+		Info ExTxInfo
+	}{
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("10000")}, ExTxInfo{"1", 9740, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("10001")}, ExTxInfo{"1", 5853, 1}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("10002")}, ExTxInfo{"1", 8315, 2}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("10003")}, ExTxInfo{"1", 9526, 3}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("10004")}, ExTxInfo{"1", 9140, 4}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("10002")}, ExTxInfo{"1", 9227, 2}},
+	}
+
+	for _, exInfo := range testCases {
+		mempool.addAndSortTx(exInfo.Tx, exInfo.Info)
+	}
+	require.Equal(t, 5, mempool.txs.Len(), fmt.Sprintf("Expected to txs length %v but got %v", 5, mempool.txs.Len()))
+}
+
 func TestAddAndSortTxByRandom(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
@@ -712,7 +738,7 @@ func TestAddAndSortTxByRandom(t *testing.T) {
 	defer cleanup()
 
 	AddrNonce := make(map[string]int)
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10000; i++ {
 		mempool.addAndSortTx(generateNode(AddrNonce, i))
 	}
 

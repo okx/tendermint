@@ -230,6 +230,22 @@ func (e *CElement) setDetach() {
 	e.mtx.Unlock()
 }
 
+func (e *CElement) NewDetachPrev() {
+	e.mtx.Lock()
+	e.prev = nil
+	e.prevWg = waitGroup1()
+	e.prevWaitCh = make(chan struct{})
+	e.mtx.Unlock()
+}
+
+func (e *CElement) NewDetachNext() {
+	e.mtx.Lock()
+	e.next = nil
+	e.nextWg = waitGroup1()
+	e.nextWaitCh = make(chan struct{})
+	e.mtx.Unlock()
+}
+
 //--------------------------------------------------------------------------------
 
 // CList represents a linked list.

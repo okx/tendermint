@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -602,8 +603,13 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		totalTxNum++
 		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
+
+		fmt.Println("sender: ", e.Address, ", gasPrice: ", e.GasPrice, ", nonce: ", e.Nonce)
 	}
 
+	if len(txs) < 10 {
+		return txs[0:0]
+	}
 	return txs
 }
 
@@ -677,6 +683,8 @@ func (mem *CListMempool) Update(
 			// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
 			// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
 		} else {
+			mem.reportPendingTxNums()
+
 			mem.notifyTxsAvailable()
 		}
 	}
@@ -720,6 +728,8 @@ func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
 
 		for _, node := range userMap {
 			mem.txs.DetachElement(node)
+			node.NewDetachPrev()
+			node.NewDetachNext()
 
 			tmpMap[node.Nonce] = node
 			keys = append(keys, node.Nonce)
@@ -742,7 +752,7 @@ func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) bool {
 	if userMap, ok := mem.AddressRecord[info.Sender]; ok {
 		for _, node := range userMap {
 			if node.Nonce == info.Nonce {
-				mem.removeTx(node.Value.(*mempoolTx).tx, node, true)
+				mem.removeTx(node.Value.(*mempoolTx).tx, node, false)
 
 				repeatElement = true
 				break
@@ -769,6 +779,21 @@ func (mem *CListMempool) deleteAddrRecord(e *clist.CElement) {
 			delete(mem.AddressRecord, e.Address)
 		}
 	}
+}
+
+func (mem *CListMempool) reportPendingTxNums() {
+	for addr, recordMap := range mem.AddressRecord {
+		if len(recordMap) > 0 {
+			mem.proxyAppConn.SetOptionAsync(abci.RequestSetOption{
+				Key:                  addr,
+				Value:                strconv.Itoa(len(recordMap)),
+			})
+		} else {
+			delete(mem.AddressRecord, addr)
+		}
+	}
+
+	mem.proxyAppConn.FlushAsync()
 }
 
 //--------------------------------------------------------------------------------
