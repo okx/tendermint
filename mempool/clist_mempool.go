@@ -603,13 +603,8 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		totalTxNum++
 		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
-
-		fmt.Println("sender: ", e.Address, ", gasPrice: ", e.GasPrice, ", nonce: ", e.Nonce)
 	}
 
-	if len(txs) < 10 {
-		return txs[0:0]
-	}
 	return txs
 }
 
