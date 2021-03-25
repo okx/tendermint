@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -365,7 +364,7 @@ func (mem *CListMempool) reqResCb(
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
 func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
-	// 删除同一个账号，相同Nonce的交易
+	// Delete the same Nonce transaction from the same account
 	mem.checkRepeatedElement(info)
 	e := mem.txs.AddTxWithExInfo(memTx, info.Sender, info.GasPrice, info.Nonce)
 
@@ -603,11 +602,6 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		totalTxNum++
 		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
-
-		fmt.Println("Sender: ", e.Address, ", GasPrice: ", e.GasPrice, ", Nonce: ", e.Nonce)
-	}
-	if len(txs) < 10 {
-		return txs[0:0]
 	}
 
 	return txs
@@ -754,7 +748,7 @@ func (mem *CListMempool) recheckTxs() {
 	mem.proxyAppConn.FlushAsync()
 }
 
-// 重新对地址为：addr的交易进行reorg排序
+// Reorganize transactions with same address: addr
 func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
 	if userMap, ok := mem.AddressRecord[addr]; ok {
 		if len(userMap) == 0 {
@@ -773,7 +767,8 @@ func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
 			keys = append(keys, node.Nonce)
 		}
 
-		// 进行插入排序时，也得严格按照nonce的大小先后插入，不然会出现tx不按nonce出现，导致执行时失败
+		// When inserting, strictly order by nonce, otherwise tx will not appear according to nonce,
+		// resulting in execution failure
 		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 
 		for _, key := range keys {
@@ -798,7 +793,7 @@ func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) bool {
 		}
 	}
 
-	// 如果账号nonce重复，删除重复节点后，还得将该账户的所有其他节点进行reorg重排序
+	// If the tx nonce of the same address is duplicated, should delete the duplicate tx, and reorg all other tx
 	if repeatElement {
 		mem.reOrgTxs(info.Sender)
 	}
@@ -820,15 +815,32 @@ func (mem *CListMempool) deleteAddrRecord(e *clist.CElement) {
 }
 
 func (mem *CListMempool) reportPendingTxNums() {
+	param := make(map[string]int)
+
 	for addr, recordMap := range mem.AddressRecord {
-		if len(recordMap) > 0 {
+		if len(param) == mem.config.ReportBatchSize {
+			dataType, _ := json.Marshal(param)
 			mem.proxyAppConn.SetOptionAsync(abci.RequestSetOption{
-				Key:   addr,
-				Value: strconv.Itoa(len(recordMap)),
+				Key:   "mempool",
+				Value: string(dataType),
 			})
+
+			param = make(map[string]int)
 		} else {
-			delete(mem.AddressRecord, addr)
+			if len(recordMap) > 0 {
+				param[addr] = len(recordMap)
+			} else {
+				delete(mem.AddressRecord, addr)
+			}
 		}
+	}
+
+	if len(param) > 0 {
+		dataType, _ := json.Marshal(param)
+		mem.proxyAppConn.SetOptionAsync(abci.RequestSetOption{
+			Key:   "mempool",
+			Value: string(dataType),
+		})
 	}
 
 	mem.proxyAppConn.FlushAsync()

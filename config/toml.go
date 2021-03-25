@@ -321,6 +321,9 @@ max_tx_num_per_block = {{ .Mempool.MaxTxNumPerBlock }}
 # Enable sort txs in mempool by gas price.
 enable_sort = {{ .Mempool.EnableSort }}
 
+# Report batch size of user's pending txs when disable recheck.
+report_batch_size = {{ .Mempool.ReportBatchSize }}
+
 ##### fast sync configuration options #####
 [fastsync]
 

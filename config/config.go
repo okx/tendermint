@@ -668,6 +668,7 @@ type MempoolConfig struct {
 	MaxTxBytes       int    `mapstructure:"max_tx_bytes"`
 	MaxTxNumPerBlock int64  `mapstructure:"max_tx_num_per_block"`
 	EnableSort       bool   `mapstructure:"enable_sort"`
+	ReportBatchSize  int    `mapstructure:"report_batch_size"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -684,6 +685,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		MaxTxBytes:       1024 * 1024, // 1MB
 		MaxTxNumPerBlock: 150,
 		EnableSort:       false,
+		ReportBatchSize:  20,
 	}
 }
 

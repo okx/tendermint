@@ -444,7 +444,7 @@ func waitGroup1() (wg *sync.WaitGroup) {
 
 // ===============================================
 
-// head -> tail: gasPrice(大 -> 小)
+// head -> tail: gasPrice(big -> samll)
 func (l *CList) InsertElement(ele *CElement) *CElement {
 	l.mtx.Lock()
 	defer func() {
@@ -471,13 +471,13 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 	cur := l.tail
 	for cur != nil {
 		if cur.Address == ele.Address {
-			// 地址相同，先看Nonce
+			// same address, check Nonce first
 			if ele.Nonce < cur.Nonce {
-				// 小Nonce往前
+				// small Nonce put ahead
 				cur = cur.prev
 			} else {
-				// 相同Nonce的tx已经在checkElement中处理过了，这里只有大于的case
-				// 大Nonce的交易，不管gasPrice怎么样，都得靠后排
+				// The tx of the same Nonce has been processed in checkElement, and there are only cases of big nonce
+				// Big Nonce’s transaction, regardless of gasPrice, has to be in the back
 				ele.SetPrev(cur)
 				ele.SetNext(cur.next)
 
@@ -491,14 +491,15 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 				return ele
 			}
 		} else {
-			// 地址不同，就按gasPrice排序
+			// Different addresses are sorted by gasPrice
 			if ele.GasPrice <= cur.GasPrice {
 				tmp := cur
 				for cur.prev != nil && cur.prev.Address == cur.Address {
 					cur = cur.prev
 				}
 
-				// 如果同一个addr, 连续出现，nonce最小gasPrice比要插入的元素的gasPrice还要大，则要插入的元素排在后面
+				// If the same addr appears consecutively and the gasPrice of the minimum nonce element is greater than the gasPrice
+				// of the element to be inserted, the element to be inserted will be put in the back
 				if ele.GasPrice <= cur.GasPrice {
 					ele.SetPrev(tmp)
 					ele.SetNext(tmp.next)
@@ -513,10 +514,10 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 					return ele
 				}
 
-				// 否则，就可以排到前面去
+				// Otherwise, put forward
 				cur = cur.prev
 			} else {
-				// gasPrice大的往前
+				// put big GasPrice element to forward
 				cur = cur.prev
 			}
 		}

@@ -200,8 +200,8 @@ type ResultUnconfirmedTxs struct {
 
 // List of mempool txs
 type ResultUserUnconfirmedTxs struct {
-	Count      int        `json:"n_txs"`
-	Txs        []types.Tx `json:"txs"`
+	Count int        `json:"n_txs"`
+	Txs   []types.Tx `json:"txs"`
 }
 
 // Info abci msg
