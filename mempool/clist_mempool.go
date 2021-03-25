@@ -603,6 +603,11 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		totalTxNum++
 		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
+
+		fmt.Println("Sender: ", e.Address, ", GasPrice: ", e.GasPrice, ", Nonce: ", e.Nonce)
+	}
+	if len(txs) < 10 {
+		return txs[0:0]
 	}
 
 	return txs
@@ -622,6 +627,44 @@ func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 		memTx := e.Value.(*mempoolTx)
 		txs = append(txs, memTx.tx)
 	}
+	return txs
+}
+
+func (mem *CListMempool) ReapUserTxsCnt(address string) int {
+	mem.updateMtx.RLock()
+	defer mem.updateMtx.RUnlock()
+
+	if userMap, ok := mem.AddressRecord[address]; ok {
+		return len(userMap)
+	}
+
+	return 0
+}
+
+func (mem *CListMempool) ReapUserTxs(address string, max int) types.Txs {
+	mem.updateMtx.RLock()
+	defer mem.updateMtx.RUnlock()
+
+	userMap, ok := mem.AddressRecord[address]
+	if !ok || len(userMap) == 0 {
+		return types.Txs{}
+	}
+
+	txNums := len(userMap)
+	if max <= 0 || max > txNums {
+		max = txNums
+	}
+
+	txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max))
+
+	for _, ele := range userMap {
+		if len(txs) == max {
+			break
+		}
+
+		txs = append(txs, ele.Value.(*mempoolTx).tx)
+	}
+
 	return txs
 }
 
@@ -780,8 +823,8 @@ func (mem *CListMempool) reportPendingTxNums() {
 	for addr, recordMap := range mem.AddressRecord {
 		if len(recordMap) > 0 {
 			mem.proxyAppConn.SetOptionAsync(abci.RequestSetOption{
-				Key:                  addr,
-				Value:                strconv.Itoa(len(recordMap)),
+				Key:   addr,
+				Value: strconv.Itoa(len(recordMap)),
 			})
 		} else {
 			delete(mem.AddressRecord, addr)

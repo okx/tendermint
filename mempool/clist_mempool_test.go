@@ -748,6 +748,65 @@ func TestAddAndSortTxByRandom(t *testing.T) {
 	}
 }
 
+func TestReapUserTxs(t *testing.T) {
+	app := kvstore.NewApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	config := cfg.ResetTestRoot("mempool_test")
+	mempool, cleanup := newMempoolWithAppAndConfig(cc, config)
+	defer cleanup()
+
+	//tx := &mempoolTx{height: 1, gasWanted: 1, tx:[]byte{0x01}}
+	testCases := []struct {
+		Tx   *mempoolTx
+		Info ExTxInfo
+	}{
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("1")}, ExTxInfo{"18", 9740, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("2")}, ExTxInfo{"6", 5853, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("3")}, ExTxInfo{"7", 8315, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("4")}, ExTxInfo{"10", 9526, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("5")}, ExTxInfo{"15", 9140, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("6")}, ExTxInfo{"9", 9227, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("7")}, ExTxInfo{"3", 761, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("8")}, ExTxInfo{"18", 3780, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("9")}, ExTxInfo{"1", 6574, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("10")}, ExTxInfo{"8", 9656, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("11")}, ExTxInfo{"12", 6554, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("12")}, ExTxInfo{"16", 5609, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("13")}, ExTxInfo{"6", 2791, 1}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("14")}, ExTxInfo{"18", 2698, 1}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("15")}, ExTxInfo{"1", 6925, 1}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("16")}, ExTxInfo{"3", 3171, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("17")}, ExTxInfo{"1", 2965, 2}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("18")}, ExTxInfo{"19", 2484, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("19")}, ExTxInfo{"13", 9722, 0}},
+		{&mempoolTx{height: 1, gasWanted: 1, tx: []byte("20")}, ExTxInfo{"7", 4236, 1}},
+	}
+
+	for _, exInfo := range testCases {
+		mempool.addAndSortTx(exInfo.Tx, exInfo.Info)
+	}
+	require.Equal(t, 18, mempool.txs.Len(), fmt.Sprintf("Expected to txs length %v but got %v", 18,
+		mempool.txs.Len()))
+
+	require.Equal(t, 3, mempool.ReapUserTxsCnt("1"), fmt.Sprintf("Expected to txs length of %s "+
+		"is %v but got %v", "1", 3, mempool.ReapUserTxsCnt("1")))
+
+	require.Equal(t, 0, mempool.ReapUserTxsCnt("111"), fmt.Sprintf("Expected to txs length of %s "+
+		"is %v but got %v", "111", 0, mempool.ReapUserTxsCnt("111")))
+
+	require.Equal(t, 3, len(mempool.ReapUserTxs("1", -1)), fmt.Sprintf("Expected to txs length "+
+		"of %s is %v but got %v", "1", 3, len(mempool.ReapUserTxs("1", -1))))
+
+	require.Equal(t, 3, len(mempool.ReapUserTxs("1", 100)), fmt.Sprintf("Expected to txs length "+
+		"of %s is %v but got %v", "1", 3, len(mempool.ReapUserTxs("1", 100))))
+
+	require.Equal(t, 0, len(mempool.ReapUserTxs("111", -1)), fmt.Sprintf("Expected to txs length "+
+		"of %s is %v but got %v", "111", 0, len(mempool.ReapUserTxs("111", -1))))
+
+	require.Equal(t, 0, len(mempool.ReapUserTxs("111", 100)), fmt.Sprintf("Expected to txs length "+
+		"of %s is %v but got %v", "111", 0, len(mempool.ReapUserTxs("111", 100))))
+}
+
 func generateNode(addrNonce map[string]int, idx int) (*mempoolTx, ExTxInfo) {
 	mrand.Seed(time.Now().UnixNano())
 	addr := strconv.Itoa(mrand.Int()%1000 + 1)

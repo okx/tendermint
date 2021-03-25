@@ -119,6 +119,7 @@ func (app *appConnMempool) CheckTxAsync(req types.RequestCheckTx) *abcicli.ReqRe
 func (app *appConnMempool) SetOptionAsync(req types.RequestSetOption) *abcicli.ReqRes {
 	return app.appConn.SetOptionAsync(req)
 }
+
 //------------------------------------------------
 // Implements AppConnQuery (subset of abcicli.Client)
 
