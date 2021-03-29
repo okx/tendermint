@@ -724,6 +724,11 @@ func (mem *CListMempool) Update(
 	// Update metrics
 	mem.metrics.Size.Set(float64(mem.Size()))
 
+	// WARNING: The txs inserted between [ReapMaxBytesMaxGas, Update) is insert-sorted in the mempool.txs,
+	// but they are not included in the latest block, after remove the latest block txs, these txs may
+	// in unsorted state. We need to resort them again for the the purpose of absolute order, or just let it go for they are
+	// already sorted int the last round (will only affect the account that send these txs).
+
 	return nil
 }
 
