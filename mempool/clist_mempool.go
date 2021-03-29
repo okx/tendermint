@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -469,7 +470,7 @@ func (mem *CListMempool) resCbFirstTime(
 					mem.logger.Error(err.Error())
 					return
 				}
-				if exTxInfo.GasPrice == 0 {
+				if exTxInfo.GasPrice.Cmp(big.NewInt(0)) <= 0 {
 					// remove from cache (mempool might have a space later)
 					mem.cache.Remove(tx)
 					mem.logger.Error("Failed to get extra info for this tx!")
@@ -966,7 +967,7 @@ func txID(tx []byte) string {
 
 //--------------------------------------------------------------------------------
 type ExTxInfo struct {
-	Sender   string `json:"sender"`
-	GasPrice int64  `json:"gas_price"`
-	Nonce    uint64 `json:"nonce"`
+	Sender   string   `json:"sender"`
+	GasPrice *big.Int `json:"gas_price"`
+	Nonce    uint64   `json:"nonce"`
 }

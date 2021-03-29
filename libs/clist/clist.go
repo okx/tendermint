@@ -13,6 +13,7 @@ to ensure garbage collection of removed elements.
 
 import (
 	"fmt"
+	"math/big"
 	"sync"
 )
 
@@ -52,7 +53,7 @@ type CElement struct {
 	removed    bool
 
 	Nonce    uint64
-	GasPrice int64
+	GasPrice *big.Int
 	Address  string
 
 	Value interface{} // immutable
@@ -492,7 +493,7 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 			}
 		} else {
 			// Different addresses are sorted by gasPrice
-			if ele.GasPrice <= cur.GasPrice {
+			if ele.GasPrice.Cmp(cur.GasPrice) <= 0 {
 				tmp := cur
 				for cur.prev != nil && cur.prev.Address == cur.Address {
 					cur = cur.prev
@@ -500,7 +501,7 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 
 				// If the same addr appears consecutively and the gasPrice of the minimum nonce element is greater than the gasPrice
 				// of the element to be inserted, the element to be inserted will be put in the back
-				if ele.GasPrice <= cur.GasPrice {
+				if ele.GasPrice.Cmp(cur.GasPrice) <= 0 {
 					ele.SetPrev(tmp)
 					ele.SetNext(tmp.next)
 
@@ -581,7 +582,7 @@ func (l *CList) DetachElement(ele *CElement) interface{} {
 	return ele.Value
 }
 
-func (l *CList) AddTxWithExInfo(v interface{}, addr string, gasPrice int64, nonce uint64) *CElement {
+func (l *CList) AddTxWithExInfo(v interface{}, addr string, gasPrice *big.Int, nonce uint64) *CElement {
 	// Construct a new element
 	e := &CElement{
 		prev:       nil,
