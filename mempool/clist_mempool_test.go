@@ -739,7 +739,7 @@ func TestAddAndSortTxByRandom(t *testing.T) {
 	defer cleanup()
 
 	AddrNonce := make(map[string]int)
-	for i := 0; i < 2000; i++ {
+	for i := 0; i < 1000; i++ {
 		mempool.addAndSortTx(generateNode(AddrNonce, i))
 	}
 
