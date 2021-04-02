@@ -66,6 +66,7 @@ message RequestInitChain {
   ConsensusParams           consensus_params = 3;
   repeated ValidatorUpdate  validators       = 4 [(gogoproto.nullable) = false];
   bytes                     app_state_bytes  = 5;
+  int64 initial_height = 6;
 }
 
 message RequestQuery {
@@ -329,6 +330,13 @@ message Evidence {
   int64                     total_voting_power = 5;
 }
 
+message Snapshot {
+  uint64                    height      = 1;
+  uint32                    format = 2;
+  uint32                    chunks    = 3;
+  bytes                     hash = 4;
+  bytes                     metadata = 5;
+}
 //----------------------------------------
 // Service Definition
 
