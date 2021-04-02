@@ -330,6 +330,9 @@ message Evidence {
   int64                     total_voting_power = 5;
 }
 
+//----------------------------------------
+// Snapshot Types
+
 message Snapshot {
   uint64                    height      = 1;
   uint32                    format = 2;
@@ -337,6 +340,66 @@ message Snapshot {
   bytes                     hash = 4;
   bytes                     metadata = 5;
 }
+
+// lists available snapshots
+message RequestListSnapshots{}
+
+message ResponseListSnapshots{
+  repeated Snapshot snapshots = 1;
+}
+
+// loads a snapshot chunk
+message RequestLoadSnapshotChunk {
+  uint64 height = 1;
+  uint32 format = 2;
+  uint32 chunk = 3;
+}
+
+message ResponseLoadSnapshotChunk {
+  bytes chunk = 1;
+}
+
+// offers a snapshot to the application
+message RequestOfferSnapshot {
+  Snapshot snapshot = 1;
+  bytes app_hash = 2;
+}
+
+message ResponseOfferSnapshot {
+  enum Result {
+    UNKNOWN = 0;
+    ACCEPT = 1;
+    ABORT = 2;
+    REJECT = 3;
+    REJECT_FORMAT = 4;
+    REJECT_SENDER = 5;
+  }
+
+  Result result = 1;
+}
+
+// Applies a snapshot chunk
+message RequestApplySnapshotChunk {
+  uint32 index = 1;
+  bytes chunk = 2;
+  string sender = 3;
+}
+
+message ResponseApplySnapshotChunk {
+  enum Result {
+    UNKNOWN = 0;
+    ACCEPT = 1;
+    ABORT = 2;
+    RETRY = 3;
+    RETRY_SNAPSHOT = 4;
+    REJECT_SNAPSHOT = 5;
+  }
+
+  Result result = 1;
+  repeated uint32 refetch_chunks = 2;
+  repeated string reject_senders = 3;
+}
+
 //----------------------------------------
 // Service Definition
 
