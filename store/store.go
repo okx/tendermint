@@ -300,8 +300,8 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 	// Save seen commit (seen +2/3 precommits for block)
 	// NOTE: we can delete this at a later height
-	seenCommitBytes := cdc.MustMarshalBinaryBare(seenCommit)
-	bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
+	//seenCommitBytes := cdc.MustMarshalBinaryBare(seenCommit)
+	//bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
 
 	// Done!
 	bs.mtx.Lock()
