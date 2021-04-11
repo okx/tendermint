@@ -115,6 +115,9 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
+	if GetCloseStateValidation() {
+		return nil
+	}
 	return validateBlock(blockExec.evpool, blockExec.db, state, block)
 }
 

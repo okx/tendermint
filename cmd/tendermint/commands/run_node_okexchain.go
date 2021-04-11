@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/state"
 )
 
 // AddNodeFlags exposes some common configuration options on the command-line
@@ -21,4 +22,5 @@ func addMoreFlags(cmd *cobra.Command) {
 
 	cmd.Flags().Duration("consensus.timeout_commit", config.Consensus.TimeoutCommit, "Set node block interval time")
 	cmd.Flags().Bool(abci.FlagCloseMutex, false, "Close local client query mutex for better concurrency")
+	cmd.Flags().Bool(state.FlagCloseStateValidation, false, "Close state validation for debug mode")
 }
