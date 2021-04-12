@@ -30,7 +30,7 @@ type Subscription struct {
 // NewSubscription returns a new subscription with the given outCapacity.
 func NewSubscription(outCapacity int) *Subscription {
 	return &Subscription{
-		out:       make(chan Message, outCapacity),
+		out:       make(chan Message, 1000),
 		cancelled: make(chan struct{}),
 	}
 }

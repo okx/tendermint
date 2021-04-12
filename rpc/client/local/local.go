@@ -195,7 +195,7 @@ func (c *Local) Subscribe(
 		return nil, errors.Wrap(err, "failed to subscribe")
 	}
 
-	outc := make(chan ctypes.ResultEvent, outCap)
+	outc := make(chan ctypes.ResultEvent, 1000)
 	go c.eventsRoutine(sub, subscriber, q, outc)
 
 	return outc, nil
