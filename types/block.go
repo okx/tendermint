@@ -90,14 +90,11 @@ func (b *Block) ValidateBasic() error {
 		return fmt.Errorf("invalid header: %w", err)
 	}
 
-	// Validate the last commit and its hash.
-	if b.Header.Height > GetStartBlockHeight()+1 {
-		if b.LastCommit == nil {
-			return errors.New("nil LastCommit")
-		}
-		if err := b.LastCommit.ValidateBasic(); err != nil {
-			return fmt.Errorf("wrong LastCommit: %v", err)
-		}
+	if b.LastCommit == nil {
+		return errors.New("nil LastCommit")
+	}
+	if err := b.LastCommit.ValidateBasic(); err != nil {
+		return fmt.Errorf("wrong LastCommit: %v", err)
 	}
 
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {

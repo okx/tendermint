@@ -39,6 +39,10 @@ message Request {
     RequestDeliverTx  deliver_tx  = 19;
     RequestEndBlock   end_block   = 11;
     RequestCommit     commit      = 12;
+    RequestListSnapshots      list_snapshots       = 13;
+    RequestOfferSnapshot      offer_snapshot       = 14;
+    RequestLoadSnapshotChunk  load_snapshot_chunk  = 15;
+    RequestApplySnapshotChunk apply_snapshot_chunk = 16;
   }
 }
 
@@ -120,6 +124,10 @@ message Response {
     ResponseDeliverTx  deliver_tx  = 10;
     ResponseEndBlock   end_block   = 11;
     ResponseCommit     commit      = 12;
+    ResponseListSnapshots      list_snapshots       = 13;
+    ResponseOfferSnapshot      offer_snapshot       = 14;
+    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
+    ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
   }
 }
 
@@ -415,4 +423,8 @@ service ABCIApplication {
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);
   rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
   rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
+  rpc ListSnapshots(RequestListSnapshots) returns (ResponseListSnapshots);
+  rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
+  rpc LoadSnapshotChunk(RequestLoadSnapshotChunk) returns (ResponseLoadSnapshotChunk);
+  rpc ApplySnapshotChunk(RequestApplySnapshotChunk) returns (ResponseApplySnapshotChunk);
 }
