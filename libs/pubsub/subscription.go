@@ -36,7 +36,7 @@ func NewSubscription(outCapacity int) *Subscription {
 		}
 	}
 	return &Subscription{
-		out:       make(chan Message, 0),
+		out:       make(chan Message),
 		cancelled: make(chan struct{}),
 	}
 }
