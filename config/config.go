@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"os"
@@ -69,6 +70,7 @@ type Config struct {
 	RPC             *RPCConfig             `mapstructure:"rpc"`
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	StateSync *StateSyncConfig `mapstructure:"statesync"`
 	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
@@ -82,6 +84,7 @@ func DefaultConfig() *Config {
 		RPC:             DefaultRPCConfig(),
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
+		StateSync:       DefaultStateSyncConfig(),
 		FastSync:        DefaultFastSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
@@ -96,6 +99,7 @@ func TestConfig() *Config {
 		RPC:             TestRPCConfig(),
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
+		StateSync: TestStateSyncConfig(),
 		FastSync:        TestFastSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
@@ -125,24 +129,27 @@ func (cfg *Config) ValidateBasic() error {
 		return err
 	}
 	if err := cfg.RPC.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [rpc] section")
+		return fmt.Errorf("error in [rpc] section: %w", err)
 	}
 	if err := cfg.P2P.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [p2p] section")
+		return fmt.Errorf("error in [p2p] section: %w", err)
 	}
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [mempool] section")
+		return fmt.Errorf("error in [mempool] section: %w", err)
+	}
+	if err := cfg.StateSync.ValidateBasic(); err != nil {
+		return fmt.Errorf("error in [statesync] section: %w", err)
 	}
 	if err := cfg.FastSync.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [fastsync] section")
+		return fmt.Errorf("error in [fastsync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
-		return errors.Wrap(err, "Error in [consensus] section")
+		return fmt.Errorf("error in [consensus] section: %w", err)
 	}
-	return errors.Wrap(
-		cfg.Instrumentation.ValidateBasic(),
-		"Error in [instrumentation] section",
-	)
+	if err := cfg.Instrumentation.ValidateBasic(); err != nil {
+		return fmt.Errorf("error in [instrumentation] section: %w", err)
+	}
+	return nil
 }
 
 //-----------------------------------------------------------------------------
@@ -309,7 +316,7 @@ func DefaultLogLevel() string {
 // DefaultPackageLogLevels returns a default log level setting so all packages
 // log at "error", while the `state` and `main` packages log at "info"
 func DefaultPackageLogLevels() string {
-	return fmt.Sprintf("main:info,state:info,*:%s", DefaultLogLevel())
+	return fmt.Sprintf("main:info,state:info,statesync:info,*:%s", DefaultLogLevel())
 }
 
 //-----------------------------------------------------------------------------
@@ -724,6 +731,73 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 }
 
 //-----------------------------------------------------------------------------
+// StateSyncConfig
+
+// StateSyncConfig defines the configuration for the Tendermint state sync service
+type StateSyncConfig struct {
+	Enable        bool          `mapstructure:"enable"`
+	TempDir       string        `mapstructure:"temp_dir"`
+	RPCServers    []string      `mapstructure:"rpc_servers"`
+	TrustPeriod   time.Duration `mapstructure:"trust_period"`
+	TrustHeight   int64         `mapstructure:"trust_height"`
+	TrustHash     string        `mapstructure:"trust_hash"`
+	DiscoveryTime time.Duration `mapstructure:"discovery_time"`
+}
+
+func (cfg *StateSyncConfig) TrustHashBytes() []byte {
+	// validated in ValidateBasic, so we can safely panic here
+	bytes, err := hex.DecodeString(cfg.TrustHash)
+	if err != nil {
+		panic(err)
+	}
+	return bytes
+}
+
+// DefaultStateSyncConfig returns a default configuration for the state sync service
+func DefaultStateSyncConfig() *StateSyncConfig {
+	return &StateSyncConfig{
+		TrustPeriod:   168 * time.Hour,
+		DiscoveryTime: 15 * time.Second,
+	}
+}
+
+// TestFastSyncConfig returns a default configuration for the state sync service
+func TestStateSyncConfig() *StateSyncConfig {
+	return DefaultStateSyncConfig()
+}
+
+// ValidateBasic performs basic validation.
+func (cfg *StateSyncConfig) ValidateBasic() error {
+	if cfg.Enable {
+		if len(cfg.RPCServers) == 0 {
+			return errors.New("rpc_servers is required")
+		}
+		if len(cfg.RPCServers) < 2 {
+			return errors.New("at least two rpc_servers entries is required")
+		}
+		for _, server := range cfg.RPCServers {
+			if len(server) == 0 {
+				return errors.New("found empty rpc_servers entry")
+			}
+		}
+		if cfg.TrustPeriod <= 0 {
+			return errors.New("trusted_period is required")
+		}
+		if cfg.TrustHeight <= 0 {
+			return errors.New("trusted_height is required")
+		}
+		if len(cfg.TrustHash) == 0 {
+			return errors.New("trusted_hash is required")
+		}
+		_, err := hex.DecodeString(cfg.TrustHash)
+		if err != nil {
+			return fmt.Errorf("invalid trusted_hash: %w", err)
+		}
+	}
+	return nil
+}
+
+//-----------------------------------------------------------------------------
 // FastSyncConfig
 
 // FastSyncConfig defines the configuration for the Tendermint fast sync service
@@ -785,6 +859,8 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer_query_maj23_sleep_duration"`
+
+	DoubleSignCheckHeight int64 `mapstructure:"double_sign_check_height"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -803,6 +879,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0 * time.Second,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
+		DoubleSignCheckHeight: int64(0),
 	}
 }
 
@@ -819,6 +896,7 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5 * time.Millisecond
 	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
+	cfg.DoubleSignCheckHeight = int64(0)
 	return cfg
 }
 
@@ -899,6 +977,9 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	}
 	if cfg.PeerQueryMaj23SleepDuration < 0 {
 		return errors.New("peer_query_maj23_sleep_duration can't be negative")
+	}
+	if cfg.DoubleSignCheckHeight < 0 {
+		return errors.New("double_sign_check_height can't be negative")
 	}
 	return nil
 }

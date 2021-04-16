@@ -27,11 +27,11 @@ type Version struct {
 	Software  string
 }
 
-// initStateVersion sets the Consensus.Block and Software versions,
+// InitStateVersion sets the Consensus.Block and Software versions,
 // but leaves the Consensus.App version blank.
 // The Consensus.App version will be set during the Handshake, once
 // we hear from the app what protocol version it is running.
-var initStateVersion = Version{
+var InitStateVersion = Version{
 	Consensus: version.Consensus{
 		Block: version.BlockProtocol,
 		App:   0,
@@ -53,6 +53,7 @@ type State struct {
 
 	// immutable
 	ChainID string
+	InitialHeight int64 // should be 1, not 0, when starting from height 1
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight int64
@@ -87,6 +88,7 @@ func (state State) Copy() State {
 	return State{
 		Version: state.Version,
 		ChainID: state.ChainID,
+		InitialHeight: state.InitialHeight,
 
 		LastBlockHeight: state.LastBlockHeight,
 		LastBlockID:     state.LastBlockID,
@@ -141,7 +143,7 @@ func (state State) MakeBlock(
 
 	// Set time.
 	var timestamp time.Time
-	if height == types.GetStartBlockHeight()+1 {
+	if height == state.InitialHeight {
 		timestamp = state.LastBlockTime // genesis time
 	} else {
 		timestamp = MedianTime(commit, state.LastValidators)
@@ -231,8 +233,9 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	}
 
 	return State{
-		Version: initStateVersion,
+		Version: InitStateVersion,
 		ChainID: genDoc.ChainID,
+		InitialHeight: genDoc.InitialHeight,
 
 		LastBlockHeight: types.GetStartBlockHeight(),
 		LastBlockID:     types.BlockID{},
@@ -241,10 +244,10 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
 		LastValidators:              types.NewValidatorSet(nil),
-		LastHeightValidatorsChanged: types.GetStartBlockHeight() + 1,
+		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastHeightConsensusParamsChanged: types.GetStartBlockHeight() + 1,
+		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 
 		AppHash: genDoc.AppHash,
 	}, nil

@@ -33,6 +33,7 @@ var (
 	ErrInvalidProposalPOLRound  = errors.New("error invalid proposal POL round")
 	ErrAddingVote               = errors.New("error adding vote")
 	ErrVoteHeightMismatch       = errors.New("error vote height mismatch")
+	ErrSignatureFoundInPastBlocks = errors.New("found signature from the same key")
 
 	errPubKeyIsNotSet = errors.New("pubkey is not set. Look for \"Can't get private validator pubkey\" errors")
 )
@@ -176,11 +177,13 @@ func NewState(
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
+	// We have no votes, so reconstruct LastCommit from SeenCommit.
+	if state.LastBlockHeight > 0 {
+		cs.reconstructLastCommit(state)
+	}
+
 	cs.updateToState(state)
 
-	// Don't call scheduleRound0 yet.
-	// We do that upon Start().
-	cs.reconstructLastCommit(state)
 	cs.BaseService = *service.NewBaseService(nil, "State", cs)
 	for _, option := range options {
 		option(cs)
@@ -342,6 +345,11 @@ go run scripts/json2wal/main.go wal.json $WALFILE # rebuild the file without cor
 			// NOTE: if we ever do return an error here,
 			// make sure to stop the timeoutTicker
 		}
+	}
+
+	// Double Signing Risk Reduction
+	if err := cs.checkDoubleSigningRisk(cs.Height); err != nil {
+		return err
 	}
 
 	// now start the receiveRoutine
@@ -521,41 +529,62 @@ func (cs *State) updateToState(state sm.State) {
 		panic(fmt.Sprintf("updateToState() expected state height of %v but found %v",
 			cs.Height, state.LastBlockHeight))
 	}
-	if !cs.state.IsEmpty() && cs.state.LastBlockHeight+1 != cs.Height {
-		// This might happen when someone else is mutating cs.state.
-		// Someone forgot to pass in state.Copy() somewhere?!
-		panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
-			cs.state.LastBlockHeight+1, cs.Height))
-	}
+	if !cs.state.IsEmpty() {
+		if cs.state.LastBlockHeight > 0 && cs.state.LastBlockHeight+1 != cs.Height {
+			// This might happen when someone else is mutating cs.state.
+			// Someone forgot to pass in state.Copy() somewhere?!
+			panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
+				cs.state.LastBlockHeight+1, cs.Height))
+		}
+		if cs.state.LastBlockHeight > 0 && cs.Height == cs.state.InitialHeight {
+			panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight %v, expected 0 for initial height %v",
+				cs.state.LastBlockHeight, cs.state.InitialHeight))
+		}
 
-	// If state isn't further out than cs.state, just ignore.
-	// This happens when SwitchToConsensus() is called in the reactor.
-	// We don't want to reset e.g. the Votes, but we still want to
-	// signal the new round step, because other services (eg. txNotifier)
-	// depend on having an up-to-date peer state!
-	if !cs.state.IsEmpty() && (state.LastBlockHeight <= cs.state.LastBlockHeight) {
-		cs.Logger.Info(
-			"Ignoring updateToState()",
-			"newHeight",
-			state.LastBlockHeight+1,
-			"oldHeight",
-			cs.state.LastBlockHeight+1)
-		cs.newStep()
-		return
+		// If state isn't further out than cs.state, just ignore.
+		// This happens when SwitchToConsensus() is called in the reactor.
+		// We don't want to reset e.g. the Votes, but we still want to
+		// signal the new round step, because other services (eg. txNotifier)
+		// depend on having an up-to-date peer state!
+		if state.LastBlockHeight <= cs.state.LastBlockHeight {
+			cs.Logger.Info(
+				"Ignoring updateToState()",
+				"newHeight",
+				state.LastBlockHeight+1,
+				"oldHeight",
+				cs.state.LastBlockHeight+1)
+			cs.newStep()
+			return
+		}
 	}
 
 	// Reset fields based on state.
 	validators := state.Validators
-	lastPrecommits := (*types.VoteSet)(nil)
-	if cs.CommitRound > -1 && cs.Votes != nil {
+
+	switch {
+	case state.LastBlockHeight == 0: // Very first commit should be empty.
+		cs.LastCommit = (*types.VoteSet)(nil)
+	case cs.CommitRound > -1 && cs.Votes != nil: // Otherwise, use cs.Votes
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
-			panic("updateToState(state) called but last Precommit round didn't have +2/3")
+			panic(fmt.Sprintf("Wanted to form a Commit, but Precommits (H/R: %d/%d) didn't have 2/3+: %v",
+				state.LastBlockHeight,
+				cs.CommitRound,
+				cs.Votes.Precommits(cs.CommitRound)))
 		}
-		lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
+		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
+	case cs.LastCommit == nil:
+		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
+		// must be called to reconstruct LastCommit from SeenCommit.
+		panic(fmt.Sprintf("LastCommit cannot be empty after initial block (H:%d)",
+			state.LastBlockHeight+1,
+		))
 	}
 
 	// Next desired block height
 	height := state.LastBlockHeight + 1
+	if height == 1 {
+		height = state.InitialHeight
+	}
 
 	// RoundState fields
 	cs.updateHeight(height)
@@ -583,7 +612,6 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidBlockParts = nil
 	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
 	cs.CommitRound = -1
-	cs.LastCommit = lastPrecommits
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
 
@@ -891,7 +919,7 @@ func (cs *State) enterNewRound(height int64, round int) {
 // needProofBlock returns true on the first height (so the genesis app hash is signed right away)
 // and where the last block (height-1) caused the app hash to change
 func (cs *State) needProofBlock(height int64) bool {
-	if height == types.GetStartBlockHeight()+1 {
+	if height == cs.state.InitialHeight {
 		return true
 	}
 
@@ -1052,7 +1080,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 
 	var commit *types.Commit
 	switch {
-	case cs.Height == types.GetStartBlockHeight()+1:
+	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
 		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
@@ -1569,7 +1597,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	// height=0 -> MissingValidators and MissingValidatorsPower are both 0.
 	// Remember that the first LastCommit is intentionally empty, so it's not
 	// fair to increment missing validators number.
-	if height > types.GetStartBlockHeight()+1 {
+	if height > cs.state.InitialHeight {
 		// Sanity check that commit size matches validator set size - only applies
 		// after first block.
 		var (
@@ -2045,6 +2073,29 @@ func (cs *State) updatePrivValidatorPubKey() error {
 		return err
 	}
 	cs.privValidatorPubKey = pubKey
+	return nil
+}
+
+// look back to check existence of the node's consensus votes before joining consensus
+func (cs *State) checkDoubleSigningRisk(height int64) error {
+	if cs.privValidator != nil && cs.privValidatorPubKey != nil && cs.config.DoubleSignCheckHeight > 0 && height > 0 {
+		valAddr := cs.privValidatorPubKey.Address()
+		doubleSignCheckHeight := cs.config.DoubleSignCheckHeight
+		if doubleSignCheckHeight > height {
+			doubleSignCheckHeight = height
+		}
+		for i := int64(1); i < doubleSignCheckHeight; i++ {
+			lastCommit := cs.blockStore.LoadSeenCommit(height - i)
+			if lastCommit != nil {
+				for sigIdx, s := range lastCommit.Signatures {
+					if s.BlockIDFlag == types.BlockIDFlagCommit && bytes.Equal(s.ValidatorAddress, valAddr) {
+						cs.Logger.Info("Found signature from the same key", "sig", s, "idx", sigIdx, "height", height-i)
+						return ErrSignatureFoundInPastBlocks
+					}
+				}
+			}
+		}
+	}
 	return nil
 }
 

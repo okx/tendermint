@@ -266,6 +266,22 @@ func (cli *socketClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	return cli.queueRequest(types.ToRequestEndBlock(req))
 }
 
+func (cli *socketClient) ListSnapshotsAsync(req types.RequestListSnapshots) *ReqRes {
+	return cli.queueRequest(types.ToRequestListSnapshots(req))
+}
+
+func (cli *socketClient) OfferSnapshotAsync(req types.RequestOfferSnapshot) *ReqRes {
+	return cli.queueRequest(types.ToRequestOfferSnapshot(req))
+}
+
+func (cli *socketClient) LoadSnapshotChunkAsync(req types.RequestLoadSnapshotChunk) *ReqRes {
+	return cli.queueRequest(types.ToRequestLoadSnapshotChunk(req))
+}
+
+func (cli *socketClient) ApplySnapshotChunkAsync(req types.RequestApplySnapshotChunk) *ReqRes {
+	return cli.queueRequest(types.ToRequestApplySnapshotChunk(req))
+}
+
 //----------------------------------------
 
 func (cli *socketClient) FlushSync() error {
@@ -337,6 +353,32 @@ func (cli *socketClient) EndBlockSync(req types.RequestEndBlock) (*types.Respons
 	return reqres.Response.GetEndBlock(), cli.Error()
 }
 
+func (cli *socketClient) ListSnapshotsSync(req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+	reqres := cli.queueRequest(types.ToRequestListSnapshots(req))
+	cli.FlushSync()
+	return reqres.Response.GetListSnapshots(), cli.Error()
+}
+
+func (cli *socketClient) OfferSnapshotSync(req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+	reqres := cli.queueRequest(types.ToRequestOfferSnapshot(req))
+	cli.FlushSync()
+	return reqres.Response.GetOfferSnapshot(), cli.Error()
+}
+
+func (cli *socketClient) LoadSnapshotChunkSync(
+	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+	reqres := cli.queueRequest(types.ToRequestLoadSnapshotChunk(req))
+	cli.FlushSync()
+	return reqres.Response.GetLoadSnapshotChunk(), cli.Error()
+}
+
+func (cli *socketClient) ApplySnapshotChunkSync(
+	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
+	reqres := cli.queueRequest(types.ToRequestApplySnapshotChunk(req))
+	cli.FlushSync()
+	return reqres.Response.GetApplySnapshotChunk(), cli.Error()
+}
+
 //----------------------------------------
 
 func (cli *socketClient) queueRequest(req *types.Request) *ReqRes {
@@ -401,6 +443,14 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_BeginBlock)
 	case *types.Request_EndBlock:
 		_, ok = res.Value.(*types.Response_EndBlock)
+	case *types.Request_ApplySnapshotChunk:
+		_, ok = res.Value.(*types.Response_ApplySnapshotChunk)
+	case *types.Request_LoadSnapshotChunk:
+		_, ok = res.Value.(*types.Response_LoadSnapshotChunk)
+	case *types.Request_ListSnapshots:
+		_, ok = res.Value.(*types.Response_ListSnapshots)
+	case *types.Request_OfferSnapshot:
+		_, ok = res.Value.(*types.Response_OfferSnapshot)
 	}
 	return ok
 }

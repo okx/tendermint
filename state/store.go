@@ -100,18 +100,36 @@ func SaveState(db dbm.DB, state State) {
 
 func saveState(db dbm.DB, state State, key []byte) {
 	nextHeight := state.LastBlockHeight + 1
-	// If first block, save validators for block 1.
-	if nextHeight == types.GetStartBlockHeight()+1 {
+	// If first block, save validators for the block.
+	if nextHeight == 1 {
+		nextHeight = state.InitialHeight
 		// This extra logic due to Tendermint validator set changes being delayed 1 block.
 		// It may get overwritten due to InitChain validator updates.
-		lastHeightVoteChanged := types.GetStartBlockHeight() + 1
-		saveValidatorsInfo(db, nextHeight, lastHeightVoteChanged, state.Validators)
+		saveValidatorsInfo(db, nextHeight, nextHeight, state.Validators)
 	}
 	// Save next validators.
 	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	// Save next consensus params.
 	saveConsensusParamsInfo(db, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
-	db.SetSync(key, state.Bytes())
+	err := db.SetSync(key, state.Bytes())
+	if err != nil {
+		panic(err)
+	}
+}
+
+// BootstrapState saves a new state, used e.g. by state sync when starting from non-zero height.
+func BootstrapState(db dbm.DB, state State) error {
+	height := state.LastBlockHeight + 1
+	if height == 1 {
+		height = state.InitialHeight
+	}
+	if height > 1 && !state.LastValidators.IsNilOrEmpty() {
+		saveValidatorsInfo(db, height-1, height-1, state.LastValidators)
+	}
+	saveValidatorsInfo(db, height, height, state.Validators)
+	saveValidatorsInfo(db, height+1, height+1, state.NextValidators)
+	saveConsensusParamsInfo(db, height, height, state.ConsensusParams)
+	return db.SetSync(stateKey, state.Bytes())
 }
 
 //------------------------------------------------------------------------

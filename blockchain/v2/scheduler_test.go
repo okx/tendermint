@@ -42,7 +42,11 @@ func newTestScheduler(params scTestParams) *scheduler {
 	peers := make(map[p2p.ID]*scPeer)
 	var maxHeight int64
 
-	sc := newScheduler(params.initHeight, params.startTime)
+	initHeight := params.initHeight
+	if initHeight == 0 {
+		initHeight = 1
+	}
+	sc := newScheduler(initHeight, params.startTime)
 	if params.height != 0 {
 		sc.height = params.height
 	}
@@ -95,7 +99,8 @@ func TestScInit(t *testing.T) {
 		initHeight int64 = 5
 		sc               = newScheduler(initHeight, time.Now())
 	)
-	assert.Equal(t, blockStateProcessed, sc.getStateAtHeight(initHeight))
+	assert.Equal(t, blockStateProcessed, sc.getStateAtHeight(initHeight-1))
+	assert.Equal(t, blockStateUnknown, sc.getStateAtHeight(initHeight))
 	assert.Equal(t, blockStateUnknown, sc.getStateAtHeight(initHeight+1))
 }
 
@@ -114,9 +119,8 @@ func TestScMaxHeights(t *testing.T) {
 		{
 			name: "one ready peer",
 			sc: scheduler{
-				initHeight: 2,
-				height:     3,
-				peers:      map[p2p.ID]*scPeer{"P1": {height: 6, state: peerStateReady}},
+				height: 3,
+				peers:  map[p2p.ID]*scPeer{"P1": {height: 6, state: peerStateReady}},
 			},
 			wantMax: 6,
 		},
@@ -178,7 +182,7 @@ func TestScMaxHeights(t *testing.T) {
 	}
 }
 
-func TestScAddPeer(t *testing.T) {
+func TestScEnsurePeer(t *testing.T) {
 
 	type args struct {
 		peerID p2p.ID
@@ -188,7 +192,6 @@ func TestScAddPeer(t *testing.T) {
 		fields     scTestParams
 		args       args
 		wantFields scTestParams
-		wantErr    bool
 	}{
 		{
 			name:       "add first peer",
@@ -205,20 +208,18 @@ func TestScAddPeer(t *testing.T) {
 				"P2": {base: -1, height: -1, state: peerStateNew}}},
 		},
 		{
-			name:       "attempt to add duplicate peer",
+			name:       "add duplicate peer is fine",
 			fields:     scTestParams{peers: map[string]*scPeer{"P1": {height: -1}}},
 			args:       args{peerID: "P1"},
 			wantFields: scTestParams{peers: map[string]*scPeer{"P1": {height: -1}}},
-			wantErr:    true,
 		},
 		{
-			name: "attempt to add duplicate peer with existing peer in Ready state",
+			name: "add duplicate peer with existing peer in Ready state is noop",
 			fields: scTestParams{
 				peers: map[string]*scPeer{"P1": {state: peerStateReady, height: 3}},
 				allB:  []int64{1, 2, 3},
 			},
-			args:    args{peerID: "P1"},
-			wantErr: true,
+			args: args{peerID: "P1"},
 			wantFields: scTestParams{
 				peers: map[string]*scPeer{"P1": {state: peerStateReady, height: 3}},
 				allB:  []int64{1, 2, 3},
@@ -230,9 +231,7 @@ func TestScAddPeer(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
-			if err := sc.addPeer(tt.args.peerID); (err != nil) != tt.wantErr {
-				t.Errorf("scAddPeer() wantErr %v, error = %v", tt.wantErr, err)
-			}
+			sc.ensurePeer(tt.args.peerID)
 			wantSc := newTestScheduler(tt.wantFields)
 			assert.Equal(t, wantSc, sc, "wanted peers %v, got %v", wantSc.peers, sc.peers)
 		})
@@ -1129,13 +1128,12 @@ func TestScNextHeightToSchedule(t *testing.T) {
 	}{
 		{
 			name:       "no blocks",
-			fields:     scTestParams{initHeight: 10, height: 11},
+			fields: scTestParams{initHeight: 11, height: 11},
 			wantHeight: -1,
 		},
 		{
 			name: "only New blocks",
 			fields: scTestParams{
-				initHeight: 2,
 				height:     3,
 				peers:      map[string]*scPeer{"P1": {height: 6, state: peerStateReady}},
 				allB:       []int64{3, 4, 5, 6},
@@ -1710,19 +1708,19 @@ func TestScHandleAddNewPeer(t *testing.T) {
 		{
 			name: "add duplicate peer",
 			fields: scTestParams{
-				height: 6,
-				peers:  map[string]*scPeer{"P1": {height: 8, state: peerStateReady}},
-				allB:   []int64{6, 7, 8},
+				initHeight: 6,
+				peers:      map[string]*scPeer{"P1": {height: 8, state: peerStateReady}},
+				allB:       []int64{6, 7, 8},
 			},
 			args:      args{event: addP1},
-			wantEvent: scSchedulerFail{reason: fmt.Errorf("some error")},
+			wantEvent: noOpEvent{},
 		},
 		{
 			name: "add P1 to non empty scheduler",
 			fields: scTestParams{
-				height: 6,
-				peers:  map[string]*scPeer{"P2": {height: 8, state: peerStateReady}},
-				allB:   []int64{6, 7, 8},
+				initHeight: 6,
+				peers:      map[string]*scPeer{"P2": {height: 8, state: peerStateReady}},
+				allB:       []int64{6, 7, 8},
 			},
 			args:      args{event: addP1},
 			wantEvent: noOpEvent{},
@@ -1961,14 +1959,14 @@ func TestScHandleStatusResponse(t *testing.T) {
 				allB:  []int64{1, 2},
 			},
 			args:      args{event: statusRespP1Ev},
-			wantEvent: scPeerError{peerID: "P1", reason: fmt.Errorf("some error")},
+			wantEvent: noOpEvent{},
 		},
 
 		{
 			name:      "increase height of removed peer",
 			fields:    scTestParams{peers: map[string]*scPeer{"P1": {height: 2, state: peerStateRemoved}}},
 			args:      args{event: statusRespP1Ev},
-			wantEvent: scPeerError{peerID: "P1", reason: fmt.Errorf("some error")},
+			wantEvent: noOpEvent{},
 		},
 
 		{
@@ -2009,6 +2007,7 @@ func TestScHandleStatusResponse(t *testing.T) {
 		})
 	}
 }
+
 
 func TestScHandle(t *testing.T) {
 	now := time.Now()

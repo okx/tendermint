@@ -409,7 +409,7 @@ func (m *HasVote) GetType() types.SignedMsgType {
 	if m != nil {
 		return m.Type
 	}
-	return types.SIGNED_MSG_TYPE_UNKNOWN
+	return types.UnknownType
 }
 
 func (m *HasVote) GetIndex() uint32 {
@@ -472,7 +472,7 @@ func (m *VoteSetMaj23) GetType() types.SignedMsgType {
 	if m != nil {
 		return m.Type
 	}
-	return types.SIGNED_MSG_TYPE_UNKNOWN
+	return types.UnknownType
 }
 
 func (m *VoteSetMaj23) GetBlockID() types.BlockID {
@@ -536,7 +536,7 @@ func (m *VoteSetBits) GetType() types.SignedMsgType {
 	if m != nil {
 		return m.Type
 	}
-	return types.SIGNED_MSG_TYPE_UNKNOWN
+	return types.UnknownType
 }
 
 func (m *VoteSetBits) GetBlockID() types.BlockID {

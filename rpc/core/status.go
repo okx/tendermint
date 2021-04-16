@@ -29,12 +29,17 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		earliestBlockTimeNano = earliestBlockMeta.Header.Time.UnixNano()
 	}
 
+	var latestHeight int64
+	if env.ConsensusReactor.WaitSync() {
+		latestHeight = env.BlockStore.Height()
+	} else {
+		latestHeight = env.ConsensusState.GetLastHeight()
+	}
+
 	var (
 		latestBlockHash     tmbytes.HexBytes
 		latestAppHash       tmbytes.HexBytes
 		latestBlockTimeNano int64
-
-		latestHeight = env.BlockStore.Height()
 	)
 
 	if latestHeight != 0 {
@@ -64,7 +69,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 			EarliestAppHash:     earliestAppHash,
 			EarliestBlockHeight: earliestBlockHeight,
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			CatchingUp:          env.ConsensusReactor.FastSync(),
+			CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     env.PubKey.Address(),
