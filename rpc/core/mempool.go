@@ -149,3 +149,16 @@ func NumUnconfirmedTxs(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, err
 		Total:      env.Mempool.Size(),
 		TotalBytes: env.Mempool.TxsBytes()}, nil
 }
+
+func UserUnconfirmedTxs(address string, limit int) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	txs := env.Mempool.ReapUserTxs(address, limit)
+	return &ctypes.ResultUserUnconfirmedTxs{
+		Count: len(txs),
+		Txs:   txs}, nil
+}
+
+func UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	nums := env.Mempool.ReapUserTxsCnt(address)
+	return &ctypes.ResultUserUnconfirmedTxs{
+		Count: nums}, nil
+}

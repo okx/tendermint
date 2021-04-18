@@ -105,6 +105,14 @@ func (c *Local) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
 	return core.NumUnconfirmedTxs(c.ctx)
 }
 
+func (c *Local) UserUnconfirmedTxs(address string, limit int) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	return core.UserUnconfirmedTxs(address, limit)
+}
+
+func (c *Local) UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	return core.UserNumUnconfirmedTxs(address)
+}
+
 func (c *Local) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return core.NetInfo(c.ctx)
 }

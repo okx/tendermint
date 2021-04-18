@@ -82,6 +82,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"The possible interval between empty blocks")
 
 	// mempool flags
+	cmd.Flags().Bool(
+		"mempool.recheck",
+		config.Mempool.Recheck,
+		"Enable recheck of txs remain pending in mempool",
+	)
 	cmd.Flags().Int(
 		"mempool.size",
 		config.Mempool.Size,
@@ -91,6 +96,16 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"mempool.max_tx_num_per_block",
 		config.Mempool.MaxTxNumPerBlock,
 		"Maximum number of transactions in a block",
+	)
+	cmd.Flags().Bool(
+		"mempool.enable_sort",
+		config.Mempool.EnableSort,
+		"Enable txs sort by gasPrice in mempool",
+	)
+	cmd.Flags().Int(
+		"mempool.report_batch_size",
+		config.Mempool.ReportBatchSize,
+		"Report batch size of user's pending txs when disable recheck",
 	)
 
 	// db flags
