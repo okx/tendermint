@@ -102,11 +102,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.Mempool.EnableSort,
 		"Enable txs sort by gasPrice in mempool",
 	)
-	cmd.Flags().Int(
-		"mempool.report_batch_size",
-		config.Mempool.ReportBatchSize,
-		"Report batch size of user's pending txs when disable recheck",
-	)
 
 	// db flags
 	cmd.Flags().String(

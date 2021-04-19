@@ -733,8 +733,6 @@ func (mem *CListMempool) Update(
 			// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
 			// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
 		} else {
-			mem.reportPendingTxNums()
-
 			mem.notifyTxsAvailable()
 		}
 	}
@@ -835,40 +833,6 @@ func (mem *CListMempool) deleteAddrRecord(e *clist.CElement) {
 			delete(mem.AddressRecord, e.Address)
 		}
 	}
-}
-
-func (mem *CListMempool) reportPendingTxNums() {
-	mem.addrMapRWLock.Lock()
-	defer mem.addrMapRWLock.Unlock()
-
-	param := make(map[string]int)
-	for addr, recordMap := range mem.AddressRecord {
-		if len(param) == mem.config.ReportBatchSize {
-			dataType, _ := json.Marshal(param)
-			mem.proxyAppConn.SetOptionAsync(abci.RequestSetOption{
-				Key:   "mempool",
-				Value: string(dataType),
-			})
-
-			param = make(map[string]int)
-		} else {
-			if len(recordMap) > 0 {
-				param[addr] = len(recordMap)
-			} else {
-				delete(mem.AddressRecord, addr)
-			}
-		}
-	}
-
-	if len(param) > 0 {
-		dataType, _ := json.Marshal(param)
-		mem.proxyAppConn.SetOptionAsync(abci.RequestSetOption{
-			Key:   "mempool",
-			Value: string(dataType),
-		})
-	}
-
-	mem.proxyAppConn.FlushAsync()
 }
 
 //--------------------------------------------------------------------------------
