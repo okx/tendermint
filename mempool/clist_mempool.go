@@ -392,8 +392,18 @@ func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
 
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
-func (mem *CListMempool) addTx(memTx *mempoolTx) {
+func (mem *CListMempool) addTx(memTx *mempoolTx, info ExTxInfo) {
 	e := mem.txs.PushBack(memTx)
+	e.Address = info.Sender
+
+	mem.addrMapRWLock.Lock()
+	defer mem.addrMapRWLock.Unlock()
+
+	if _, ok := mem.AddressRecord[info.Sender]; !ok {
+		mem.AddressRecord[info.Sender] = make(map[string]*clist.CElement)
+	}
+	mem.AddressRecord[info.Sender][txID(memTx.tx)] = e
+
 	mem.txsMap.Store(txKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
@@ -469,24 +479,24 @@ func (mem *CListMempool) resCbFirstTime(
 			}
 			memTx.senders.Store(peerID, true)
 
-			if mem.config.EnableSort {
-				var exTxInfo ExTxInfo
-				if err := json.Unmarshal(r.CheckTx.Data, &exTxInfo); err != nil {
-					// remove from cache (mempool might have a space later)
-					mem.cache.Remove(tx)
-					mem.logger.Error(err.Error())
-					return
-				}
-				if exTxInfo.GasPrice.Cmp(big.NewInt(0)) <= 0 {
-					// remove from cache (mempool might have a space later)
-					mem.cache.Remove(tx)
-					mem.logger.Error("Failed to get extra info for this tx!")
-					return
-				}
+			var exTxInfo ExTxInfo
+			if err := json.Unmarshal(r.CheckTx.Data, &exTxInfo); err != nil {
+				// remove from cache (mempool might have a space later)
+				mem.cache.Remove(tx)
+				mem.logger.Error(err.Error())
+				return
+			}
+			if exTxInfo.GasPrice.Cmp(big.NewInt(0)) <= 0 {
+				// remove from cache (mempool might have a space later)
+				mem.cache.Remove(tx)
+				mem.logger.Error("Failed to get extra info for this tx!")
+				return
+			}
 
+			if mem.config.EnableSort {
 				mem.addAndSortTx(memTx, exTxInfo)
 			} else {
-				mem.addTx(memTx)
+				mem.addTx(memTx, exTxInfo)
 			}
 
 			mem.logger.Info("Added good transaction",
