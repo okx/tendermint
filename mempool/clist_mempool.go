@@ -198,11 +198,8 @@ func (mem *CListMempool) FlushAppConn() error {
 
 // XXX: Unsafe! Calling Flush may leave mempool in inconsistent state.
 func (mem *CListMempool) Flush() {
-	mem.updateMtx.RLock()
-	defer mem.updateMtx.RUnlock()
-
-	mem.addrMapRWLock.Lock()
-	defer mem.addrMapRWLock.Unlock()
+	mem.updateMtx.Lock()
+	defer mem.updateMtx.Unlock()
 
 	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 	mem.cache.Reset()
@@ -211,7 +208,9 @@ func (mem *CListMempool) Flush() {
 		mem.txs.Remove(e)
 		e.DetachPrev()
 
+		mem.addrMapRWLock.Lock()
 		mem.deleteAddrRecord(e)
+		mem.addrMapRWLock.Unlock()
 	}
 
 	mem.txsMap.Range(func(key, _ interface{}) bool {
@@ -370,7 +369,6 @@ func (mem *CListMempool) reqResCb(
 //  - resCbFirstTime (lock not held) if tx is valid
 func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
 	mem.addrMapRWLock.Lock()
-	defer mem.addrMapRWLock.Unlock()
 
 	// Delete the same Nonce transaction from the same account
 	mem.checkRepeatedElement(info)
@@ -380,6 +378,8 @@ func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
 		mem.AddressRecord[info.Sender] = make(map[string]*clist.CElement)
 	}
 	mem.AddressRecord[info.Sender][txID(memTx.tx)] = e
+
+	mem.addrMapRWLock.Unlock()
 
 	mem.txsMap.Store(txKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
@@ -397,12 +397,11 @@ func (mem *CListMempool) addTx(memTx *mempoolTx, info ExTxInfo) {
 	e.Address = info.Sender
 
 	mem.addrMapRWLock.Lock()
-	defer mem.addrMapRWLock.Unlock()
-
 	if _, ok := mem.AddressRecord[info.Sender]; !ok {
 		mem.AddressRecord[info.Sender] = make(map[string]*clist.CElement)
 	}
 	mem.AddressRecord[info.Sender][txID(memTx.tx)] = e
+	mem.addrMapRWLock.Unlock()
 
 	mem.txsMap.Store(txKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
@@ -544,9 +543,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Tx became invalidated due to newly committed block.
 			mem.logger.Info("Tx is no longer valid", "tx", txID(tx), "res", r, "err", postCheckErr)
 			// NOTE: we remove tx from the cache because it might be good later
-			mem.addrMapRWLock.Lock()
 			mem.removeTx(tx, mem.recheckCursor, true)
-			mem.addrMapRWLock.Unlock()
 		}
 		if mem.recheckCursor == mem.recheckEnd {
 			mem.recheckCursor = nil
@@ -648,14 +645,15 @@ func (mem *CListMempool) ReapUserTxsCnt(address string) int {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
 
+	cnt := 0
+
 	mem.addrMapRWLock.RLock()
-	defer mem.addrMapRWLock.RUnlock()
-
 	if userMap, ok := mem.AddressRecord[address]; ok {
-		return len(userMap)
+		cnt = len(userMap)
 	}
+	mem.addrMapRWLock.RUnlock()
 
-	return 0
+	return cnt
 }
 
 func (mem *CListMempool) ReapUserTxs(address string, max int) types.Txs {
@@ -707,7 +705,6 @@ func (mem *CListMempool) Update(
 		mem.postCheck = postCheck
 	}
 
-	mem.addrMapRWLock.Lock()
 	for i, tx := range txs {
 		if deliverTxResponses[i].Code == abci.CodeTypeOK {
 			// Add valid committed tx to the cache (if missing).
@@ -731,7 +728,6 @@ func (mem *CListMempool) Update(
 			mem.removeTx(tx, e.(*clist.CElement), false)
 		}
 	}
-	mem.addrMapRWLock.Unlock()
 
 	// Either recheck non-committed txs to see if they became invalid
 	// or just notify there're some txs left.
