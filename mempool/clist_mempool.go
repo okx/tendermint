@@ -644,15 +644,7 @@ func (mem *CListMempool) ReapUserTxsCnt(address string) int {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
 
-	cnt := 0
-
-	mem.addrMapRWLock.RLock()
-	if userMap, ok := mem.AddressRecord[address]; ok {
-		cnt = len(userMap)
-	}
-	mem.addrMapRWLock.RUnlock()
-
-	return cnt
+	return mem.GetUserPendingTxsCnt(address)
 }
 
 func (mem *CListMempool) ReapUserTxs(address string, max int) types.Txs {
