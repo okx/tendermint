@@ -204,13 +204,13 @@ func (mem *CListMempool) Flush() {
 	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 	mem.cache.Reset()
 
+	mem.addrMapRWLock.Lock()
+	defer mem.addrMapRWLock.Unlock()
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		mem.txs.Remove(e)
 		e.DetachPrev()
 
-		mem.addrMapRWLock.Lock()
 		mem.deleteAddrRecord(e)
-		mem.addrMapRWLock.Unlock()
 	}
 
 	mem.txsMap.Range(func(key, _ interface{}) bool {
@@ -369,6 +369,7 @@ func (mem *CListMempool) reqResCb(
 //  - resCbFirstTime (lock not held) if tx is valid
 func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
 	mem.addrMapRWLock.Lock()
+	defer mem.addrMapRWLock.Unlock()
 
 	// Delete the same Nonce transaction from the same account
 	mem.checkRepeatedElement(info)
@@ -378,8 +379,6 @@ func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
 		mem.AddressRecord[info.Sender] = make(map[string]*clist.CElement)
 	}
 	mem.AddressRecord[info.Sender][txID(memTx.tx)] = e
-
-	mem.addrMapRWLock.Unlock()
 
 	mem.txsMap.Store(txKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
@@ -684,6 +683,17 @@ func (mem *CListMempool) ReapUserTxs(address string, max int) types.Txs {
 	}
 
 	return txs
+}
+
+func (mem *CListMempool) GetUserPendingTxsCnt(address string) int {
+	cnt := 0
+	mem.addrMapRWLock.RLock()
+	if userMap, ok := mem.AddressRecord[address]; ok {
+		cnt = len(userMap)
+	}
+	mem.addrMapRWLock.RUnlock()
+
+	return cnt
 }
 
 // Lock() must be help by the caller during execution.
