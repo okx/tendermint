@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"time"
 
@@ -150,6 +151,6 @@ func NumUnconfirmedTxs(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, err
 		TotalBytes: env.Mempool.TxsBytes()}, nil
 }
 
-func GetUnconfirmedTxByHash(hash []byte) (types.Tx, error){
+func GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
 	return env.Mempool.GetTxByHash(hash)
 }

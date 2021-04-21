@@ -3,6 +3,7 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
@@ -32,7 +33,7 @@ type Client struct {
 	prt  *merkle.ProofRuntime
 }
 
-func (c *Client) GetUnconfirmedTxByHash(hash []byte) (types.Tx, error) {
+func (c *Client) GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
 	return nil, mempool.ErrNoSuchTx
 }
 

@@ -2,6 +2,7 @@ package local
 
 import (
 	"context"
+	"crypto/sha256"
 	"time"
 
 	"github.com/pkg/errors"
@@ -44,7 +45,7 @@ type Local struct {
 	ctx    *rpctypes.Context
 }
 
-func (l *Local) GetUnconfirmedTxByHash(hash []byte) (types.Tx, error) {
+func (l *Local) GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
 	return core.GetUnconfirmedTxByHash(hash)
 }
 

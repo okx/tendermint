@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"crypto/sha256"
 	"net/http"
 	"strings"
 	"sync"
@@ -68,7 +69,7 @@ type HTTP struct {
 	*WSEvents
 }
 
-func (c *HTTP) GetUnconfirmedTxByHash(hash []byte) (types.Tx, error) {
+func (c *HTTP) GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
 	return nil, errors.New("unhandled method")
 }
 
