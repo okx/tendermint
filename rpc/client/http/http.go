@@ -68,6 +68,10 @@ type HTTP struct {
 	*WSEvents
 }
 
+func (c *HTTP) GetUnconfirmedTxByHash(hash []byte) (types.Tx, error) {
+	return nil, errors.New("unhandled method")
+}
+
 // BatchHTTP provides the same interface as `HTTP`, but allows for batching of
 // requests (as per https://www.jsonrpc.org/specification#batch). Do not
 // instantiate directly - rather use the HTTP.NewBatch() method to create an
