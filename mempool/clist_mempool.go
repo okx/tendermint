@@ -198,15 +198,14 @@ func (mem *CListMempool) FlushAppConn() error {
 
 // XXX: Unsafe! Calling Flush may leave mempool in inconsistent state.
 func (mem *CListMempool) Flush() {
-	mem.updateMtx.RLock()
-	defer mem.updateMtx.RUnlock()
-
-	mem.addrMapRWLock.Lock()
-	defer mem.addrMapRWLock.Unlock()
+	mem.updateMtx.Lock()
+	defer mem.updateMtx.Unlock()
 
 	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 	mem.cache.Reset()
 
+	mem.addrMapRWLock.Lock()
+	defer mem.addrMapRWLock.Unlock()
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		mem.txs.Remove(e)
 		e.DetachPrev()
@@ -392,8 +391,17 @@ func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
 
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
-func (mem *CListMempool) addTx(memTx *mempoolTx) {
+func (mem *CListMempool) addTx(memTx *mempoolTx, info ExTxInfo) {
 	e := mem.txs.PushBack(memTx)
+	e.Address = info.Sender
+
+	mem.addrMapRWLock.Lock()
+	if _, ok := mem.AddressRecord[info.Sender]; !ok {
+		mem.AddressRecord[info.Sender] = make(map[string]*clist.CElement)
+	}
+	mem.AddressRecord[info.Sender][txID(memTx.tx)] = e
+	mem.addrMapRWLock.Unlock()
+
 	mem.txsMap.Store(txKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
@@ -469,24 +477,24 @@ func (mem *CListMempool) resCbFirstTime(
 			}
 			memTx.senders.Store(peerID, true)
 
-			if mem.config.EnableSort {
-				var exTxInfo ExTxInfo
-				if err := json.Unmarshal(r.CheckTx.Data, &exTxInfo); err != nil {
-					// remove from cache (mempool might have a space later)
-					mem.cache.Remove(tx)
-					mem.logger.Error(err.Error())
-					return
-				}
-				if exTxInfo.GasPrice.Cmp(big.NewInt(0)) <= 0 {
-					// remove from cache (mempool might have a space later)
-					mem.cache.Remove(tx)
-					mem.logger.Error("Failed to get extra info for this tx!")
-					return
-				}
+			var exTxInfo ExTxInfo
+			if err := json.Unmarshal(r.CheckTx.Data, &exTxInfo); err != nil {
+				// remove from cache (mempool might have a space later)
+				mem.cache.Remove(tx)
+				mem.logger.Error(err.Error())
+				return
+			}
+			if exTxInfo.GasPrice.Cmp(big.NewInt(0)) <= 0 {
+				// remove from cache (mempool might have a space later)
+				mem.cache.Remove(tx)
+				mem.logger.Error("Failed to get extra info for this tx!")
+				return
+			}
 
+			if mem.config.SortTxByGp {
 				mem.addAndSortTx(memTx, exTxInfo)
 			} else {
-				mem.addTx(memTx)
+				mem.addTx(memTx, exTxInfo)
 			}
 
 			mem.logger.Info("Added good transaction",
@@ -534,9 +542,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Tx became invalidated due to newly committed block.
 			mem.logger.Info("Tx is no longer valid", "tx", txID(tx), "res", r, "err", postCheckErr)
 			// NOTE: we remove tx from the cache because it might be good later
-			mem.addrMapRWLock.Lock()
 			mem.removeTx(tx, mem.recheckCursor, true)
-			mem.addrMapRWLock.Unlock()
 		}
 		if mem.recheckCursor == mem.recheckEnd {
 			mem.recheckCursor = nil
@@ -638,14 +644,7 @@ func (mem *CListMempool) ReapUserTxsCnt(address string) int {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
 
-	mem.addrMapRWLock.RLock()
-	defer mem.addrMapRWLock.RUnlock()
-
-	if userMap, ok := mem.AddressRecord[address]; ok {
-		return len(userMap)
-	}
-
-	return 0
+	return mem.GetUserPendingTxsCnt(address)
 }
 
 func (mem *CListMempool) ReapUserTxs(address string, max int) types.Txs {
@@ -678,6 +677,17 @@ func (mem *CListMempool) ReapUserTxs(address string, max int) types.Txs {
 	return txs
 }
 
+func (mem *CListMempool) GetUserPendingTxsCnt(address string) int {
+	cnt := 0
+	mem.addrMapRWLock.RLock()
+	if userMap, ok := mem.AddressRecord[address]; ok {
+		cnt = len(userMap)
+	}
+	mem.addrMapRWLock.RUnlock()
+
+	return cnt
+}
+
 // Lock() must be help by the caller during execution.
 func (mem *CListMempool) Update(
 	height int64,
@@ -697,7 +707,6 @@ func (mem *CListMempool) Update(
 		mem.postCheck = postCheck
 	}
 
-	mem.addrMapRWLock.Lock()
 	for i, tx := range txs {
 		if deliverTxResponses[i].Code == abci.CodeTypeOK {
 			// Add valid committed tx to the cache (if missing).
@@ -721,7 +730,6 @@ func (mem *CListMempool) Update(
 			mem.removeTx(tx, e.(*clist.CElement), false)
 		}
 	}
-	mem.addrMapRWLock.Unlock()
 
 	// Either recheck non-committed txs to see if they became invalid
 	// or just notify there're some txs left.
@@ -733,8 +741,6 @@ func (mem *CListMempool) Update(
 			// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
 			// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
 		} else {
-			mem.reportPendingTxNums()
-
 			mem.notifyTxsAvailable()
 		}
 	}
@@ -835,40 +841,6 @@ func (mem *CListMempool) deleteAddrRecord(e *clist.CElement) {
 			delete(mem.AddressRecord, e.Address)
 		}
 	}
-}
-
-func (mem *CListMempool) reportPendingTxNums() {
-	mem.addrMapRWLock.Lock()
-	defer mem.addrMapRWLock.Unlock()
-
-	param := make(map[string]int)
-	for addr, recordMap := range mem.AddressRecord {
-		if len(param) == mem.config.ReportBatchSize {
-			dataType, _ := json.Marshal(param)
-			mem.proxyAppConn.SetOptionAsync(abci.RequestSetOption{
-				Key:   "mempool",
-				Value: string(dataType),
-			})
-
-			param = make(map[string]int)
-		} else {
-			if len(recordMap) > 0 {
-				param[addr] = len(recordMap)
-			} else {
-				delete(mem.AddressRecord, addr)
-			}
-		}
-	}
-
-	if len(param) > 0 {
-		dataType, _ := json.Marshal(param)
-		mem.proxyAppConn.SetOptionAsync(abci.RequestSetOption{
-			Key:   "mempool",
-			Value: string(dataType),
-		})
-	}
-
-	mem.proxyAppConn.FlushAsync()
 }
 
 //--------------------------------------------------------------------------------
