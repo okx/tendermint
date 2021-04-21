@@ -44,6 +44,10 @@ type Local struct {
 	ctx    *rpctypes.Context
 }
 
+func (l *Local) GetUnconfirmedTxByHash(hash []byte) (types.Tx, error) {
+	return core.GetUnconfirmedTxByHash(hash)
+}
+
 // NewLocal configures a client that calls the Node directly.
 //
 // Note that given how rpc/core works with package singletons, that

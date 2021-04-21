@@ -571,6 +571,14 @@ func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 	return txs
 }
 
+func (mem *CListMempool) GetTxByHash(hash []byte) (types.Tx, error) {
+	if e, ok := mem.txsMap.Load(hash); ok {
+		memTx := e.(*clist.CElement).Value.(*mempoolTx)
+		return memTx.tx, nil
+	}
+	return nil, ErrNoSuchTx
+}
+
 // Lock() must be help by the caller during execution.
 func (mem *CListMempool) Update(
 	height int64,

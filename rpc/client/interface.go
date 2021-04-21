@@ -114,6 +114,7 @@ type EventsClient interface {
 type MempoolClient interface {
 	UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error)
 	NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error)
+	GetUnconfirmedTxByHash(hash []byte) (types.Tx,error)
 }
 
 // EvidenceClient is used for submitting an evidence of the malicious

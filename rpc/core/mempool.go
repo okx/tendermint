@@ -149,3 +149,7 @@ func NumUnconfirmedTxs(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, err
 		Total:      env.Mempool.Size(),
 		TotalBytes: env.Mempool.TxsBytes()}, nil
 }
+
+func GetUnconfirmedTxByHash(hash []byte) (types.Tx, error){
+	return env.Mempool.GetTxByHash(hash)
+}

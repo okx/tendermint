@@ -78,6 +78,8 @@ type Mempool interface {
 	CloseWAL()
 
 	SetEventBus(eventBus types.TxEventPublisher)
+
+	GetTxByHash(hash []byte) (types.Tx,error)
 }
 
 //--------------------------------------------------------------------------------
