@@ -10,6 +10,10 @@ import (
 // Mempool is an empty implementation of a Mempool, useful for testing.
 type Mempool struct{}
 
+func (m Mempool) GetTxByHash(hash []byte) (types.Tx, error) {
+	return nil, mempl.ErrNoSuchTx
+}
+
 var _ mempl.Mempool = Mempool{}
 
 func (Mempool) Lock()     {}
@@ -38,6 +42,6 @@ func (Mempool) TxsBytes() int64               { return 0 }
 func (Mempool) TxsFront() *clist.CElement    { return nil }
 func (Mempool) TxsWaitChan() <-chan struct{} { return nil }
 
-func (Mempool) InitWAL() error { return nil }
-func (Mempool) CloseWAL()      {}
+func (Mempool) InitWAL() error                              { return nil }
+func (Mempool) CloseWAL()                                   {}
 func (Mempool) SetEventBus(eventBus types.TxEventPublisher) {}

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tendermint/tendermint/mempool"
+
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	service "github.com/tendermint/tendermint/libs/service"
@@ -28,6 +30,10 @@ type Client struct {
 	next rpcclient.Client
 	lc   *lite.Client
 	prt  *merkle.ProofRuntime
+}
+
+func (c *Client) GetUnconfirmedTxByHash(hash []byte) (types.Tx, error) {
+	return nil, mempool.ErrNoSuchTx
 }
 
 var _ rpcclient.Client = (*Client)(nil)
