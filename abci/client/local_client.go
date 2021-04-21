@@ -98,6 +98,9 @@ func (app *localClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
 	defer app.mtx.Unlock()
 
 	res := app.Application.CheckTx(req)
+	if res.Code != 0 {
+		app.Logger.Debug("app check tx failed", "error", res.Log)
+	}
 	return app.callback(
 		types.ToRequestCheckTx(req),
 		types.ToResponseCheckTx(res),
