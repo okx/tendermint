@@ -319,7 +319,7 @@ max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 max_tx_num_per_block = {{ .Mempool.MaxTxNumPerBlock }}
 
 # Enable sort txs in mempool by gas price.
-enable_sort = {{ .Mempool.EnableSort }}
+sort_tx_by_gp = {{ .Mempool.SortTxByGp }}
 
 ##### fast sync configuration options #####
 [fastsync]

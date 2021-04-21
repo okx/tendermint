@@ -491,7 +491,7 @@ func (mem *CListMempool) resCbFirstTime(
 				return
 			}
 
-			if mem.config.EnableSort {
+			if mem.config.SortTxByGp {
 				mem.addAndSortTx(memTx, exTxInfo)
 			} else {
 				mem.addTx(memTx, exTxInfo)
