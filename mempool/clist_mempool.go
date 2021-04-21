@@ -734,9 +734,10 @@ func (mem *CListMempool) Update(
 	// Either recheck non-committed txs to see if they became invalid
 	// or just notify there're some txs left.
 	if mem.Size() > 0 {
-		if mem.config.Recheck {
+		if mem.config.Recheck || height%mem.config.ForceRecheckGap == 0 {
 			mem.logger.Info("Recheck txs", "numtxs", mem.Size(), "height", height)
 			mem.recheckTxs()
+			mem.logger.Info("After Recheck txs", "numtxs", mem.Size(), "height", height)
 			// At this point, mem.txs are being rechecked.
 			// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
 			// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
@@ -841,6 +842,10 @@ func (mem *CListMempool) deleteAddrRecord(e *clist.CElement) {
 			delete(mem.AddressRecord, e.Address)
 		}
 	}
+}
+
+func (mem *CListMempool) GetConfig() *cfg.MempoolConfig {
+	return mem.config
 }
 
 //--------------------------------------------------------------------------------

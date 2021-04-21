@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"fmt"
+	cfg "github.com/tendermint/tendermint/config"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/p2p"
@@ -85,6 +86,8 @@ type Mempool interface {
 	CloseWAL()
 
 	SetEventBus(eventBus types.TxEventPublisher)
+
+	GetConfig() *cfg.MempoolConfig
 }
 
 //--------------------------------------------------------------------------------
