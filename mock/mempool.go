@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
@@ -27,7 +28,7 @@ func (Mempool) CheckTx(_ types.Tx, _ func(*abci.Response), _ mempl.TxInfo) error
 func (Mempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs       { return types.Txs{} }
 func (Mempool) ReapMaxTxs(n int) types.Txs                    { return types.Txs{} }
 func (Mempool) ReapUserTxsCnt(address string) int             { return 0 }
-func (Mempool) GetUserPendingTxsCnt(address string) int             { return 0 }
+func (Mempool) GetUserPendingTxsCnt(address string) int       { return 0 }
 func (Mempool) ReapUserTxs(address string, max int) types.Txs { return types.Txs{} }
 func (Mempool) Update(
 	_ int64,
@@ -50,3 +51,7 @@ func (Mempool) TxsWaitChan() <-chan struct{} { return nil }
 func (Mempool) InitWAL() error                              { return nil }
 func (Mempool) CloseWAL()                                   {}
 func (Mempool) SetEventBus(eventBus types.TxEventPublisher) {}
+
+func (Mempool) GetConfig() *cfg.MempoolConfig {
+	return cfg.DefaultMempoolConfig()
+}

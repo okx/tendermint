@@ -87,6 +87,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.Mempool.Recheck,
 		"Enable recheck of txs remain pending in mempool",
 	)
+	cmd.Flags().Int64(
+		"mempool.force_recheck_gap",
+		config.Mempool.ForceRecheckGap,
+		"The interval to force recheck of txs remain pending in mempool",
+	)
 	cmd.Flags().Int(
 		"mempool.size",
 		config.Mempool.Size,
