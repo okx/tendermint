@@ -22,6 +22,7 @@ implementation.
 
 import (
 	"context"
+	"crypto/sha256"
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/service"
@@ -116,6 +117,7 @@ type MempoolClient interface {
 	NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error)
 	UserUnconfirmedTxs(address string, limit int) (*ctypes.ResultUserUnconfirmedTxs, error)
 	UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconfirmedTxs, error)
+	GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error)
 }
 
 // EvidenceClient is used for submitting an evidence of the malicious

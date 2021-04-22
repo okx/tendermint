@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"crypto/sha256"
 	"net/http"
 	"strings"
 	"sync"
@@ -66,6 +67,10 @@ type HTTP struct {
 
 	*baseRPCClient
 	*WSEvents
+}
+
+func (c *HTTP) GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
+	return nil, errors.New("unhandled method")
 }
 
 // BatchHTTP provides the same interface as `HTTP`, but allows for batching of

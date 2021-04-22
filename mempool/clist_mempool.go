@@ -640,6 +640,14 @@ func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 	return txs
 }
 
+func (mem *CListMempool) GetTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
+	if e, ok := mem.txsMap.Load(hash); ok {
+		memTx := e.(*clist.CElement).Value.(*mempoolTx)
+		return memTx.tx, nil
+	}
+	return nil, ErrNoSuchTx
+}
+
 func (mem *CListMempool) ReapUserTxsCnt(address string) int {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
