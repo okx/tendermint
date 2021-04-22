@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"crypto/sha256"
 	"fmt"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -85,6 +86,8 @@ type Mempool interface {
 	CloseWAL()
 
 	SetEventBus(eventBus types.TxEventPublisher)
+
+	GetTxByHash(hash [sha256.Size]byte) (types.Tx, error)
 }
 
 //--------------------------------------------------------------------------------

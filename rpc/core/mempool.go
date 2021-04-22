@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"time"
 
@@ -161,4 +162,8 @@ func UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconfirmedTxs, er
 	nums := env.Mempool.ReapUserTxsCnt(address)
 	return &ctypes.ResultUserUnconfirmedTxs{
 		Count: nums}, nil
+}
+
+func GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
+	return env.Mempool.GetTxByHash(hash)
 }

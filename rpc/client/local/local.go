@@ -2,6 +2,7 @@ package local
 
 import (
 	"context"
+	"crypto/sha256"
 	"time"
 
 	"github.com/pkg/errors"
@@ -42,6 +43,10 @@ type Local struct {
 	*types.EventBus
 	Logger log.Logger
 	ctx    *rpctypes.Context
+}
+
+func (l *Local) GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
+	return core.GetUnconfirmedTxByHash(hash)
 }
 
 // NewLocal configures a client that calls the Node directly.

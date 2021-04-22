@@ -1,6 +1,8 @@
 package mock
 
 import (
+	"crypto/sha256"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/clist"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -9,6 +11,10 @@ import (
 
 // Mempool is an empty implementation of a Mempool, useful for testing.
 type Mempool struct{}
+
+func (m Mempool) GetTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
+	return nil, mempl.ErrNoSuchTx
+}
 
 var _ mempl.Mempool = Mempool{}
 
