@@ -448,9 +448,7 @@ func waitGroup1() (wg *sync.WaitGroup) {
 // head -> tail: gasPrice(big -> samll)
 func (l *CList) InsertElement(ele *CElement) *CElement {
 	l.mtx.Lock()
-	defer func() {
-		l.mtx.Unlock()
-	}()
+	defer l.mtx.Unlock()
 
 	// Release waiters on FrontWait/BackWait maybe
 	if l.len == 0 {
