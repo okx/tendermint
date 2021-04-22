@@ -291,6 +291,24 @@ func (c *baseRPCClient) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error
 	return result, nil
 }
 
+func (c *baseRPCClient) UserUnconfirmedTxs(address string, limit int) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	result := new(ctypes.ResultUserUnconfirmedTxs)
+	_, err := c.caller.Call("user_unconfirmed_txs", map[string]interface{}{"address": address, "limit": limit}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "user_unconfirmed_txs")
+	}
+	return result, nil
+}
+
+func (c *baseRPCClient) UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	result := new(ctypes.ResultUserUnconfirmedTxs)
+	_, err := c.caller.Call("user_num_unconfirmed_txs", map[string]interface{}{"address": address}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "user_num_unconfirmed_txs")
+	}
+	return result, nil
+}
+
 func (c *baseRPCClient) NetInfo() (*ctypes.ResultNetInfo, error) {
 	result := new(ctypes.ResultNetInfo)
 	_, err := c.caller.Call("net_info", map[string]interface{}{}, result)

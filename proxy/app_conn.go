@@ -28,6 +28,8 @@ type AppConnMempool interface {
 
 	FlushAsync() *abcicli.ReqRes
 	FlushSync() error
+
+	SetOptionAsync(types.RequestSetOption) *abcicli.ReqRes
 }
 
 type AppConnQuery interface {
@@ -112,6 +114,10 @@ func (app *appConnMempool) FlushSync() error {
 
 func (app *appConnMempool) CheckTxAsync(req types.RequestCheckTx) *abcicli.ReqRes {
 	return app.appConn.CheckTxAsync(req)
+}
+
+func (app *appConnMempool) SetOptionAsync(req types.RequestSetOption) *abcicli.ReqRes {
+	return app.appConn.SetOptionAsync(req)
 }
 
 //------------------------------------------------

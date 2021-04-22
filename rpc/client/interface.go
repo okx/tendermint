@@ -115,6 +115,8 @@ type EventsClient interface {
 type MempoolClient interface {
 	UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error)
 	NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error)
+	UserUnconfirmedTxs(address string, limit int) (*ctypes.ResultUserUnconfirmedTxs, error)
+	UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconfirmedTxs, error)
 	GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error)
 }
 

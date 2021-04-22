@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"container/list"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
+	"math/big"
+	"sort"
 	"sync"
 	"sync/atomic"
 
@@ -67,6 +70,9 @@ type CListMempool struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	AddressRecord map[string]map[string]*clist.CElement // Address -> (txHash -> *CElement)
+	addrMapRWLock sync.RWMutex
 }
 
 var _ Mempool = &CListMempool{}
@@ -101,6 +107,8 @@ func NewCListMempool(
 	for _, option := range options {
 		option(mempool)
 	}
+	mempool.AddressRecord = make(map[string]map[string]*clist.CElement)
+
 	return mempool
 }
 
@@ -190,15 +198,19 @@ func (mem *CListMempool) FlushAppConn() error {
 
 // XXX: Unsafe! Calling Flush may leave mempool in inconsistent state.
 func (mem *CListMempool) Flush() {
-	mem.updateMtx.RLock()
-	defer mem.updateMtx.RUnlock()
+	mem.updateMtx.Lock()
+	defer mem.updateMtx.Unlock()
 
 	_ = atomic.SwapInt64(&mem.txsBytes, 0)
 	mem.cache.Reset()
 
+	mem.addrMapRWLock.Lock()
+	defer mem.addrMapRWLock.Unlock()
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		mem.txs.Remove(e)
 		e.DetachPrev()
+
+		mem.deleteAddrRecord(e)
 	}
 
 	mem.txsMap.Range(func(key, _ interface{}) bool {
@@ -355,8 +367,41 @@ func (mem *CListMempool) reqResCb(
 
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
-func (mem *CListMempool) addTx(memTx *mempoolTx) {
+func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
+	mem.addrMapRWLock.Lock()
+	defer mem.addrMapRWLock.Unlock()
+
+	// Delete the same Nonce transaction from the same account
+	mem.checkRepeatedElement(info)
+	e := mem.txs.AddTxWithExInfo(memTx, info.Sender, info.GasPrice, info.Nonce)
+
+	if _, ok := mem.AddressRecord[info.Sender]; !ok {
+		mem.AddressRecord[info.Sender] = make(map[string]*clist.CElement)
+	}
+	mem.AddressRecord[info.Sender][txID(memTx.tx)] = e
+
+	mem.txsMap.Store(txKey(memTx.tx), e)
+	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
+	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
+	mem.eventBus.PublishEventPendingTx(types.EventDataTx{TxResult: types.TxResult{
+		Height: memTx.height,
+		Tx:     memTx.tx,
+	}})
+}
+
+// Called from:
+//  - resCbFirstTime (lock not held) if tx is valid
+func (mem *CListMempool) addTx(memTx *mempoolTx, info ExTxInfo) {
 	e := mem.txs.PushBack(memTx)
+	e.Address = info.Sender
+
+	mem.addrMapRWLock.Lock()
+	if _, ok := mem.AddressRecord[info.Sender]; !ok {
+		mem.AddressRecord[info.Sender] = make(map[string]*clist.CElement)
+	}
+	mem.AddressRecord[info.Sender][txID(memTx.tx)] = e
+	mem.addrMapRWLock.Unlock()
+
 	mem.txsMap.Store(txKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
@@ -372,6 +417,9 @@ func (mem *CListMempool) addTx(memTx *mempoolTx) {
 func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
 	mem.txs.Remove(elem)
 	elem.DetachPrev()
+
+	mem.deleteAddrRecord(elem)
+
 	mem.txsMap.Delete(txKey(tx))
 	atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
 
@@ -428,7 +476,27 @@ func (mem *CListMempool) resCbFirstTime(
 				tx:        tx,
 			}
 			memTx.senders.Store(peerID, true)
-			mem.addTx(memTx)
+
+			var exTxInfo ExTxInfo
+			if err := json.Unmarshal(r.CheckTx.Data, &exTxInfo); err != nil {
+				// remove from cache (mempool might have a space later)
+				mem.cache.Remove(tx)
+				mem.logger.Error(err.Error())
+				return
+			}
+			if exTxInfo.GasPrice.Cmp(big.NewInt(0)) <= 0 {
+				// remove from cache (mempool might have a space later)
+				mem.cache.Remove(tx)
+				mem.logger.Error("Failed to get extra info for this tx!")
+				return
+			}
+
+			if mem.config.SortTxByGp {
+				mem.addAndSortTx(memTx, exTxInfo)
+			} else {
+				mem.addTx(memTx, exTxInfo)
+			}
+
 			mem.logger.Info("Added good transaction",
 				"tx", txID(tx),
 				"res", r,
@@ -551,6 +619,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
 	}
+
 	return txs
 }
 
@@ -577,6 +646,54 @@ func (mem *CListMempool) GetTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
 		return memTx.tx, nil
 	}
 	return nil, ErrNoSuchTx
+}
+
+func (mem *CListMempool) ReapUserTxsCnt(address string) int {
+	mem.updateMtx.RLock()
+	defer mem.updateMtx.RUnlock()
+
+	return mem.GetUserPendingTxsCnt(address)
+}
+
+func (mem *CListMempool) ReapUserTxs(address string, max int) types.Txs {
+	mem.updateMtx.RLock()
+	defer mem.updateMtx.RUnlock()
+
+	mem.addrMapRWLock.RLock()
+	defer mem.addrMapRWLock.RUnlock()
+
+	userMap, ok := mem.AddressRecord[address]
+	if !ok || len(userMap) == 0 {
+		return types.Txs{}
+	}
+
+	txNums := len(userMap)
+	if max <= 0 || max > txNums {
+		max = txNums
+	}
+
+	txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max))
+
+	for _, ele := range userMap {
+		if len(txs) == max {
+			break
+		}
+
+		txs = append(txs, ele.Value.(*mempoolTx).tx)
+	}
+
+	return txs
+}
+
+func (mem *CListMempool) GetUserPendingTxsCnt(address string) int {
+	cnt := 0
+	mem.addrMapRWLock.RLock()
+	if userMap, ok := mem.AddressRecord[address]; ok {
+		cnt = len(userMap)
+	}
+	mem.addrMapRWLock.RUnlock()
+
+	return cnt
 }
 
 // Lock() must be help by the caller during execution.
@@ -639,6 +756,11 @@ func (mem *CListMempool) Update(
 	// Update metrics
 	mem.metrics.Size.Set(float64(mem.Size()))
 
+	// WARNING: The txs inserted between [ReapMaxBytesMaxGas, Update) is insert-sorted in the mempool.txs,
+	// but they are not included in the latest block, after remove the latest block txs, these txs may
+	// in unsorted state. We need to resort them again for the the purpose of absolute order, or just let it go for they are
+	// already sorted int the last round (will only affect the account that send these txs).
+
 	return nil
 }
 
@@ -661,6 +783,72 @@ func (mem *CListMempool) recheckTxs() {
 	}
 
 	mem.proxyAppConn.FlushAsync()
+}
+
+// Reorganize transactions with same address: addr
+func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
+	if userMap, ok := mem.AddressRecord[addr]; ok {
+		if len(userMap) == 0 {
+			return mem
+		}
+
+		tmpMap := make(map[uint64]*clist.CElement)
+		var keys []uint64
+
+		for _, node := range userMap {
+			mem.txs.DetachElement(node)
+			node.NewDetachPrev()
+			node.NewDetachNext()
+
+			tmpMap[node.Nonce] = node
+			keys = append(keys, node.Nonce)
+		}
+
+		// When inserting, strictly order by nonce, otherwise tx will not appear according to nonce,
+		// resulting in execution failure
+		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+
+		for _, key := range keys {
+			mem.txs.InsertElement(tmpMap[key])
+		}
+	}
+
+	return mem
+}
+
+func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) bool {
+	repeatElement := false
+
+	if userMap, ok := mem.AddressRecord[info.Sender]; ok {
+		for _, node := range userMap {
+			if node.Nonce == info.Nonce {
+				mem.removeTx(node.Value.(*mempoolTx).tx, node, false)
+
+				repeatElement = true
+				break
+			}
+		}
+	}
+
+	// If the tx nonce of the same address is duplicated, should delete the duplicate tx, and reorg all other tx
+	if repeatElement {
+		mem.reOrgTxs(info.Sender)
+	}
+
+	return repeatElement
+}
+
+func (mem *CListMempool) deleteAddrRecord(e *clist.CElement) {
+	if userMap, ok := mem.AddressRecord[e.Address]; ok {
+		txHash := txID(e.Value.(*mempoolTx).tx)
+		if _, ok = userMap[txHash]; ok {
+			delete(userMap, txHash)
+		}
+
+		if len(userMap) == 0 {
+			delete(mem.AddressRecord, e.Address)
+		}
+	}
 }
 
 //--------------------------------------------------------------------------------
@@ -774,4 +962,11 @@ func txKey(tx types.Tx) [sha256.Size]byte {
 // txID is the hex encoded hash of the bytes as a types.Tx.
 func txID(tx []byte) string {
 	return fmt.Sprintf("%X", types.Tx(tx).Hash())
+}
+
+//--------------------------------------------------------------------------------
+type ExTxInfo struct {
+	Sender   string   `json:"sender"`
+	GasPrice *big.Int `json:"gas_price"`
+	Nonce    uint64   `json:"nonce"`
 }
