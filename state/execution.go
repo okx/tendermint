@@ -2,7 +2,11 @@ package state
 
 import (
 	"fmt"
+	"os"
+	"syscall"
 	"time"
+
+	"github.com/spf13/viper"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -192,6 +196,20 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
 
+	if state.LastBlockHeight == int64(viper.GetInt("halt-height")) {
+		blockExec.logger.Info("halting node per configuration", "height", state.LastBlockHeight)
+
+		p, err := os.FindProcess(os.Getpid())
+		if err == nil {
+			// attempt cascading signals in case SIGINT fails (os dependent)
+			sigIntErr := p.Signal(syscall.SIGINT)
+			sigTermErr := p.Signal(syscall.SIGTERM)
+
+			if sigIntErr != nil && sigTermErr != nil {
+				return state, 0, fmt.Errorf("commit failed for application: %v", err)
+			}
+		}
+	}
 	return state, retainHeight, nil
 }
 
