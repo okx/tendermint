@@ -166,6 +166,7 @@ func (pool *BlockPool) GetStatus() (height int64, numPending int32, lenRequester
 // IsCaughtUp returns true if this node is caught up, false - otherwise.
 // TODO: relax conditions, prevent abuse.
 func (pool *BlockPool) IsCaughtUp() bool {
+	return true
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
