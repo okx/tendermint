@@ -620,10 +620,10 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		txs = append(txs, memTx.tx)
 
 		mem.logger.Debug("Mempool GasPrice Sort Test",
-			"TxHash: ", memTx.tx.Hash(),
-			"Address: ", e.Address,
-			"GasPrice: ", e.GasPrice,
-			"Nonce: ", e.Nonce)
+			"TxHash", txID(memTx.tx),
+			"Address", e.Address,
+			"GasPrice", e.GasPrice,
+			"Nonce", e.Nonce)
 	}
 
 	return txs
