@@ -247,6 +247,10 @@ func (e *CElement) NewDetachNext() {
 	e.mtx.Unlock()
 }
 
+func (e *CElement) Info() string {
+	return fmt.Sprintf("Sender=%s GasPrice=%s Nonce=%d", e.Address, e.GasPrice, e.Nonce)
+}
+
 //--------------------------------------------------------------------------------
 
 // CList represents a linked list.
@@ -450,6 +454,8 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 
+	fmt.Println("===> Insert element:", ele.Info())
+
 	// Release waiters on FrontWait/BackWait maybe
 	if l.len == 0 {
 		l.wg.Done()
@@ -464,6 +470,8 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 		l.head = ele
 		l.tail = ele
 
+		fmt.Println("===> List is empty, insert as head 🤠:", ele.Info())
+
 		return ele
 	}
 
@@ -474,6 +482,7 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 			if ele.Nonce < cur.Nonce {
 				// small Nonce put ahead
 				cur = cur.prev
+				fmt.Println("===> Same account, smaller nonce, put cur ahead <--", cur.Info())
 			} else {
 				// The tx of the same Nonce has been processed in checkElement, and there are only cases of big nonce
 				// Big Nonce’s transaction, regardless of gasPrice, has to be in the back
@@ -487,15 +496,21 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 				}
 				cur.SetNext(ele)
 
+				fmt.Println("===> Same account, bigger nonce, set cur next -->", cur.Info())
 				return ele
 			}
 		} else {
 			// Different addresses are sorted by gasPrice
 			if ele.GasPrice.Cmp(cur.GasPrice) <= 0 {
+				fmt.Println("===> Different account, smaller gasPrice, search sibling ↓", cur.Info())
+
 				tmp := cur
 				for cur.prev != nil && cur.prev.Address == cur.Address {
 					cur = cur.prev
+					fmt.Println("===> The sibling element is:", cur.Info())
 				}
+
+				fmt.Println("===> End searching sibling.")
 
 				// If the same addr appears consecutively and the gasPrice of the minimum nonce element is greater than the gasPrice
 				// of the element to be inserted, the element to be inserted will be put in the back
@@ -510,20 +525,27 @@ func (l *CList) InsertElement(ele *CElement) *CElement {
 					}
 					tmp.SetNext(ele)
 
+					fmt.Println("===> smaller gasPrice than remote sibling element, put to cur element next -->", tmp.Info())
+
 					return ele
 				}
+
+				fmt.Println("===> bigger gasPrice than remote sibling element, put to remote sibling ahead <--", cur.Info())
 
 				// Otherwise, put forward
 				cur = cur.prev
 			} else {
 				// put big GasPrice element to forward
 				cur = cur.prev
+
+				fmt.Println("===> Different account, bigger gasPrice, search cur ahead <--", cur.Info())
 			}
 		}
 	}
 
 	ele.SetNext(l.head)
 	if l.head != nil {
+		fmt.Println("===> Search to the head, the new element is boss now 😇")
 		l.head.SetPrev(ele)
 	} else {
 		l.tail = ele

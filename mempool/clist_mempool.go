@@ -371,8 +371,12 @@ func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) {
 	mem.addrMapMtx.Lock()
 	defer mem.addrMapMtx.Unlock()
 
+	fmt.Println("===> addAndSortTx: tx", txID(memTx.tx), info.Info())
+
 	// Delete the same Nonce transaction from the same account
 	mem.checkRepeatedElement(info)
+
+	fmt.Println("===> AddTxWithExInfo: tx", txID(memTx.tx), info.Info())
 	e := mem.txs.AddTxWithExInfo(memTx, info.Sender, info.GasPrice, info.Nonce)
 
 	if _, ok := mem.addressRecord[info.Sender]; !ok {
@@ -619,8 +623,8 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
 
-		mem.logger.Debug("Mempool GasPrice Sort Test",
-			"TxHash", txID(memTx.tx),
+		mem.logger.Debug("ReapTx for new block",
+			"Tx", txID(memTx.tx),
 			"Address", e.Address,
 			"GasPrice", e.GasPrice,
 			"Nonce", e.Nonce)
@@ -794,6 +798,8 @@ func (mem *CListMempool) recheckTxs() {
 
 // Reorganize transactions with same address: addr
 func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
+	fmt.Println("===> reOrgTxs for nonce repeated: sender", addr)
+
 	if userMap, ok := mem.addressRecord[addr]; ok {
 		if len(userMap) == 0 {
 			return mem
@@ -816,6 +822,7 @@ func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
 		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 
 		for _, key := range keys {
+			fmt.Println("===> ReOrg tx", "sender", addr, "nonce", key)
 			mem.txs.InsertElement(tmpMap[key])
 		}
 	}
@@ -824,11 +831,14 @@ func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
 }
 
 func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) bool {
+	fmt.Println("===> checkRepeatedElement:", info.Info())
+
 	repeatElement := false
 
 	if userMap, ok := mem.addressRecord[info.Sender]; ok {
 		for _, node := range userMap {
 			if node.Nonce == info.Nonce {
+				fmt.Println("===> Nonce repeated, remove raw tx", txID(node.Value.(*mempoolTx).tx), node.Info())
 				mem.removeTx(node.Value.(*mempoolTx).tx, node, false)
 
 				repeatElement = true
@@ -980,4 +990,8 @@ type ExTxInfo struct {
 	Sender   string   `json:"sender"`
 	GasPrice *big.Int `json:"gas_price"`
 	Nonce    uint64   `json:"nonce"`
+}
+
+func (exInfo *ExTxInfo) Info() string {
+	return fmt.Sprintf("Sender=%s GasPrice=%s Nonce=%d", exInfo.Sender, exInfo.GasPrice, exInfo.Nonce)
 }
