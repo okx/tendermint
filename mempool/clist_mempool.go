@@ -382,14 +382,11 @@ func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) bool {
 	mem.addrMapMtx.Lock()
 	defer mem.addrMapMtx.Unlock()
 
-	fmt.Println("===> addAndSortTx: tx", txID(memTx.tx), info.Info())
-
 	// Delete the same Nonce transaction from the same account
 	if res := mem.checkRepeatedElement(info); res == -1 {
 		return false
 	}
 
-	fmt.Println("===> AddTxWithExInfo: tx", txID(memTx.tx), info.Info())
 	ele := mem.bcTxsList.PushBack(memTx)
 	mem.bcTxsMap.Store(txKey(memTx.tx), ele)
 
@@ -843,8 +840,6 @@ func (mem *CListMempool) recheckTxs() {
 
 // Reorganize transactions with same address: addr
 func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
-	fmt.Println("===> reOrgTxs for nonce repeated: sender", addr)
-
 	if userMap, ok := mem.addressRecord[addr]; ok {
 		if len(userMap) == 0 {
 			return mem
@@ -867,7 +862,6 @@ func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
 		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 
 		for _, key := range keys {
-			fmt.Println("===> ReOrg tx", "sender", addr, "nonce", key)
 			mem.txs.InsertElement(tmpMap[key])
 		}
 	}
@@ -876,8 +870,6 @@ func (mem *CListMempool) reOrgTxs(addr string) *CListMempool {
 }
 
 func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) int {
-	fmt.Println("===> checkRepeatedElement:", info.Info())
-
 	repeatElement := 0
 	if userMap, ok := mem.addressRecord[info.Sender]; ok {
 		for _, node := range userMap {
@@ -888,7 +880,6 @@ func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) int {
 					return -1
 				}
 
-				fmt.Println("===> Nonce repeated, remove raw tx", txID(node.Value.(*mempoolTx).tx), node.Info())
 				mem.removeTx(node.Value.(*mempoolTx).tx, node, true)
 
 				repeatElement = 1
