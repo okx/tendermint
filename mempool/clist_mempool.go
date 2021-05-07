@@ -543,6 +543,9 @@ func (mem *CListMempool) resCbFirstTime(
 				mem.metrics.FailedTxs.Add(1)
 				// remove from cache (it might be good later)
 				mem.cache.Remove(tx)
+
+				r.CheckTx.Code = 1
+				r.CheckTx.Log = "Fail to add transaction into mempool, rejected it"
 			}
 		} else {
 			// ignore bad transaction
@@ -792,6 +795,9 @@ func (mem *CListMempool) Update(
 		} else {
 			mem.notifyTxsAvailable()
 		}
+	} else if height%mem.config.ForceRecheckGap == 0 {
+		// saftly clean dirty data that stucks in the cache
+		mem.cache.Reset()
 	}
 
 	// Update metrics
@@ -868,7 +874,7 @@ func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) int {
 					return -1
 				}
 
-				mem.removeTx(node.Value.(*mempoolTx).tx, node, false)
+				mem.removeTx(node.Value.(*mempoolTx).tx, node, true)
 
 				repeatElement = 1
 				break
