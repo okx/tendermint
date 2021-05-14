@@ -880,7 +880,7 @@ func (mem *CListMempool) checkRepeatedElement(info ExTxInfo) int {
 			if node.Nonce == info.Nonce {
 				// only replace tx for bigger gas price
 				expectedGasPrice := MultiPriceBump(node.GasPrice, int64(mem.config.TxPriceBump))
-				if info.GasPrice.Cmp(expectedGasPrice) <= 0 {
+				if info.GasPrice.Cmp(expectedGasPrice) < 0 {
 					mem.logger.Debug("Failed to replace tx", "rawGasPrice", node.GasPrice, "newGasPrice", info.GasPrice, "expectedGasPrice", expectedGasPrice)
 					return -1
 				}
