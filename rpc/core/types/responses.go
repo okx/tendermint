@@ -206,7 +206,7 @@ type ResultUserUnconfirmedTxs struct {
 
 // List of mempool addresses
 type ResultUnconfirmedAddresses struct {
-	Addresses	[]string	`json:"addresses"`
+	Addresses []string `json:"addresses"`
 }
 
 // Info abci msg
