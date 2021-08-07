@@ -817,9 +817,6 @@ func (mem *CListMempool) Update(
 }
 
 func (mem *CListMempool) recheck(height int64) {
-	mem.updateMtx.Lock()
-	defer mem.updateMtx.Unlock()
-
 	// Either recheck non-committed txs to see if they became invalid
 	// or just notify there're some txs left.
 	if mem.Size() > 0 {
@@ -853,6 +850,9 @@ func (mem *CListMempool) recheckTxs() {
 	if mem.Size() == 0 {
 		panic("recheckTxs is called, but the mempool is empty")
 	}
+
+	mem.updateMtx.Lock()
+	defer mem.updateMtx.Unlock()
 
 	mem.recheckCursor = mem.txs.Front()
 	mem.recheckEnd = mem.txs.Back()
