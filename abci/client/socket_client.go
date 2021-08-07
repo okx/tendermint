@@ -375,6 +375,10 @@ LOOP:
 	}
 }
 
+func (cli *socketClient) ClientType() string {
+	return "SOCKET"
+}
+
 //----------------------------------------
 
 func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {

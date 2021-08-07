@@ -197,6 +197,14 @@ func (mem *CListMempool) TxsBytes() int64 {
 
 // Lock() must be help by the caller during execution.
 func (mem *CListMempool) FlushAppConn() error {
+	if mem.proxyAppConn.ClientType() == "SOCKET" {
+		mem.updateMtx.Lock()
+		defer mem.updateMtx.Unlock()
+	} else {
+		mem.updateMtx.RLock()
+		defer mem.updateMtx.RUnlock()
+	}
+
 	return mem.proxyAppConn.FlushSync()
 }
 
@@ -760,6 +768,9 @@ func (mem *CListMempool) Update(
 	preCheck PreCheckFunc,
 	postCheck PostCheckFunc,
 ) error {
+	mem.updateMtx.RLock()
+	defer mem.updateMtx.RUnlock()
+
 	// Set height
 	mem.height = height
 	mem.notifiedTxsAvailable = false
@@ -795,6 +806,20 @@ func (mem *CListMempool) Update(
 		}
 	}
 
+	go mem.recheck(height)
+
+	// WARNING: The txs inserted between [ReapMaxBytesMaxGas, Update) is insert-sorted in the mempool.txs,
+	// but they are not included in the latest block, after remove the latest block txs, these txs may
+	// in unsorted state. We need to resort them again for the the purpose of absolute order, or just let it go for they are
+	// already sorted int the last round (will only affect the account that send these txs).
+
+	return nil
+}
+
+func (mem *CListMempool) recheck(height int64) {
+	mem.updateMtx.Lock()
+	defer mem.updateMtx.Unlock()
+
 	// Either recheck non-committed txs to see if they became invalid
 	// or just notify there're some txs left.
 	if mem.Size() > 0 {
@@ -816,12 +841,12 @@ func (mem *CListMempool) Update(
 	// Update metrics
 	mem.metrics.Size.Set(float64(mem.Size()))
 
-	// WARNING: The txs inserted between [ReapMaxBytesMaxGas, Update) is insert-sorted in the mempool.txs,
-	// but they are not included in the latest block, after remove the latest block txs, these txs may
-	// in unsorted state. We need to resort them again for the the purpose of absolute order, or just let it go for they are
-	// already sorted int the last round (will only affect the account that send these txs).
-
-	return nil
+	if !mem.config.Recheck && height%mem.config.ForceRecheckGap == 0 {
+		// reset checkState
+		mem.proxyAppConn.SetOptionAsync(abci.RequestSetOption{
+			Key: "ResetCheckState",
+		})
+	}
 }
 
 func (mem *CListMempool) recheckTxs() {

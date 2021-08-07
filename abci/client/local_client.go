@@ -257,3 +257,7 @@ func newLocalReqRes(req *types.Request, res *types.Response) *ReqRes {
 	reqRes.SetDone()
 	return reqRes
 }
+
+func (app *localClient) ClientType() string {
+	return "LOCAL"
+}

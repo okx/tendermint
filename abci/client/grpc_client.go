@@ -304,3 +304,7 @@ func (cli *grpcClient) EndBlockSync(params types.RequestEndBlock) (*types.Respon
 	reqres := cli.EndBlockAsync(params)
 	return reqres.Response.GetEndBlock(), cli.Error()
 }
+
+func (cli *grpcClient)  ClientType() string {
+	return "GRPC"
+}
