@@ -240,6 +240,7 @@ func (p *peer) Status() tmconn.ConnectionStatus {
 // Send msg bytes to the channel identified by chID byte. Returns false if the
 // send queue is full after timeout, specified by MConnection.
 func (p *peer) Send(chID byte, msgBytes []byte) bool {
+	fmt.Println("send msg", string(msgBytes))
 	if !p.IsRunning() {
 		// see Switch#Broadcast, where we fetch the list of peers and loop over
 		// them - while we're looping, one peer may be removed and stopped.

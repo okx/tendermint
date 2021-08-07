@@ -198,6 +198,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 	peerID := memR.ids.GetForPeer(peer)
 	var next *clist.CElement
 	for {
+		fmt.Println("Next: ", next)
 		// In case of both next.NextWaitChan() and peer.Quit() are variable at the same time
 		if !memR.IsRunning() || !peer.IsRunning() {
 			return
@@ -208,6 +209,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		if next == nil {
 			select {
 			case <-memR.mempool.TxsWaitChan(): // Wait until a tx is available
+				fmt.Println("waitChan in")
 				if next = memR.mempool.TxsFront(); next == nil {
 					continue
 				}
@@ -221,21 +223,21 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		memTx := next.Value.(*mempoolTx)
 
 		// make sure the peer is up to date
-		peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
-		if !ok {
-			// Peer does not have a state yet. We set it in the consensus reactor, but
-			// when we add peer in Switch, the order we call reactors#AddPeer is
-			// different every time due to us using a map. Sometimes other reactors
-			// will be initialized before the consensus reactor. We should wait a few
-			// milliseconds and retry.
-			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
-			continue
-		}
-		if peerState.GetHeight() < memTx.Height()-1 { // Allow for a lag of 1 block
-			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
-			continue
-		}
-
+		//peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
+		//if !ok {
+		//	// Peer does not have a state yet. We set it in the consensus reactor, but
+		//	// when we add peer in Switch, the order we call reactors#AddPeer is
+		//	// different every time due to us using a map. Sometimes other reactors
+		//	// will be initialized before the consensus reactor. We should wait a few
+		//	// milliseconds and retry.
+		//	time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+		//	continue
+		//}
+		//if peerState.GetHeight() < memTx.Height()-1 { // Allow for a lag of 1 block
+		//	time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+		//	continue
+		//}
+//  item -> item -> item
 		// ensure peer hasn't already sent us this tx
 		if _, ok := memTx.senders.Load(peerID); !ok {
 			// send memTx
@@ -246,7 +248,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 				continue
 			}
 		}
-
+		fmt.Println(string(memTx.tx))
 		select {
 		case <-next.NextWaitChan():
 			// see the start of the for loop for nil check

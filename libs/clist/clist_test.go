@@ -310,3 +310,28 @@ FOR_LOOP2:
 		t.Fatalf("number of pushed items (%d) not equal to number of seen items (%d)", pushed, seen)
 	}
 }
+
+func TestCElement_DetachNext(t *testing.T) {
+	ch := make(chan struct{})
+	go func() {
+		for  {
+			select {
+				case <- ch:
+					fmt.Println("ch exec")
+
+				}
+		}
+
+	}()
+	time.Sleep(time.Second)
+	close(ch)
+
+	time.Sleep(time.Second * 1000)
+}
+
+func TestCElement_NextWait(t *testing.T) {
+	l := New()
+	l.PushBack(1)
+	l.PushBack(2)
+	l.PushBack(2)
+}

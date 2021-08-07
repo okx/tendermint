@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"fmt"
 	"net"
 	"sync"
 	"testing"
@@ -240,4 +241,36 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 		reactor.Receive(MempoolChannel, peer, []byte{0x1, 0x2, 0x3})
 		reactor.AddPeer(peer)
 	}
+}
+
+func TestReactor_AddPeer(t *testing.T) {
+	config := cfg.TestConfig()
+	const N = 1
+	reactors := makeAndConnectReactors(config, N)
+	defer func() {
+		for _, r := range reactors {
+			r.Stop()
+		}
+	}()
+	reactor := reactors[0]
+	testTx := []byte("abcde")
+	testTx2 := []byte("fffff")
+	testTx3 := []byte("kkkkk")
+	reactor.mempool.CheckTx(testTx, nil, TxInfo{})
+
+	peer := mock.NewPeer(nil)
+	reactor.AddPeer(peer)
+
+	fmt.Println("sleeping 5s")
+	time.Sleep(time.Second * 5)
+	fmt.Println("sleep down")
+	reactor.mempool.CheckTx(testTx2, nil, TxInfo{})
+	reactor.mempool.CheckTx(testTx3, nil, TxInfo{})
+	time.Sleep(time.Second * 30)
+}
+
+func TestChan(t *testing.T) {
+	ch := make(chan int)
+	close(ch)
+	fmt.Println(ch)
 }
