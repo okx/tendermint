@@ -80,7 +80,12 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"consensus.create_empty_blocks_interval",
 		config.Consensus.CreateEmptyBlocksInterval.String(),
 		"The possible interval between empty blocks")
-
+	// mempool flags
+	cmd.Flags().Bool(
+		"mempool.disable_receive",
+		config.Mempool.DisableReceive,
+		"Disable receiving tx",
+	)
 	// mempool flags
 	cmd.Flags().Bool(
 		"mempool.recheck",
