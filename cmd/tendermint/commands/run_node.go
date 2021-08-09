@@ -84,7 +84,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool(
 		"mempool.disable_receive",
 		config.Mempool.DisableReceive,
-		"Disable receiving tx",
+		"Disable mempool to receive tx from p2p network",
 	)
 	// mempool flags
 	cmd.Flags().Bool(
