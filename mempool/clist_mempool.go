@@ -782,6 +782,8 @@ func (mem *CListMempool) Update(
 		mem.postCheck = postCheck
 	}
 
+	mem.addrMapMtx.Lock()
+	defer mem.addrMapMtx.Unlock()
 	for i, tx := range txs {
 		if deliverTxResponses[i].Code == abci.CodeTypeOK {
 			// Add valid committed tx to the cache (if missing).
@@ -837,13 +839,6 @@ func (mem *CListMempool) recheck(height int64) {
 
 	// Update metrics
 	mem.metrics.Size.Set(float64(mem.Size()))
-
-	if !mem.config.Recheck && height%mem.config.ForceRecheckGap == 0 {
-		// reset checkState
-		mem.proxyAppConn.SetOptionAsync(abci.RequestSetOption{
-			Key: "ResetCheckState",
-		})
-	}
 }
 
 func (mem *CListMempool) recheckTxs() {
@@ -851,6 +846,8 @@ func (mem *CListMempool) recheckTxs() {
 		panic("recheckTxs is called, but the mempool is empty")
 	}
 
+	// Must use Lock here, else will lead rpc to return wrong user's nonce
+	// But if this thread take this Lock too long ,it will affect the process of product next new block
 	mem.updateMtx.Lock()
 	defer mem.updateMtx.Unlock()
 
@@ -864,6 +861,13 @@ func (mem *CListMempool) recheckTxs() {
 		mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
 			Tx:   memTx.tx,
 			Type: abci.CheckTxType_Recheck,
+		})
+	}
+
+	if !mem.config.Recheck {
+		// reset checkState
+		mem.proxyAppConn.SetOptionAsync(abci.RequestSetOption{
+			Key: "ResetCheckState",
 		})
 	}
 

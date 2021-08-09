@@ -206,12 +206,6 @@ func (blockExec *BlockExecutor) Commit(
 	block *types.Block,
 	deliverTxResponses []*abci.ResponseDeliverTx,
 ) ([]byte, int64, error) {
-	start := time.Now()
-	defer func() {
-		elapsed := time.Now().Sub(start)
-		fmt.Println("The time spend to run Commit is: ", elapsed)
-	}()
-	
 	// while mempool is Locked, flush to ensure all async requests have completed
 	// in the ABCI app before Commit.
 	err := blockExec.mempool.FlushAppConn()
