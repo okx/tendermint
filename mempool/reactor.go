@@ -160,7 +160,7 @@ func (memR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
 func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	if memR.mempool.config.DisableReceive {
+	if memR.mempool.config.Sealed {
 		return
 	}
 	msg, err := memR.decodeMsg(msgBytes)

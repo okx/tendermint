@@ -82,10 +82,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"The possible interval between empty blocks")
 	// mempool flags
 	cmd.Flags().Bool(
-		"mempool.disable_receive",
-		config.Mempool.DisableReceive,
-		"Disable mempool to receive tx from p2p network",
+		"mempool.sealed",
+		config.Mempool.Sealed,
+		"Set this to true only for debug mode",
 	)
+	cmd.Flags().MarkHidden("mempool.sealed")
 	// mempool flags
 	cmd.Flags().Bool(
 		"mempool.recheck",
