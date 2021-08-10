@@ -10,6 +10,7 @@ import (
 
 type AppConnConsensus interface {
 	SetResponseCallback(abcicli.Callback)
+	SetAsyncCallBack(abcicli.AsyncCallBack)
 	Error() error
 
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)

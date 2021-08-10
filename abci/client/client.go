@@ -69,6 +69,13 @@ func NewClient(addr, transport string, mustConnect bool) (client Client, err err
 
 type Callback func(*types.Request, *types.Response)
 
+type ExecuteRes interface {
+	GetResponse() types.ResponseDeliverTx
+	Recheck() bool
+	GetCounter() uint32
+}
+type AsyncCallBack func([]ExecuteRes)
+
 //----------------------------------------
 
 type ReqRes struct {
