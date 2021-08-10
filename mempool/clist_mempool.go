@@ -76,6 +76,8 @@ type CListMempool struct {
 
 	addressRecord map[string]map[string]*clist.CElement // Address -> (txHash -> *CElement)
 	addrMapMtx    sync.RWMutex
+	addressNonceMap sync.Map
+	cleanCh chan sync.Map
 }
 
 var _ Mempool = &CListMempool{}
@@ -101,6 +103,7 @@ func NewCListMempool(
 		eventBus:      types.NopEventBus{},
 		logger:        log.NewNopLogger(),
 		metrics:       NopMetrics(),
+		cleanCh: make(chan sync.Map),
 	}
 	if config.CacheSize > 0 {
 		mempool.cache = newMapTxCache(config.CacheSize)
@@ -112,6 +115,8 @@ func NewCListMempool(
 		option(mempool)
 	}
 	mempool.addressRecord = make(map[string]map[string]*clist.CElement)
+
+	go mempool.UserTxsClean(mempool.cleanCh)
 
 	return mempool
 }
@@ -651,6 +656,16 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	txs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
+
+		if maxNonce, ok := mem.addressNonceMap.Load(e.Address); ok &&  e.Nonce <= maxNonce.(uint64){
+			// invalid tx: tx nonce is smaller than the current state, remove it from mempool
+			mem.addrMapMtx.Lock()
+			defer mem.addrMapMtx.Unlock()
+			mem.removeTx(memTx.tx, e, false)
+
+			continue
+		}
+
 		// Check total size requirement
 		aminoOverhead := types.ComputeAminoOverhead(memTx.tx, 1)
 		if maxBytes > -1 && totalBytes+int64(len(memTx.tx))+aminoOverhead > maxBytes {
@@ -784,6 +799,7 @@ func (mem *CListMempool) Update(
 
 	mem.addrMapMtx.Lock()
 	defer mem.addrMapMtx.Unlock()
+	var toCleanUserMap sync.Map
 	for i, tx := range txs {
 		if deliverTxResponses[i].Code == abci.CodeTypeOK {
 			// Add valid committed tx to the cache (if missing).
@@ -803,12 +819,26 @@ func (mem *CListMempool) Update(
 		// Mempool after:
 		//   100
 		// https://github.com/tendermint/tendermint/issues/3322.
+
 		if e, ok := mem.txsMap.Load(txKey(tx)); ok {
-			mem.removeTx(tx, e.(*clist.CElement), false)
+			ele := e.(*clist.CElement)
+			if deliverTxResponses[i].Code == abci.CodeTypeOK {
+				mem.addressNonceMap.Store(ele.Address, ele.Nonce)
+				toCleanUserMap.Store(ele.Address, ele.Nonce)
+			}
+			mem.removeTx(tx, ele, false)
 		}
 	}
+	mem.cleanCh <- toCleanUserMap
 
-	go mem.recheck(height)
+	if mem.Size() > 0 {
+		mem.notifyTxsAvailable()
+
+		// Update metrics
+		mem.metrics.Size.Set(float64(mem.Size()))
+	} else {
+		mem.cache.Reset()
+	}
 
 	// WARNING: The txs inserted between [ReapMaxBytesMaxGas, Update) is insert-sorted in the mempool.txs,
 	// but they are not included in the latest block, after remove the latest block txs, these txs may
@@ -816,6 +846,30 @@ func (mem *CListMempool) Update(
 	// already sorted int the last round (will only affect the account that send these txs).
 
 	return nil
+}
+
+func (mem *CListMempool) UserTxsClean(txsCh <-chan sync.Map) {
+	for {
+		select {
+		case userTxsMap := <-txsCh:
+			userTxsMap.Range(func(key, value interface{}) bool {
+				userAddr := key.(string)
+				if txsRecord, ok := mem.addressRecord[userAddr]; ok {
+					userMaxNonce := value.(uint64)
+
+					mem.addrMapMtx.Lock()
+					for _, ele := range txsRecord {
+						if ele.Nonce <= userMaxNonce {
+							mem.removeTx(ele.Value.(*mempoolTx).tx, ele, false)
+						}
+					}
+					mem.addrMapMtx.Unlock()
+				}
+
+				return true
+			})
+		}
+	}
 }
 
 func (mem *CListMempool) recheck(height int64) {
