@@ -76,7 +76,6 @@ type CListMempool struct {
 
 	addressRecord map[string]map[string]*clist.CElement // Address -> (txHash -> *CElement)
 	addrMapMtx    sync.RWMutex
-	addressNonceMap sync.Map
 	cleanCh chan sync.Map
 }
 
@@ -656,16 +655,6 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	txs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
-
-		if maxNonce, ok := mem.addressNonceMap.Load(e.Address); ok &&  e.Nonce <= maxNonce.(uint64){
-			// invalid tx: tx nonce is smaller than the current state, remove it from mempool
-			mem.addrMapMtx.Lock()
-			defer mem.addrMapMtx.Unlock()
-			mem.removeTx(memTx.tx, e, false)
-
-			continue
-		}
-
 		// Check total size requirement
 		aminoOverhead := types.ComputeAminoOverhead(memTx.tx, 1)
 		if maxBytes > -1 && totalBytes+int64(len(memTx.tx))+aminoOverhead > maxBytes {
@@ -819,11 +808,9 @@ func (mem *CListMempool) Update(
 		// Mempool after:
 		//   100
 		// https://github.com/tendermint/tendermint/issues/3322.
-
 		if e, ok := mem.txsMap.Load(txKey(tx)); ok {
 			ele := e.(*clist.CElement)
 			if deliverTxResponses[i].Code == abci.CodeTypeOK {
-				mem.addressNonceMap.Store(ele.Address, ele.Nonce)
 				toCleanUserMap.Store(ele.Address, ele.Nonce)
 			}
 			mem.removeTx(tx, ele, false)
