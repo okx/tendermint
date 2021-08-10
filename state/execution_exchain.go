@@ -2,8 +2,9 @@ package state
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/libs/log"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 var IgnoreSmbCheck bool = false
@@ -47,10 +48,10 @@ func (t *Tracer) dump(caller string) {
 	t.pin("_")
 	now := time.Now().UnixNano()
 
-	dumpRet := caller
+	info := fmt.Sprintf("%s elapsed<%dms>", caller, (now-t.startTime)/1e6)
 	for i := range t.pins {
-		dumpRet += fmt.Sprintf("%s=<%dms>, ", t.pins[i], t.times[i])
+		info += fmt.Sprintf("%s=<%dms>, ", t.pins[i], t.times[i])
 	}
 
-	t.l.Info(dumpRet, "ElapsedTime=", (now-t.startTime)/1e6)
+	t.l.Info(info)
 }
