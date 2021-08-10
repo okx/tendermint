@@ -131,7 +131,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
-	trc := &Tracer{}
+	trc := NewTracer(blockExec.logger)
 	defer trc.dump(fmt.Sprintf("ApplyBlock<%d>, tx<%d>,", block.Height, len(block.Data.Txs)))
 
 	trc.pin("validateBlock")
