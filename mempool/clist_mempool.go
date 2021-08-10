@@ -844,13 +844,13 @@ func (mem *CListMempool) UserTxsClean(txsCh <-chan sync.Map) {
 				if txsRecord, ok := mem.addressRecord[userAddr]; ok {
 					userMaxNonce := value.(uint64)
 
-					mem.addrMapMtx.Lock()
 					for _, ele := range txsRecord {
 						if ele.Nonce <= userMaxNonce {
+							mem.addrMapMtx.Lock()
 							mem.removeTx(ele.Value.(*mempoolTx).tx, ele, false)
+							mem.addrMapMtx.Unlock()
 						}
 					}
-					mem.addrMapMtx.Unlock()
 				}
 
 				return true
