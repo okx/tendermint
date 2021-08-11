@@ -2,17 +2,19 @@ package state
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/libs/log"
 	"time"
+
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 var IgnoreSmbCheck bool = false
 
 var lastDump int64 = time.Now().UnixNano()
+
 type Tracer struct {
 	startTime int64
 
-	lastPin string
+	lastPin  string
 	lastTime int64
 
 	pins  []string
@@ -24,7 +26,6 @@ func (t *Tracer) pin(tag string) {
 		//panic("invalid tag")
 		return
 	}
-
 
 	now := time.Now().UnixNano()
 
@@ -39,7 +40,6 @@ func (t *Tracer) pin(tag string) {
 	t.lastTime = now
 	t.lastPin = tag
 }
-
 
 func (t *Tracer) dump(caller string, logger log.Logger) {
 	t.pin("_")
