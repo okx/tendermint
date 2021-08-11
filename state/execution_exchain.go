@@ -2,22 +2,21 @@ package state
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/tendermint/tendermint/libs/log"
+	"time"
 )
 
 var IgnoreSmbCheck bool = false
 
+var lastDump int64 = time.Now().UnixNano()
 type Tracer struct {
 	startTime int64
 
-	lastPin  string
+	lastPin string
 	lastTime int64
 
 	pins  []string
 	times []int64
-	l     log.Logger
 }
 
 func (t *Tracer) pin(tag string) {
@@ -25,6 +24,7 @@ func (t *Tracer) pin(tag string) {
 		//panic("invalid tag")
 		return
 	}
+
 
 	now := time.Now().UnixNano()
 
@@ -40,13 +40,19 @@ func (t *Tracer) pin(tag string) {
 	t.lastPin = tag
 }
 
+
 func (t *Tracer) dump(caller string, logger log.Logger) {
 	t.pin("_")
 
 	now := time.Now().UnixNano()
-	info := fmt.Sprintf("%s elapsed<%dms>", caller, (now-t.startTime)/1e6)
+	info := fmt.Sprintf("Interval<%dms>, %s, elapsed<%dms>",
+		(now-lastDump)/1e6,
+		caller,
+		(now-t.startTime)/1e6,
+	)
 	for i := range t.pins {
 		info += fmt.Sprintf(", %s<%dms>", t.pins[i], t.times[i])
 	}
 	logger.Info(info)
+	lastDump = now
 }

@@ -133,7 +133,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 ) (State, int64, error) {
 	trc := &Tracer{}
 	defer trc.dump(
-		fmt.Sprintf("ApplyBlock<%d>, tx<%d>,", block.Height, len(block.Data.Txs)),
+		fmt.Sprintf("ApplyBlock<%d>, tx<%d>", block.Height, len(block.Data.Txs)),
 		blockExec.logger.With("module", "main"),
 	)
 
@@ -143,7 +143,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	trc.pin("abci")
-
 	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	endTime := time.Now().UnixNano()
