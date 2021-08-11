@@ -35,6 +35,13 @@ type PersistentKVStoreApplication struct {
 	logger log.Logger
 }
 
+func (app *PersistentKVStoreApplication) SetAsyncConfig(sw bool) {
+}
+
+func (app *PersistentKVStoreApplication) SetAsyncDeliverTxCb(cb types.AsyncCallBack) {
+
+}
+
 func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication {
 	name := "kvstore"
 	db, err := dbm.NewGoLevelDB(name, dbDir)

@@ -31,6 +31,12 @@ type grpcClient struct {
 	resCb func(*types.Request, *types.Response) // listens to all callbacks
 }
 
+func (cli *grpcClient) SetAsyncCallBack(back types.AsyncCallBack) {
+}
+
+func (cli *grpcClient) SetAsyncConfig(b bool) {
+}
+
 func NewGRPCClient(addr string, mustConnect bool) Client {
 	cli := &grpcClient{
 		addr:        addr,

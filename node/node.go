@@ -635,6 +635,8 @@ func NewNode(config *cfg.Config,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
+	blockExec.SetIsAsyncDeliverTx(cfg.IsAsyncDeliverTx())
+
 	// Make BlockchainReactor
 	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync, logger)
 	if err != nil {

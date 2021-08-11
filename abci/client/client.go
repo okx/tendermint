@@ -22,6 +22,7 @@ type Client interface {
 	service.Service
 
 	SetResponseCallback(Callback)
+	SetAsyncCallBack(types.AsyncCallBack)
 	Error() error
 
 	FlushAsync() *ReqRes
@@ -47,6 +48,7 @@ type Client interface {
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
+	SetAsyncConfig(bool)
 }
 
 //----------------------------------------
@@ -68,13 +70,6 @@ func NewClient(addr, transport string, mustConnect bool) (client Client, err err
 //----------------------------------------
 
 type Callback func(*types.Request, *types.Response)
-
-type ExecuteRes interface {
-	GetResponse() types.ResponseDeliverTx
-	Recheck() bool
-	GetCounter() uint32
-}
-type AsyncCallBack func([]ExecuteRes)
 
 //----------------------------------------
 

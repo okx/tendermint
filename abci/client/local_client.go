@@ -19,7 +19,6 @@ type localClient struct {
 	mtx *sync.Mutex
 	types.Application
 	Callback
-	AsyncCallBack
 }
 
 func NewLocalClient(mtx *sync.Mutex, app types.Application) Client {
@@ -40,8 +39,14 @@ func (app *localClient) SetResponseCallback(cb Callback) {
 	app.mtx.Unlock()
 }
 
-func (app *localClient) SetAsyncCallBack(cb AsyncCallBack) {
-	app.AsyncCallBack = cb
+func (app *localClient) SetAsyncCallBack(cb types.AsyncCallBack) {
+	app.mtx.Lock()
+	app.Application.SetAsyncDeliverTxCb(cb)
+	app.mtx.Unlock()
+}
+
+func (app *localClient) SetAsyncConfig(sw bool) {
+	app.Application.SetAsyncConfig(sw)
 }
 
 // TODO: change types.Application to include Error()?

@@ -10,7 +10,8 @@ import (
 
 type AppConnConsensus interface {
 	SetResponseCallback(abcicli.Callback)
-	SetAsyncCallBack(abcicli.AsyncCallBack)
+	SetAsyncCallBack(types.AsyncCallBack)
+	SetAsyncConfig(bool)
 	Error() error
 
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
@@ -49,6 +50,14 @@ type AppConnQuery interface {
 
 type appConnConsensus struct {
 	appConn abcicli.Client
+}
+
+func (app *appConnConsensus) SetAsyncConfig(sw bool) {
+	app.appConn.SetAsyncConfig(sw)
+}
+
+func (app *appConnConsensus) SetAsyncCallBack(back types.AsyncCallBack) {
+	app.appConn.SetAsyncCallBack(back)
 }
 
 func NewAppConnConsensus(appConn abcicli.Client) AppConnConsensus {

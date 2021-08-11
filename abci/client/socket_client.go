@@ -43,6 +43,12 @@ type socketClient struct {
 
 }
 
+func (cli *socketClient) SetAsyncCallBack(back types.AsyncCallBack) {
+}
+
+func (cli *socketClient) SetAsyncConfig(b bool) {
+}
+
 func NewSocketClient(addr string, mustConnect bool) Client {
 	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
