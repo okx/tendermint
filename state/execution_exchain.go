@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-var IgnoreSmbCheck bool = false
+var IgnoreSmbCheck bool = true
 
 var lastDump int64 = time.Now().UnixNano()
 
