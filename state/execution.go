@@ -194,6 +194,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	trc.pin("commit")
 	startTime = time.Now().UnixNano()
 
+	if block.Height == 5039810 {
+		fmt.Println("here")
+	}
+
 	// Lock mempool, commit app state, update mempoool.
 	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
 	endTime = time.Now().UnixNano()
