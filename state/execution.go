@@ -164,7 +164,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1e6)
 	blockExec.metrics.AbciTime.Set(float64(endTime-startTime) / 1e6)
-
+	fmt.Println("SaveABCIResponses finish")
 	trc.pin("validate")
 
 	// validate the validator updates and convert to tendermint types
@@ -173,10 +173,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if err != nil {
 		return state, 0, fmt.Errorf("error in validator updates: %v", err)
 	}
+	fmt.Println("validateValidatorUpdates finish")
 	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
 	if err != nil {
 		return state, 0, err
 	}
+	fmt.Println("ValidatorUpdates finish")
 	if len(validatorUpdates) > 0 {
 		blockExec.logger.Info("Updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 	}
@@ -188,7 +190,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
-
+	fmt.Println("updateState finish")
 	trc.pin("commit")
 	startTime = time.Now().UnixNano()
 
@@ -199,12 +201,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
-
+	fmt.Println("commit finish")
 	trc.pin("evpool")
 
 	// Update evpool with the block and state.
 	blockExec.evpool.Update(block, state)
-
+	fmt.Println("Update finish")
 	fail.Fail() // XXX
 
 	trc.pin("saveState")
@@ -212,13 +214,13 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// Update the app hash and save the state.
 	state.AppHash = appHash
 	SaveState(blockExec.db, state)
-
+	fmt.Println("SaveState finish")
 	fail.Fail() // XXX
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
-
+	fmt.Println("fireEvents finish")
 	return state, retainHeight, nil
 }
 
