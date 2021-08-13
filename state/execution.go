@@ -3,10 +3,16 @@ package state
 import (
 	"fmt"
 	"time"
+	"encoding/json"
+	"io/ioutil"
+	"path/filepath"
+	"sync"
 
+	"github.com/spf13/viper"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -137,7 +143,48 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	var abciResponses *ABCIResponses
+	var err error
+	if viper.GetInt32("enable-state-delta") == 1 {
+		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+		var once sync.Once
+		once.Do(func() {
+			if err := tmos.EnsureDir(filepath.Join(viper.GetString("home"),
+				fmt.Sprintf("data/state_delta")), 0700); err != nil {
+				panic(err)
+			}
+		})
+		deltaPath := filepath.Join(viper.GetString("home"),
+			fmt.Sprintf("data/state_delta/responses-%d.json", block.Height))
+		bytes, err := json.Marshal(abciResponses)
+		if err != nil {
+			panic(err)
+		}
+		err = ioutil.WriteFile(deltaPath, bytes, 0700)
+		if err != nil {
+			panic(err)
+		}
+	} else if viper.GetInt32("enable-state-delta") == 2 {
+		commitInfo, byzVals := getBeginBlockValidatorInfo(block, blockExec.db)
+		blockExec.proxyApp.BeginBlockSync(abci.RequestBeginBlock{
+			Hash:                block.Hash(),
+			Header:              types.TM2PB.Header(&block.Header),
+			LastCommitInfo:      commitInfo,
+			ByzantineValidators: byzVals,
+		})
+		deltaPath := filepath.Join(viper.GetString("home"),
+			fmt.Sprintf("data/state_delta/responses-%d.json", block.Height))
+		bytes, err := ioutil.ReadFile(deltaPath)
+		if err != nil {
+			panic(err)
+		}
+		err = json.Unmarshal(bytes, &abciResponses)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	}
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
