@@ -249,7 +249,7 @@ func (blockExec *BlockExecutor) Commit(
 		blockExec.logger.Error("Client error during mempool.FlushAppConn", "err", err)
 		return nil, 0, err
 	}
-
+	fmt.Println("FlushAppConn finished")
 	// Commit block, get hash back
 	res, err := blockExec.proxyApp.CommitSync()
 	if err != nil {
@@ -260,7 +260,7 @@ func (blockExec *BlockExecutor) Commit(
 		return nil, 0, err
 	}
 	// ResponseCommit has no error code - just data
-
+	fmt.Println("CommitSync finished")
 	blockExec.logger.Info(
 		"Committed state",
 		"height", block.Height,
@@ -276,7 +276,7 @@ func (blockExec *BlockExecutor) Commit(
 		TxPreCheck(state),
 		TxPostCheck(state),
 	)
-
+	fmt.Println("Update finished")
 	memCfg := blockExec.mempool.GetConfig()
 	if !memCfg.Recheck && block.Height%memCfg.ForceRecheckGap == 0 {
 		// reset checkState
@@ -284,7 +284,7 @@ func (blockExec *BlockExecutor) Commit(
 			Key: "ResetCheckState",
 		})
 	}
-
+	fmt.Println("GetConfig finished")
 	return res.Data, res.RetainHeight, err
 }
 
