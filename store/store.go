@@ -193,21 +193,25 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return commit
 }
 
+func (bs *BlockStore) PruneBlocks(to int64) (uint64, error) {
+    return bs.PruneRange(bs.Base(), to);
+}
+
 // PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
-func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
-	if height <= 0 {
-		return 0, fmt.Errorf("height must be greater than 0")
+func (bs *BlockStore) PruneRange(from int64, to int64) (uint64, error) {
+	if to <= 0 {
+		return 0, fmt.Errorf("to must be greater than 0")
 	}
 	bs.mtx.RLock()
-	if height > bs.height {
+	if to > bs.height {
 		bs.mtx.RUnlock()
-		return 0, fmt.Errorf("cannot prune beyond the latest height %v", bs.height)
+		return 0, fmt.Errorf("cannot prune beyond the latest to %v", bs.height)
 	}
 	base := bs.base
 	bs.mtx.RUnlock()
-	if height < base {
-		return 0, fmt.Errorf("cannot prune to height %v, it is lower than base height %v",
-			height, base)
+	if from < base {
+		return 0, fmt.Errorf("cannot prune to from %v, it is lower than base to %v",
+			from, base)
 	}
 
 	pruned := uint64(0)
@@ -229,7 +233,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		return nil
 	}
 
-	for h := base; h < height; h++ {
+	for h := from; h < to; h++ {
 		meta := bs.LoadBlockMeta(h)
 		if meta == nil { // assume already deleted
 			continue
@@ -254,7 +258,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		}
 	}
 
-	err := flush(batch, height)
+	err := flush(batch, to)
 	if err != nil {
 		return 0, err
 	}
