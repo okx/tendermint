@@ -193,6 +193,18 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return commit
 }
 
+func (bs *BlockStore) GetValidBlocks(from int64, to int64) ([]int64, error){
+    var res []int64
+    for h := from; h < to; h++ {
+		meta := bs.LoadBlockMeta(h)
+		if meta != nil { // assume already deleted
+			res = append(res, h)
+		}
+    }
+
+    return res, nil
+}
+
 func (bs *BlockStore) PruneBlocks(to int64) (uint64, error) {
     return bs.PruneRange(bs.Base(), to);
 }
@@ -218,12 +230,11 @@ func (bs *BlockStore) PruneRange(from int64, to int64) (uint64, error) {
 	batch := bs.db.NewBatch()
 	defer batch.Close()
 	flush := func(batch db.Batch, base int64) error {
-		// We can't trust batches to be atomic, so update base first to make sure noone
-		// tries to access missing blocks.
-		bs.mtx.Lock()
-		bs.base = base
-		bs.mtx.Unlock()
-		bs.saveState()
+        // no need to change base
+		// bs.mtx.Lock()
+		// bs.base = base
+		// bs.mtx.Unlock()
+        bs.saveState()
 
 		err := batch.WriteSync()
 		if err != nil {
