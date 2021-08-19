@@ -4,11 +4,18 @@ import (
 	context "golang.org/x/net/context"
 )
 
+type AsyncCacheInterface interface {
+	Push(key, value []byte)
+	Has(key []byte) bool
+}
+
 type ExecuteRes interface {
 	GetResponse() ResponseDeliverTx
-	Recheck() bool
+	Recheck(AsyncCacheInterface) bool
 	GetCounter() uint32
 	Commit() bool
+	Error() error
+	Collect(AsyncCacheInterface)
 }
 
 type AsyncCallBack func([]ExecuteRes)

@@ -312,14 +312,29 @@ func execBlockOnProxyApp(
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
 		return nil, err
 	}
-
+	asCache := NewAsyncCache()
 	signal := make(chan int, 1)
 	AsyncCb := func(execRes []abci.ExecuteRes) {
+		//after all async tx has been finished, we need to reset the aysnc mode to false
+		//then, we can rerun the dirty tx in serially
+		proxyAppConn.SetAsyncConfig(false)
 		for i := 0; i < len(abciResponses.DeliverTxs); i++ {
 			tmp := execRes[i].GetResponse()
 			abciResponses.DeliverTxs[i] = &tmp
-			if execRes[i].Recheck() {
+			if !execRes[i].Recheck(asCache) {
+				//we don't need to rerun the tx, just commit it and save dirty data into cache
+				execRes[i].Collect(asCache)
 				execRes[i].Commit()
+			} else {
+				//rerun current tx
+				proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: block.Txs[execRes[i].GetCounter()]})
+				if proxyAppConn.Error() != nil {
+					//break, stop execution and return an error
+					signal <- 0
+					return
+				}
+				//collect the cache from current serial executing tx
+
 			}
 		}
 		//keep running
@@ -341,8 +356,11 @@ func execBlockOnProxyApp(
 	}
 
 	if isAsync && len(block.Txs) > 0 {
-		//wait for call back
+		//waiting for call back
 		<-signal
+		if err := proxyAppConn.Error(); err != nil {
+			return nil, err
+		}
 	}
 
 	// End block.
