@@ -810,7 +810,6 @@ func (mem *CListMempool) Update(
 		} else {
 			mem.notifyTxsAvailable()
 		}
-		//} else if height%mem.config.ForceRecheckGap == 0 {
 	} else if height%cfg.DynamicConfig.GetMempoolForceRecheckGap() == 0 {
 		// saftly clean dirty data that stucks in the cache
 		mem.cache.Reset()
