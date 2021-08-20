@@ -658,14 +658,9 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		if maxGas > -1 && newTotalGas > maxGas {
 			return txs
 		}
-
 		if totalTxNum >= mem.config.MaxTxNumPerBlock {
 			return txs
 		}
-
-		//if totalTxNum >= cfg.DynamicConfig.GetTpb() {
-		//	return txs
-		//}
 
 		totalTxNum++
 		totalGas = newTotalGas
