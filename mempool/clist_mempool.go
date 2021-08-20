@@ -771,7 +771,7 @@ func (mem *CListMempool) Update(
 		mem.postCheck = postCheck
 	}
 
-	toCleanUserMap := make(map[string]uint64)
+	toCleanAccMap := make(map[string]uint64)
 	for i, tx := range txs {
 		txCode := deliverTxResponses[i].Code
 		if txCode == abci.CodeTypeOK || txCode > abci.CodeTypeNonceInc {
@@ -795,16 +795,16 @@ func (mem *CListMempool) Update(
 		if e, ok := mem.txsMap.Load(txKey(tx)); ok {
 			ele := e.(*clist.CElement)
 			if txCode == abci.CodeTypeOK || txCode > abci.CodeTypeNonceInc{
-				toCleanUserMap[ele.Address] = ele.Nonce
+				toCleanAccMap[ele.Address] = ele.Nonce
 			}
 			mem.removeTx(tx, ele, false)
 		}
 	}
 
-	for userAddr, userMaxNonce := range toCleanUserMap {
-		if txsRecord, ok := mem.addressRecord[userAddr]; ok {
+	for accAddr, accMaxNonce := range toCleanAccMap {
+		if txsRecord, ok := mem.addressRecord[accAddr]; ok {
 			for _, ele := range txsRecord {
-				if ele.Nonce <= userMaxNonce {
+				if ele.Nonce <= accMaxNonce {
 					mem.removeTx(ele.Value.(*mempoolTx).tx, ele, false)
 				}
 			}
