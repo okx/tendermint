@@ -244,8 +244,6 @@ func (blockExec *BlockExecutor) Commit(
 		TxPostCheck(state),
 	)
 
-	//memCfg := blockExec.mempool.GetConfig()
-	//if !memCfg.Recheck && block.Height%memCfg.ForceRecheckGap == 0 {
 	if !cfg.DynamicConfig.GetMempoolRecheck() && block.Height%cfg.DynamicConfig.GetMempoolForceRecheckGap() == 0 {
 		// reset checkState
 		blockExec.proxyApp.SetOptionAsync(abci.RequestSetOption{

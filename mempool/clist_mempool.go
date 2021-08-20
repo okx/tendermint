@@ -467,7 +467,6 @@ func (mem *CListMempool) isFull(txSize int) error {
 		txsBytes = mem.TxsBytes()
 	)
 
-	fmt.Println("mempoolSize=", cfg.DynamicConfig.GetMempoolSize())
 	if memSize >= cfg.DynamicConfig.GetMempoolSize() || int64(txSize)+txsBytes > mem.config.MaxTxsBytes {
 		return ErrMempoolIsFull{
 			memSize, cfg.DynamicConfig.GetMempoolSize(),
@@ -806,7 +805,6 @@ func (mem *CListMempool) Update(
 	// Either recheck non-committed txs to see if they became invalid
 	// or just notify there're some txs left.
 	if mem.Size() > 0 {
-		fmt.Println("Recheck=", cfg.DynamicConfig.GetMempoolRecheck(), "ForceRecheckGap=", cfg.DynamicConfig.GetMempoolForceRecheckGap())
 		if cfg.DynamicConfig.GetMempoolRecheck() || height%cfg.DynamicConfig.GetMempoolForceRecheckGap() == 0 {
 			mem.logger.Info("Recheck txs", "numtxs", mem.Size(), "height", height)
 			mem.recheckTxs()
