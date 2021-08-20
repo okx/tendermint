@@ -31,6 +31,10 @@ type grpcClient struct {
 	resCb func(*types.Request, *types.Response) // listens to all callbacks
 }
 
+func (cli *grpcClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool) types.ExecuteRes {
+	return nil
+}
+
 func (cli *grpcClient) SetAsyncCallBack(back types.AsyncCallBack) {
 }
 

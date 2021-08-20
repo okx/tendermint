@@ -49,6 +49,7 @@ type Client interface {
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	SetAsyncConfig(bool)
+	DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool) types.ExecuteRes
 }
 
 //----------------------------------------

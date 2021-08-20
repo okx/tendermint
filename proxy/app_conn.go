@@ -18,6 +18,7 @@ type AppConnConsensus interface {
 
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(types.RequestDeliverTx) *abcicli.ReqRes
+	DeliverTxWithCache(types.RequestDeliverTx, bool) types.ExecuteRes
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	CommitSync() (*types.ResponseCommit, error)
 	SetOptionAsync(req types.RequestSetOption) *abcicli.ReqRes
@@ -50,6 +51,10 @@ type AppConnQuery interface {
 
 type appConnConsensus struct {
 	appConn abcicli.Client
+}
+
+func (app *appConnConsensus) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool) types.ExecuteRes {
+	return app.appConn.DeliverTxWithCache(tx, needAnte)
 }
 
 func (app *appConnConsensus) SetAsyncConfig(sw bool) {

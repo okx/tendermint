@@ -43,6 +43,10 @@ type socketClient struct {
 
 }
 
+func (cli *socketClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool) types.ExecuteRes {
+	return nil
+}
+
 func (cli *socketClient) SetAsyncCallBack(back types.AsyncCallBack) {
 }
 

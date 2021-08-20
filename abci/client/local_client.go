@@ -21,6 +21,12 @@ type localClient struct {
 	Callback
 }
 
+func (app *localClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool) types.ExecuteRes {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+	return app.Application.DeliverTxWithCache(tx, needAnte)
+}
+
 func NewLocalClient(mtx *sync.Mutex, app types.Application) Client {
 	if mtx == nil {
 		mtx = new(sync.Mutex)

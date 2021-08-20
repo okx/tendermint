@@ -341,28 +341,53 @@ func execBlockOnProxyApp(
 	}
 	asCache := NewAsyncCache()
 	signal := make(chan int, 1)
-	AsyncCb := func(execRes []abci.ExecuteRes) {
+	AsyncCb := func(execRes map[int]abci.ExecuteRes) {
 		//after all async tx has been finished, we need to reset the aysnc mode to false
 		//then, we can rerun the dirty tx in serially
-		proxyAppConn.SetAsyncConfig(false)
+		validTxs = 0
+		invalidTxs = 0
+		txIndex = 0
 		for i := 0; i < len(abciResponses.DeliverTxs); i++ {
-			tmp := execRes[i].GetResponse()
+			res, ok := execRes[i]
+			if !ok {
+				//wtf, maybe need to panic program
+				continue
+			}
+			tmp := res.GetResponse()
 			abciResponses.DeliverTxs[i] = &tmp
-			if !execRes[i].Recheck(asCache) {
+			if !res.Recheck(asCache) {
 				//we don't need to rerun the tx, just commit it and save dirty data into cache
-				execRes[i].Collect(asCache)
-				execRes[i].Commit()
+				if res.Error() == nil {
+					res.Collect(asCache)
+					res.Commit()
+				}
+				if tmp.Code == abci.CodeTypeOK {
+					validTxs++
+				} else {
+					logger.Debug("Invalid tx", "code", tmp.Code, "log", tmp.Log)
+					invalidTxs++
+				}
 			} else {
 				//rerun current tx
-				proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: block.Txs[execRes[i].GetCounter()]})
+				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, res.NeedAnte())
 				if proxyAppConn.Error() != nil {
 					//break, stop execution and return an error
 					signal <- 0
 					return
 				}
 				//collect the cache from current serial executing tx
-
+				ret.Collect(asCache)
+				ret.Commit()
+				tmp := ret.GetResponse()
+				abciResponses.DeliverTxs[i] = &tmp
+				if ret.Error() == nil {
+					validTxs++
+				} else {
+					logger.Debug("Invalid tx", "code", tmp.Code, "log", tmp.Log)
+					invalidTxs++
+				}
 			}
+			txIndex++
 		}
 		//keep running
 		signal <- 0

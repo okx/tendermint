@@ -35,6 +35,10 @@ type PersistentKVStoreApplication struct {
 	logger log.Logger
 }
 
+func (app *PersistentKVStoreApplication) DeliverTxWithCache(tx types.RequestDeliverTx, b bool) types.ExecuteRes {
+	return nil
+}
+
 func (app *PersistentKVStoreApplication) SetAsyncConfig(sw bool) {
 }
 
