@@ -771,6 +771,7 @@ func (mem *CListMempool) Update(
 		mem.postCheck = postCheck
 	}
 
+	toCleanUserMap := make(map[string]uint64)
 	for i, tx := range txs {
 		if deliverTxResponses[i].Code == abci.CodeTypeOK {
 			// Add valid committed tx to the cache (if missing).
@@ -791,7 +792,21 @@ func (mem *CListMempool) Update(
 		//   100
 		// https://github.com/tendermint/tendermint/issues/3322.
 		if e, ok := mem.txsMap.Load(txKey(tx)); ok {
-			mem.removeTx(tx, e.(*clist.CElement), false)
+			ele := e.(*clist.CElement)
+			if deliverTxResponses[i].Code == abci.CodeTypeOK {
+				toCleanUserMap[ele.Address] = ele.Nonce
+			}
+			mem.removeTx(tx, ele, false)
+		}
+	}
+
+	for userAddr, userMaxNonce := range toCleanUserMap {
+		if txsRecord, ok := mem.addressRecord[userAddr]; ok {
+			for _, ele := range txsRecord {
+				if ele.Nonce <= userMaxNonce {
+					mem.removeTx(ele.Value.(*mempoolTx).tx, ele, false)
+				}
+			}
 		}
 	}
 
