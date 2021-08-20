@@ -9,7 +9,7 @@ import (
 
 const (
 	CodeTypeOK       uint32 = 0
-	CodeTypeNonceInc        = 100000
+	CodeTypeNonceInc uint32 = 100000
 )
 
 // IsOK returns true if Code is OK.
