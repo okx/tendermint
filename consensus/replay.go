@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/mock"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	tmstate "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -342,27 +343,29 @@ func (h *Handshaker) ReplayBlocks(
 		}
 	}
 
-	// First handle edge cases and constraints on the storeBlockHeight and storeBlockBase.
-	switch {
-	case storeBlockHeight == types.GetStartBlockHeight():
-		assertAppHashEqualsOneFromState(appHash, state)
-		return appHash, nil
+	if !tmstate.IgnoreSmbCheck {
+		// First handle edge cases and constraints on the storeBlockHeight and storeBlockBase.
+		switch {
+		case storeBlockHeight == types.GetStartBlockHeight():
+			assertAppHashEqualsOneFromState(appHash, state)
+			return appHash, nil
 
-	case appBlockHeight < storeBlockBase-1:
-		// the app is too far behind truncated store (can be 1 behind since we replay the next)
-		return appHash, sm.ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
+		case appBlockHeight < storeBlockBase-1:
+			// the app is too far behind truncated store (can be 1 behind since we replay the next)
+			return appHash, sm.ErrAppBlockHeightTooLow{AppHeight: appBlockHeight, StoreBase: storeBlockBase}
 
-	case storeBlockHeight < appBlockHeight:
-		// the app should never be ahead of the store (but this is under app's control)
-		return appHash, sm.ErrAppBlockHeightTooHigh{CoreHeight: storeBlockHeight, AppHeight: appBlockHeight}
+		case storeBlockHeight < appBlockHeight:
+			// the app should never be ahead of the store (but this is under app's control)
+			return appHash, sm.ErrAppBlockHeightTooHigh{CoreHeight: storeBlockHeight, AppHeight: appBlockHeight}
 
-	case storeBlockHeight < stateBlockHeight:
-		// the state should never be ahead of the store (this is under tendermint's control)
-		panic(fmt.Sprintf("StateBlockHeight (%d) > StoreBlockHeight (%d)", stateBlockHeight, storeBlockHeight))
+		case storeBlockHeight < stateBlockHeight:
+			// the state should never be ahead of the store (this is under tendermint's control)
+			panic(fmt.Sprintf("StateBlockHeight (%d) > StoreBlockHeight (%d)", stateBlockHeight, storeBlockHeight))
 
-	//case storeBlockHeight > stateBlockHeight+1:
-	//	// store should be at most one ahead of the state (this is under tendermint's control)
-	//	panic(fmt.Sprintf("StoreBlockHeight (%d) > StateBlockHeight + 1 (%d)", storeBlockHeight, stateBlockHeight+1))
+			//case storeBlockHeight > stateBlockHeight+1:
+			//	// store should be at most one ahead of the state (this is under tendermint's control)
+			//	panic(fmt.Sprintf("StoreBlockHeight (%d) > StateBlockHeight + 1 (%d)", storeBlockHeight, stateBlockHeight+1))
+		}
 	}
 
 	var err error
