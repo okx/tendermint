@@ -50,8 +50,8 @@ var (
 	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
 
-	DefaultLogPath     = os.ExpandEnv("$HOME/.okexchaind")
-	defaultLogFileName = "okexchaind.log"
+	DefaultLogPath     = os.ExpandEnv("$HOME/.exchaind")
+	defaultLogFileName = "exchaind.log"
 	defaultLogFile     = filepath.Join(DefaultLogPath, defaultLogFileName)
 )
 
@@ -111,7 +111,7 @@ func (cfg *Config) SetRoot(root string) *Config {
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
 
-	// okexchain change LogFile base on cfg.BaseConfig.RootDir
+	// exchain change LogFile base on cfg.BaseConfig.RootDir
 	if root != DefaultLogPath && cfg.BaseConfig.LogFile == defaultLogFile {
 		cfg.BaseConfig.LogFile = filepath.Join(root, defaultLogFileName)
 	}
@@ -659,6 +659,7 @@ func DefaultFuzzConnConfig() *FuzzConnConfig {
 // MempoolConfig defines the configuration options for the Tendermint mempool
 type MempoolConfig struct {
 	RootDir          string `mapstructure:"home"`
+	Sealed           bool   `mapstructure:"sealed"`
 	Recheck          bool   `mapstructure:"recheck"`
 	Broadcast        bool   `mapstructure:"broadcast"`
 	WalPath          string `mapstructure:"wal_dir"`
@@ -667,6 +668,9 @@ type MempoolConfig struct {
 	CacheSize        int    `mapstructure:"cache_size"`
 	MaxTxBytes       int    `mapstructure:"max_tx_bytes"`
 	MaxTxNumPerBlock int64  `mapstructure:"max_tx_num_per_block"`
+	SortTxByGp       bool   `mapstructure:"sort_tx_by_gp"`
+	ForceRecheckGap  int64  `mapstructure:"force_recheck_gap"`
+	TxPriceBump      uint64 `mapstructure:"tx_price_bump"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -677,11 +681,14 @@ func DefaultMempoolConfig() *MempoolConfig {
 		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:             2000,               // okexchain memory pool size(max tx num)
+		Size:             2000,               // exchain memory pool size(max tx num)
 		MaxTxsBytes:      1024 * 1024 * 1024, // 1GB
 		CacheSize:        10000,
 		MaxTxBytes:       1024 * 1024, // 1MB
-		MaxTxNumPerBlock: 150,
+		MaxTxNumPerBlock: 300,
+		SortTxByGp:       true,
+		ForceRecheckGap:  200,
+		TxPriceBump:      10,
 	}
 }
 

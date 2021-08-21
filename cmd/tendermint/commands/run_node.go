@@ -80,8 +80,24 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"consensus.create_empty_blocks_interval",
 		config.Consensus.CreateEmptyBlocksInterval.String(),
 		"The possible interval between empty blocks")
-
 	// mempool flags
+	cmd.Flags().Bool(
+		"mempool.sealed",
+		config.Mempool.Sealed,
+		"Set this to true only for debug mode",
+	)
+	cmd.Flags().MarkHidden("mempool.sealed")
+	// mempool flags
+	cmd.Flags().Bool(
+		"mempool.recheck",
+		config.Mempool.Recheck,
+		"Enable recheck of txs remain pending in mempool",
+	)
+	cmd.Flags().Int64(
+		"mempool.force_recheck_gap",
+		config.Mempool.ForceRecheckGap,
+		"The interval to force recheck of txs remain pending in mempool",
+	)
 	cmd.Flags().Int(
 		"mempool.size",
 		config.Mempool.Size,
@@ -91,6 +107,16 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"mempool.max_tx_num_per_block",
 		config.Mempool.MaxTxNumPerBlock,
 		"Maximum number of transactions in a block",
+	)
+	cmd.Flags().Bool(
+		"mempool.sort_tx_by_gp",
+		config.Mempool.SortTxByGp,
+		"Sort tx by gas price in mempool",
+	)
+	cmd.Flags().Uint64(
+		"mempool.tx_price_bump",
+		config.Mempool.TxPriceBump,
+		"Minimum price bump percentage to replace an already existing transaction with same nonce",
 	)
 
 	// db flags
