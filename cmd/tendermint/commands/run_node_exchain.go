@@ -27,6 +27,6 @@ func addMoreFlags(cmd *cobra.Command) {
 	cmd.Flags().Duration("consensus.timeout_commit", config.Consensus.TimeoutCommit, "Set node block interval time")
 
 	cmd.Flags().String(FlagStartHeight, "0", "start height")
-	cmd.Flags().BoolVarP(&state.IgnoreSmbCheck, "ignore-smb", "i", false, "ignore state machine broken")
+	cmd.Flags().BoolVarP(&state.IgnoreSmbCheck, "ignore-smb", "i", true, "ignore state machine broken")
 	cmd.Flags().Bool(abci.FlagCloseMutex, false, "Close local client query mutex for better concurrency")
 }
