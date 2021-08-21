@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"fmt"
-	"github.com/spf13/viper"
 	"hash/crc32"
 	"io"
 	"reflect"
