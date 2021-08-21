@@ -292,11 +292,6 @@ func (h *Handshaker) ReplayBlocks(
 	storeBlockBase := h.store.Base()
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := state.LastBlockHeight
-	assignedStartHeight := viper.GetString("start_height")
-	if assignedStartHeight != "0" {
-		appBlockHeight = state.LastBlockHeight - 1
-		storeBlockHeight = stateBlockHeight
-	}
 	h.logger.Info(
 		"ABCI Replay Blocks",
 		"appHeight",

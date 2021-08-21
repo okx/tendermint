@@ -397,12 +397,9 @@ func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	if bsj.Height > 0 && bsj.Base == 0 {
 		bsj.Base = 1
 	}
-	assignedStartHeight := viper.GetString("start_height")
-	if assignedStartHeight != "0" {
-		height, err := strconv.Atoi(assignedStartHeight)
-		if err == nil {
-			bsj.Height = int64(height)
-		}
+	assignedStartHeight := viper.GetInt64("start_height")
+	if assignedStartHeight > 0 {
+		bsj.Height = assignedStartHeight
 	}
 	return bsj
 }
