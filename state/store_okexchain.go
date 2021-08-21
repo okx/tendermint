@@ -23,13 +23,6 @@ func LoadStateStartHeight(db dbm.DB) State {
 	return state
 }
 
-func loadStartHeightStateFromHistory(db dbm.DB, height int64) State {
-	curState := loadState(db, stateKey)
-	startState := curState.Copy()
-	startState.Version = height
-
-}
-
 // SaveStateStartHeight persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
 // This flushes the writes (e.g. calls SetSync).
 func SaveStateStartHeight(db dbm.DB, state State) {
