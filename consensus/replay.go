@@ -384,7 +384,7 @@ func (h *Handshaker) ReplayBlocks(
 			return appHash, nil
 		}
 
-	} else if storeBlockHeight == stateBlockHeight+1 {
+	} else if storeBlockHeight <= stateBlockHeight+1 {
 		// We saved the block in the store but haven't updated the state,
 		// so we'll need to replay a block using the WAL.
 		switch {
