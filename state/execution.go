@@ -347,15 +347,18 @@ func execBlockOnProxyApp(
 		validTxs = 0
 		invalidTxs = 0
 		txIndex = 0
+		fmt.Printf("Deliver tx for %d txs\n", len(abciResponses.DeliverTxs))
 		for i := 0; i < len(abciResponses.DeliverTxs); i++ {
 			res, ok := execRes[i]
 			if !ok {
 				//wtf, maybe need to panic program
+				fmt.Printf("No such those tx in map,idx : %d\n", i)
 				continue
 			}
 			tmp := res.GetResponse()
 			abciResponses.DeliverTxs[i] = &tmp
 			if !res.Recheck(asCache) {
+				fmt.Printf("commit directly for tx %d\n", i)
 				//we don't need to rerun the tx, just commit it and save dirty data into cache
 				if res.Error() == nil {
 					res.Collect(asCache)
@@ -368,6 +371,7 @@ func execBlockOnProxyApp(
 					invalidTxs++
 				}
 			} else {
+				fmt.Printf("rerun tx %d\n", i)
 				//rerun current tx
 				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, res.NeedAnte())
 				if proxyAppConn.Error() != nil {
@@ -386,6 +390,7 @@ func execBlockOnProxyApp(
 					logger.Debug("Invalid tx", "code", tmp.Code, "log", tmp.Log)
 					invalidTxs++
 				}
+				fmt.Printf("rerun tx %d,ret is %v\n", txIndex, ret.Error())
 			}
 			txIndex++
 		}
