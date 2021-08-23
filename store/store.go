@@ -193,20 +193,20 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return commit
 }
 
-func (bs *BlockStore) GetValidBlocks(from int64, to int64) ([]int64, error){
-    var res []int64
-    for h := from; h < to; h++ {
+func (bs *BlockStore) GetValidBlocks(from int64, to int64) ([]int64, error) {
+	var res []int64
+	for h := from; h < to; h++ {
 		meta := bs.LoadBlockMeta(h)
 		if meta != nil { // assume already deleted
 			res = append(res, h)
 		}
-    }
+	}
 
-    return res, nil
+	return res, nil
 }
 
 func (bs *BlockStore) PruneBlocks(to int64) (uint64, error) {
-    return bs.PruneRange(bs.Base(), to);
+	return bs.PruneRange(bs.Base(), to)
 }
 
 // PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
@@ -230,11 +230,11 @@ func (bs *BlockStore) PruneRange(from int64, to int64) (uint64, error) {
 	batch := bs.db.NewBatch()
 	defer batch.Close()
 	flush := func(batch db.Batch, base int64) error {
-        // no need to change base
+		// no need to change base
 		// bs.mtx.Lock()
 		// bs.base = base
 		// bs.mtx.Unlock()
-        bs.saveState()
+		bs.saveState()
 
 		err := batch.WriteSync()
 		if err != nil {

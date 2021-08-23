@@ -125,29 +125,28 @@ type ABCIResponses struct {
 	BeginBlock *abci.ResponseBeginBlock  `json:"begin_block"`
 }
 
-
 // used to collect all existed states after pruning state
 func GetValidStates(db dbm.DB, from int64, to int64) ([]int64, error) {
-    if from <= 0 || to <= 0 {
+	if from <= 0 || to <= 0 {
 		return nil, fmt.Errorf("from height %v and to height %v must be greater than 0", from, to)
 	}
 	if from >= to {
 		return nil, fmt.Errorf("from height %v must be lower than to height %v", from, to)
 	}
 
-    var res []int64
+	var res []int64
 
-    // to validate each state, retrieve its validators info and consensus_params info first.
-    // either info exists, we can consider as it exists
-    for h:=from; h<to;h++{
-	    valInfo := loadValidatorsInfo(db, h)
-	    paramsInfo := loadConsensusParamsInfo(db, h)
+	// to validate each state, retrieve its validators info and consensus_params info first.
+	// either info exists, we can consider as it exists
+	for h := from; h < to; h++ {
+		valInfo := loadValidatorsInfo(db, h)
+		paramsInfo := loadConsensusParamsInfo(db, h)
 
-        if valInfo !=nil || paramsInfo !=nil{
-            res = append(res, h)
-        }
-    }
-    return res, nil
+		if valInfo != nil || paramsInfo != nil {
+			res = append(res, h)
+		}
+	}
+	return res, nil
 }
 
 // PruneStates deletes states between the given heights (including from, excluding to). It is not
@@ -169,20 +168,20 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 	keepVals := make(map[int64]bool)
 	keepParams := make(map[int64]bool)
 
-    valInfo := loadValidatorsInfo(db, to)
+	valInfo := loadValidatorsInfo(db, to)
 	if valInfo != nil {
-        if valInfo.ValidatorSet == nil {
-            keepVals[valInfo.LastHeightChanged] = true
-            keepVals[lastStoredHeightFor(to, valInfo.LastHeightChanged)] = true // keep last checkpoint too
-        }
-    }
+		if valInfo.ValidatorSet == nil {
+			keepVals[valInfo.LastHeightChanged] = true
+			keepVals[lastStoredHeightFor(to, valInfo.LastHeightChanged)] = true // keep last checkpoint too
+		}
+	}
 
 	paramsInfo := loadConsensusParamsInfo(db, to)
 	if paramsInfo != nil {
-        if paramsInfo.ConsensusParams.Equals(&types.ConsensusParams{}) {
-            keepParams[paramsInfo.LastHeightChanged] = true
-        }
-    }
+		if paramsInfo.ConsensusParams.Equals(&types.ConsensusParams{}) {
+			keepParams[paramsInfo.LastHeightChanged] = true
+		}
+	}
 
 	batch := db.NewBatch()
 	defer batch.Close()
