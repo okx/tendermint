@@ -31,7 +31,7 @@ type grpcClient struct {
 	resCb func(*types.Request, *types.Response) // listens to all callbacks
 }
 
-func (cli *grpcClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool) types.ExecuteRes {
+func (cli *grpcClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool, u uint32) types.ExecuteRes {
 	return nil
 }
 

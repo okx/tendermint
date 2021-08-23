@@ -43,7 +43,7 @@ type socketClient struct {
 
 }
 
-func (cli *socketClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool) types.ExecuteRes {
+func (cli *socketClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool, u uint32) types.ExecuteRes {
 	return nil
 }
 

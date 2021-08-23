@@ -1039,7 +1039,7 @@ func getDefaultMoniker() string {
 
 //Asynchronize config
 
-var asyncConfig = true
+var asyncConfig = false
 
 func IsAsyncDeliverTx() bool {
 	return asyncConfig

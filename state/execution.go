@@ -373,7 +373,7 @@ func execBlockOnProxyApp(
 			} else {
 				fmt.Printf("rerun tx %d\n", i)
 				//rerun current tx
-				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, res.NeedAnte())
+				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, res.NeedAnte(), res.GetEvmTxCounter())
 				if proxyAppConn.Error() != nil {
 					//break, stop execution and return an error
 					signal <- 0

@@ -35,7 +35,7 @@ type PersistentKVStoreApplication struct {
 	logger log.Logger
 }
 
-func (app *PersistentKVStoreApplication) DeliverTxWithCache(tx types.RequestDeliverTx, b bool) types.ExecuteRes {
+func (app *PersistentKVStoreApplication) DeliverTxWithCache(tx types.RequestDeliverTx, b bool, u uint32) types.ExecuteRes {
 	return nil
 }
 
