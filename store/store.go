@@ -205,11 +205,6 @@ func (bs *BlockStore) GetValidBlocks(from int64, to int64) ([]int64, error) {
 	return res, nil
 }
 
-func (bs *BlockStore) PruneBlocks(to int64) (uint64, error) {
-	return bs.PruneRange(bs.Base(), to)
-}
-
-// PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
 func (bs *BlockStore) PruneRange(from int64, to int64) (uint64, error) {
 	if to <= 0 {
 		return 0, fmt.Errorf("to must be greater than 0")
@@ -270,6 +265,74 @@ func (bs *BlockStore) PruneRange(from int64, to int64) (uint64, error) {
 	}
 
 	err := flush(batch, to)
+	if err != nil {
+		return 0, err
+	}
+	return pruned, nil
+}
+
+// PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
+func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
+	if height <= 0 {
+		return 0, fmt.Errorf("height must be greater than 0")
+	}
+	bs.mtx.RLock()
+	if height > bs.height {
+		bs.mtx.RUnlock()
+		return 0, fmt.Errorf("cannot prune beyond the latest height %v", bs.height)
+	}
+	base := bs.base
+	bs.mtx.RUnlock()
+	if height < base {
+		return 0, fmt.Errorf("cannot prune to height %v, it is lower than base height %v",
+			height, base)
+	}
+
+	pruned := uint64(0)
+	batch := bs.db.NewBatch()
+	defer batch.Close()
+	flush := func(batch db.Batch, base int64) error {
+		// We can't trust batches to be atomic, so update base first to make sure noone
+		// tries to access missing blocks.
+		bs.mtx.Lock()
+		bs.base = base
+		bs.mtx.Unlock()
+		bs.saveState()
+
+		err := batch.WriteSync()
+		if err != nil {
+			return fmt.Errorf("failed to prune up to height %v: %w", base, err)
+		}
+		batch.Close()
+		return nil
+	}
+
+	for h := base; h < height; h++ {
+		meta := bs.LoadBlockMeta(h)
+		if meta == nil { // assume already deleted
+			continue
+		}
+		batch.Delete(calcBlockMetaKey(h))
+		batch.Delete(calcBlockHashKey(meta.BlockID.Hash))
+		batch.Delete(calcBlockCommitKey(h))
+		batch.Delete(calcSeenCommitKey(h))
+		for p := 0; p < meta.BlockID.PartsHeader.Total; p++ {
+			batch.Delete(calcBlockPartKey(h, p))
+		}
+		pruned++
+
+		// flush every 1000 blocks to avoid batches becoming too large
+		if pruned%1000 == 0 && pruned > 0 {
+			err := flush(batch, h)
+			if err != nil {
+				return 0, err
+			}
+			batch = bs.db.NewBatch()
+			defer batch.Close()
+		}
+	}
+
+	err := flush(batch, height)
 	if err != nil {
 		return 0, err
 	}
