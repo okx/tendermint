@@ -228,7 +228,7 @@ func (bs *BlockStore) PruneRange(from int64, to int64) (uint64, error) {
 	flush := func(batch db.Batch, base int64) error {
         bs.mtx.Lock()
         if updateBase{
-            bs.base = to + 1
+            bs.base = to
         }else{
             bs.height = from - 1
         }
