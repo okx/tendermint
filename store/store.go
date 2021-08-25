@@ -220,17 +220,21 @@ func (bs *BlockStore) PruneRange(from int64, to int64) (uint64, error) {
 		return 0, fmt.Errorf("cannot prune to from %v, it is lower than base to %v",
 			from, base)
 	}
+    updateBase := from==base
 
 	pruned := uint64(0)
 	batch := bs.db.NewBatch()
 	defer batch.Close()
 	flush := func(batch db.Batch, base int64) error {
-		// no need to change base
-		// bs.mtx.Lock()
-		// bs.base = base
-		// bs.mtx.Unlock()
-		bs.saveState()
+        bs.mtx.Lock()
+        if updateBase{
+            bs.base = to + 1
+        }else{
+            bs.height = from - 1
+        }
+        bs.mtx.Unlock()
 
+        bs.saveState()
 		err := batch.WriteSync()
 		if err != nil {
 			return fmt.Errorf("failed to prune up to height %v: %w", base, err)
