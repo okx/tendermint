@@ -1,18 +1,13 @@
 package state
 
 import (
+	"context"
 	"fmt"
-	"time"
-	"encoding/json"
-	"io/ioutil"
-	"path/filepath"
-	"sync"
-
 	"github.com/spf13/viper"
 	dbm "github.com/tendermint/tm-db"
+	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -157,44 +152,21 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	trc.pin("abci")
 	startTime := time.Now().UnixNano()
 	var abciResponses *ABCIResponses
+	var deltas types.Deltas
 	var err error
 	if viper.GetInt32("enable-state-delta") == 1 {
 		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
-		var once sync.Once
-		once.Do(func() {
-			if err := tmos.EnsureDir(filepath.Join(viper.GetString("home"),
-				fmt.Sprintf("data/state_delta")), 0700); err != nil {
-				panic(err)
-			}
-		})
-		deltaPath := filepath.Join(viper.GetString("home"),
-			fmt.Sprintf("data/state_delta/responses-%d.json", block.Height))
-		bytes, err := json.Marshal(abciResponses)
-		if err != nil {
-			panic(err)
-		}
-		err = ioutil.WriteFile(deltaPath, bytes, 0700)
-		if err != nil {
-			panic(err)
-		}
+		deltas.ABCIRsp = *abciResponses
 	} else if viper.GetInt32("enable-state-delta") == 2 {
 		commitInfo, byzVals := getBeginBlockValidatorInfo(block, blockExec.db)
-		blockExec.proxyApp.BeginBlockSync(abci.RequestBeginBlock{
+		_, _ = blockExec.proxyApp.BeginBlockSync(abci.RequestBeginBlock{
 			Hash:                block.Hash(),
 			Header:              types.TM2PB.Header(&block.Header),
 			LastCommitInfo:      commitInfo,
 			ByzantineValidators: byzVals,
 		})
-		deltaPath := filepath.Join(viper.GetString("home"),
-			fmt.Sprintf("data/state_delta/responses-%d.json", block.Height))
-		bytes, err := ioutil.ReadFile(deltaPath)
-		if err != nil {
-			panic(err)
-		}
-		err = json.Unmarshal(bytes, &abciResponses)
-		if err != nil {
-			panic(err)
-		}
+		// todo get deltas by block.Height
+		// apciResponses = &deltas.ABCIRsp
 	} else {
 		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	}
@@ -240,7 +212,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	startTime = time.Now().UnixNano()
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
+	ctx := context.Background()
+	ctxNew, appHash, retainHeight, err := blockExec.Commit(ctx, state, block, abciResponses.DeliverTxs)
+	outDeltasBytes, _ := ctxNew.Value("outDeltasBytes").([]byte)
+	deltas.DeltasBytes = outDeltasBytes
 	endTime = time.Now().UnixNano()
 	blockExec.metrics.CommitTime.Set(float64(endTime-startTime) / 1e6)
 	if err != nil {
@@ -276,10 +251,11 @@ func (blockExec *BlockExecutor) ApplyBlock(
 // typically reset on Commit and old txs must be replayed against committed
 // state before new txs are run in the mempool, lest they be invalid.
 func (blockExec *BlockExecutor) Commit(
+	ctx context.Context,
 	state State,
 	block *types.Block,
 	deliverTxResponses []*abci.ResponseDeliverTx,
-) ([]byte, int64, error) {
+) (context.Context, []byte, int64, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -288,17 +264,17 @@ func (blockExec *BlockExecutor) Commit(
 	err := blockExec.mempool.FlushAppConn()
 	if err != nil {
 		blockExec.logger.Error("Client error during mempool.FlushAppConn", "err", err)
-		return nil, 0, err
+		return ctx, nil, 0, err
 	}
 
 	// Commit block, get hash back
-	res, err := blockExec.proxyApp.CommitSync()
+	ctxNew, res, err := blockExec.proxyApp.CommitSync(ctx)
 	if err != nil {
 		blockExec.logger.Error(
 			"Client error during proxyAppConn.CommitSync",
 			"err", err,
 		)
-		return nil, 0, err
+		return ctx, nil, 0, err
 	}
 	// ResponseCommit has no error code - just data
 
@@ -326,7 +302,7 @@ func (blockExec *BlockExecutor) Commit(
 		})
 	}
 
-	return res.Data, res.RetainHeight, err
+	return ctxNew, res.Data, res.RetainHeight, err
 }
 
 //---------------------------------------------------------
@@ -586,7 +562,7 @@ func ExecCommitBlock(
 		return nil, err
 	}
 	// Commit block, get hash back
-	res, err := appConnConsensus.CommitSync()
+	_, res, err := appConnConsensus.CommitSync(context.Background())
 	if err != nil {
 		logger.Error("Client error during proxyAppConn.CommitSync", "err", res)
 		return nil, err

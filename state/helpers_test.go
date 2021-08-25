@@ -2,6 +2,7 @@ package state_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"time"
 
@@ -278,8 +279,8 @@ func (app *testApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	return abci.ResponseCheckTx{}
 }
 
-func (app *testApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{}
+func (app *testApp) Commit(ctx context.Context) (context.Context, abci.ResponseCommit) {
+	return ctx, abci.ResponseCommit{}
 }
 
 func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {

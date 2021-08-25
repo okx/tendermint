@@ -3,6 +3,7 @@ package abcicli
 import (
 	"bufio"
 	"container/list"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -313,10 +314,10 @@ func (cli *socketClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery
 	return reqres.Response.GetQuery(), cli.Error()
 }
 
-func (cli *socketClient) CommitSync() (*types.ResponseCommit, error) {
+func (cli *socketClient) CommitSync(ctx context.Context) (context.Context, *types.ResponseCommit, error) {
 	reqres := cli.queueRequest(types.ToRequestCommit())
 	cli.FlushSync()
-	return reqres.Response.GetCommit(), cli.Error()
+	return ctx, reqres.Response.GetCommit(), cli.Error()
 }
 
 func (cli *socketClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {

@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"github.com/tendermint/tendermint/state"
 	"strconv"
 	"strings"
 	"sync"
@@ -63,6 +64,13 @@ func init() {
 
 func GetStartBlockHeight() int64 {
 	return startBlockHeight
+}
+
+// Deltas defines the ABCIResponse and state delta
+type Deltas struct {
+	ABCIRsp	state.ABCIResponses
+	DeltasBytes	[]byte
+	Height	int64
 }
 
 // Block defines the atomic unit of a Tendermint blockchain.

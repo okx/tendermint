@@ -206,6 +206,12 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.pool.SetPeerRange(src.ID(), msg.Base, msg.Height)
 	case *bcNoBlockResponseMessage:
 		bcR.Logger.Debug("Peer does not have requested block", "peer", src, "height", msg.Height)
+	case *bcDeltaRequestMessage:
+		// todo return Delta to the requester
+		bcR.Logger.Debug("bcDeltaRequestMessage")
+	case *bcDeltaResponseMessage:
+		// todo store the Delta
+		bcR.Logger.Debug("bcDeltaResponseMessage")
 	default:
 		bcR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
@@ -391,6 +397,8 @@ func RegisterBlockchainMessages(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&bcNoBlockResponseMessage{}, "tendermint/blockchain/NoBlockResponse", nil)
 	cdc.RegisterConcrete(&bcStatusResponseMessage{}, "tendermint/blockchain/StatusResponse", nil)
 	cdc.RegisterConcrete(&bcStatusRequestMessage{}, "tendermint/blockchain/StatusRequest", nil)
+	cdc.RegisterConcrete(&bcDeltaRequestMessage{}, "tendermint/blockchain/DeltaRequest", nil)
+	cdc.RegisterConcrete(&bcDeltaResponseMessage{}, "tendermint/blockchain/DeltaResponse", nil)
 }
 
 func decodeMsg(bz []byte) (msg BlockchainMessage, err error) {
@@ -498,4 +506,40 @@ func (m *bcStatusResponseMessage) ValidateBasic() error {
 
 func (m *bcStatusResponseMessage) String() string {
 	return fmt.Sprintf("[bcStatusResponseMessage %v:%v]", m.Base, m.Height)
+}
+
+type bcDeltaRequestMessage struct {
+	Height	int64
+	Base	int64
+}
+
+// ValidateBasic performs basic validation.
+func (m *bcDeltaRequestMessage) ValidateBasic() error {
+	if m.Base < 0 {
+		return errors.New("negative Base")
+	}
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if m.Base > m.Height {
+		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
+	}
+	return nil
+}
+
+func (m *bcDeltaRequestMessage) String() string {
+	return fmt.Sprintf("[bcStatusRequestMessage %v:%v]", m.Base, m.Height)
+}
+
+type bcDeltaResponseMessage struct {
+	Delta	*types.Deltas
+}
+
+// ValidateBasic performs basic validation.
+func (m *bcDeltaResponseMessage) ValidateBasic() error {
+	return nil
+}
+
+func (m *bcDeltaResponseMessage) String() string {
+	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Delta.Height)
 }

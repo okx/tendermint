@@ -1,6 +1,7 @@
 package abcicli
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -43,7 +44,7 @@ type Client interface {
 	DeliverTxSync(types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
 	CheckTxSync(types.RequestCheckTx) (*types.ResponseCheckTx, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
-	CommitSync() (*types.ResponseCommit, error)
+	CommitSync(context.Context) (context.Context, *types.ResponseCommit, error)
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)

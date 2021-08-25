@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -143,7 +144,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	resDeliver := app.DeliverTx(abci.RequestDeliverTx{Tx: txBytes})
 	assert.False(t, resDeliver.IsErr(), fmt.Sprintf("expected no error. got %v", resDeliver))
 
-	resCommit := app.Commit()
+	_, resCommit := app.Commit(context.Background())
 	assert.True(t, len(resCommit.Data) > 0)
 
 	emptyMempoolCh := make(chan struct{})
@@ -240,12 +241,12 @@ func txAsUint64(tx []byte) uint64 {
 	return binary.BigEndian.Uint64(tx8)
 }
 
-func (app *CounterApplication) Commit() abci.ResponseCommit {
+func (app *CounterApplication) Commit(ctx context.Context) (context.Context, abci.ResponseCommit) {
 	app.mempoolTxCount = app.txCount
 	if app.txCount == 0 {
-		return abci.ResponseCommit{}
+		return ctx, abci.ResponseCommit{}
 	}
 	hash := make([]byte, 8)
 	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-	return abci.ResponseCommit{Data: hash}
+	return ctx, abci.ResponseCommit{Data: hash}
 }

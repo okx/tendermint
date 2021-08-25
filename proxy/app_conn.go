@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
 )
@@ -17,7 +18,7 @@ type AppConnConsensus interface {
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(types.RequestDeliverTx) *abcicli.ReqRes
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
-	CommitSync() (*types.ResponseCommit, error)
+	CommitSync(context.Context) (context.Context, *types.ResponseCommit, error)
 	SetOptionAsync(req types.RequestSetOption) *abcicli.ReqRes
 }
 
@@ -80,8 +81,8 @@ func (app *appConnConsensus) EndBlockSync(req types.RequestEndBlock) (*types.Res
 	return app.appConn.EndBlockSync(req)
 }
 
-func (app *appConnConsensus) CommitSync() (*types.ResponseCommit, error) {
-	return app.appConn.CommitSync()
+func (app *appConnConsensus) CommitSync(ctx context.Context) (context.Context, *types.ResponseCommit, error) {
+	return app.appConn.CommitSync(ctx)
 }
 
 func (app *appConnConsensus) SetOptionAsync(req types.RequestSetOption) *abcicli.ReqRes {

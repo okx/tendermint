@@ -285,9 +285,9 @@ func (cli *grpcClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, 
 	return reqres.Response.GetQuery(), cli.Error()
 }
 
-func (cli *grpcClient) CommitSync() (*types.ResponseCommit, error) {
+func (cli *grpcClient) CommitSync(ctx context.Context) (context.Context, *types.ResponseCommit, error) {
 	reqres := cli.CommitAsync()
-	return reqres.Response.GetCommit(), cli.Error()
+	return ctx, reqres.Response.GetCommit(), cli.Error()
 }
 
 func (cli *grpcClient) InitChainSync(params types.RequestInitChain) (*types.ResponseInitChain, error) {

@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -548,6 +549,6 @@ func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlo
 	return *mock.abciResponses.EndBlock
 }
 
-func (mock *mockProxyApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{Data: mock.appHash}
+func (mock *mockProxyApp) Commit(ctx context.Context) (context.Context, abci.ResponseCommit) {
+	return ctx, abci.ResponseCommit{Data: mock.appHash}
 }
