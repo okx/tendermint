@@ -24,7 +24,7 @@ func newPendingPool(maxSize int, consumePeriod int) *PendingPool {
 
 func (p *PendingPool) Size() int {
 	p.mtx.RLock()
-	p.mtx.RUnlock()
+	defer p.mtx.RUnlock()
 	return len(p.txsMap)
 }
 
