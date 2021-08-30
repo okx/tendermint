@@ -162,8 +162,9 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 	src p2p.Peer) (queued bool) {
 
 	block := bcR.store.LoadBlock(msg.Height)
+	deltas := bcR.store.LoadDeltas(msg.Height)
 	if block != nil {
-		msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponseMessage{Block: block})
+		msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponseMessage{Block: block, Deltas: deltas})
 		return src.TrySend(BlockchainChannel, msgBytes)
 	}
 
@@ -194,7 +195,13 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	case *bcBlockRequestMessage:
 		bcR.respondToPeer(msg, src)
 	case *bcBlockResponseMessage:
-		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
+		if msg.Deltas == nil {
+			bcR.Logger.Debug("Get Deltas from msg is nil. Try send BlockRequest again")
+			msgBytes := cdc.MustMarshalBinaryBare(&bcNoBlockResponseMessage{Height: msg.Block.Height})
+			src.TrySend(BlockchainChannel, msgBytes)
+		} else {
+			bcR.pool.AddBlock(src.ID(), msg.Block, msg.Deltas, len(msgBytes))
+		}
 	case *bcStatusRequestMessage:
 		// Send peer our state.
 		src.TrySend(BlockchainChannel, cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{
@@ -206,12 +213,6 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.pool.SetPeerRange(src.ID(), msg.Base, msg.Height)
 	case *bcNoBlockResponseMessage:
 		bcR.Logger.Debug("Peer does not have requested block", "peer", src, "height", msg.Height)
-	case *bcDeltaRequestMessage:
-		// todo return Delta to the requester
-		bcR.Logger.Debug("bcDeltaRequestMessage")
-	case *bcDeltaResponseMessage:
-		// todo store the Delta
-		bcR.Logger.Debug("bcDeltaResponseMessage")
 	default:
 		bcR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
@@ -304,7 +305,7 @@ FOR_LOOP:
 			// routine.
 
 			// See if there are any blocks to sync.
-			first, second := bcR.pool.PeekTwoBlocks()
+			first, second, deltas := bcR.pool.PeekTwoBlocks()
 			//bcR.Logger.Info("TrySync peeked", "first", first, "second", second)
 			if first == nil || second == nil {
 				// We need both to sync the first block.
@@ -349,12 +350,15 @@ FOR_LOOP:
 				// TODO: same thing for app - but we would need a way to
 				// get the hash without persisting the state
 				var err error
-				state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first)
+				state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first, deltas)
 				if err != nil {
 					// TODO This is bad, are we zombie?
 					panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 				}
 				blocksSynced++
+
+				// persists the given deltas to the underlying db.
+				bcR.store.SaveDeltas(deltas)
 
 				if blocksSynced%100 == 0 {
 					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
@@ -397,8 +401,6 @@ func RegisterBlockchainMessages(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&bcNoBlockResponseMessage{}, "tendermint/blockchain/NoBlockResponse", nil)
 	cdc.RegisterConcrete(&bcStatusResponseMessage{}, "tendermint/blockchain/StatusResponse", nil)
 	cdc.RegisterConcrete(&bcStatusRequestMessage{}, "tendermint/blockchain/StatusRequest", nil)
-	cdc.RegisterConcrete(&bcDeltaRequestMessage{}, "tendermint/blockchain/DeltaRequest", nil)
-	cdc.RegisterConcrete(&bcDeltaResponseMessage{}, "tendermint/blockchain/DeltaResponse", nil)
 }
 
 func decodeMsg(bz []byte) (msg BlockchainMessage, err error) {
@@ -447,6 +449,7 @@ func (m *bcNoBlockResponseMessage) String() string {
 
 type bcBlockResponseMessage struct {
 	Block *types.Block
+	Deltas *types.Deltas
 }
 
 // ValidateBasic performs basic validation.
@@ -506,40 +509,4 @@ func (m *bcStatusResponseMessage) ValidateBasic() error {
 
 func (m *bcStatusResponseMessage) String() string {
 	return fmt.Sprintf("[bcStatusResponseMessage %v:%v]", m.Base, m.Height)
-}
-
-type bcDeltaRequestMessage struct {
-	Height	int64
-	Base	int64
-}
-
-// ValidateBasic performs basic validation.
-func (m *bcDeltaRequestMessage) ValidateBasic() error {
-	if m.Base < 0 {
-		return errors.New("negative Base")
-	}
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Base > m.Height {
-		return fmt.Errorf("base %v cannot be greater than height %v", m.Base, m.Height)
-	}
-	return nil
-}
-
-func (m *bcDeltaRequestMessage) String() string {
-	return fmt.Sprintf("[bcStatusRequestMessage %v:%v]", m.Base, m.Height)
-}
-
-type bcDeltaResponseMessage struct {
-	Delta	*types.Deltas
-}
-
-// ValidateBasic performs basic validation.
-func (m *bcDeltaResponseMessage) ValidateBasic() error {
-	return nil
-}
-
-func (m *bcDeltaResponseMessage) String() string {
-	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Delta.Height)
 }

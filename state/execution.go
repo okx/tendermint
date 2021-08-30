@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/spf13/viper"
 	dbm "github.com/tendermint/tm-db"
@@ -130,7 +131,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
 func (blockExec *BlockExecutor) ApplyBlock(
-	state State, blockID types.BlockID, block *types.Block,
+	state State, blockID types.BlockID, block *types.Block, deltas *types.Deltas,
 ) (State, int64, error) {
 	trc := &Tracer{}
 	defer func() {
@@ -152,11 +153,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	trc.pin("abci")
 	startTime := time.Now().UnixNano()
 	var abciResponses *ABCIResponses
-	var deltas types.Deltas
 	var err error
 	if viper.GetInt32("enable-state-delta") == 1 {
 		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
-		deltas.ABCIRsp = *abciResponses
+		bytes, err := json.Marshal(abciResponses)
+		if err != nil {
+			panic(err)
+		}
+		deltas.ABCIRsp = bytes
 	} else if viper.GetInt32("enable-state-delta") == 2 {
 		commitInfo, byzVals := getBeginBlockValidatorInfo(block, blockExec.db)
 		_, _ = blockExec.proxyApp.BeginBlockSync(abci.RequestBeginBlock{
@@ -165,8 +169,13 @@ func (blockExec *BlockExecutor) ApplyBlock(
 			LastCommitInfo:      commitInfo,
 			ByzantineValidators: byzVals,
 		})
-		// todo get deltas by block.Height
-		// apciResponses = &deltas.ABCIRsp
+
+		bytes := deltas.ABCIRsp
+		err = json.Unmarshal(bytes, &abciResponses)
+		if err != nil {
+			panic(err)
+		}
+
 	} else {
 		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	}

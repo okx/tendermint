@@ -100,7 +100,13 @@ message RequestEndBlock {
   int64 height = 1;
 }
 
-message RequestCommit {}
+message Deltas {
+  bytes abci_rsp = 1;
+  bytes deltas_byte = 2;
+}
+message RequestCommit {
+  Deltas deltas = 1;
+}
 
 //----------------------------------------
 // Response types
@@ -209,6 +215,7 @@ message ResponseCommit {
   // reserve 1
   bytes data          = 2;
   int64 retain_height = 3;
+  Deltas deltas = 4;
 }
 
 //----------------------------------------
