@@ -8,9 +8,10 @@ import (
 )
 
 type processorContext interface {
-	applyBlock(blockID types.BlockID, block *types.Block) error
+	applyBlock(blockID types.BlockID, block *types.Block, deltas *types.Deltas) error
 	verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error
 	saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
+	saveDeltas(deltas *types.Deltas)
 	tmState() state.State
 }
 
@@ -28,8 +29,8 @@ func newProcessorContext(st blockStore, ex blockApplier, s state.State) *pContex
 	}
 }
 
-func (pc *pContext) applyBlock(blockID types.BlockID, block *types.Block) error {
-	newState, _, err := pc.applier.ApplyBlock(pc.state, blockID, block)
+func (pc *pContext) applyBlock(blockID types.BlockID, block *types.Block, deltas *types.Deltas) error {
+	newState, _, err := pc.applier.ApplyBlock(pc.state, blockID, block, deltas)
 	pc.state = newState
 	return err
 }
@@ -44,6 +45,10 @@ func (pc pContext) verifyCommit(chainID string, blockID types.BlockID, height in
 
 func (pc *pContext) saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 	pc.store.SaveBlock(block, blockParts, seenCommit)
+}
+
+func (pc *pContext) saveDeltas(deltas *types.Deltas) {
+	pc.store.SaveDeltas(deltas)
 }
 
 type mockPContext struct {
@@ -63,7 +68,7 @@ func newMockProcessorContext(
 	}
 }
 
-func (mpc *mockPContext) applyBlock(blockID types.BlockID, block *types.Block) error {
+func (mpc *mockPContext) applyBlock(blockID types.BlockID, block *types.Block, deltas *types.Deltas) error {
 	for _, h := range mpc.applicationBL {
 		if h == block.Height {
 			return fmt.Errorf("generic application error")
@@ -83,6 +88,10 @@ func (mpc *mockPContext) verifyCommit(chainID string, blockID types.BlockID, hei
 }
 
 func (mpc *mockPContext) saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
+
+}
+
+func (mpc *mockPContext) saveDeltas(deltas *types.Deltas) {
 
 }
 

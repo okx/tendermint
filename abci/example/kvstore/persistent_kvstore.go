@@ -2,7 +2,6 @@ package kvstore
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
 	"fmt"
 	"strconv"
@@ -86,8 +85,8 @@ func (app *PersistentKVStoreApplication) CheckTx(req types.RequestCheckTx) types
 }
 
 // Commit will panic if InitChain was not called
-func (app *PersistentKVStoreApplication) Commit(ctx context.Context) (context.Context, types.ResponseCommit) {
-	return app.app.Commit(ctx)
+func (app *PersistentKVStoreApplication) Commit(req types.RequestCommit) types.ResponseCommit {
+	return app.app.Commit(req)
 }
 
 // When path=/val and data={validator address}, returns the validator update (types.ValidatorUpdate) varint encoded.

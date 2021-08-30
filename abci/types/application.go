@@ -22,7 +22,7 @@ type Application interface {
 	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
-	Commit(context.Context) (context.Context, ResponseCommit)                          // Commit the state and return the application Merkle root hash
+	Commit(RequestCommit) ResponseCommit                          // Commit the state and return the application Merkle root hash
 }
 
 //-------------------------------------------------------
@@ -53,8 +53,8 @@ func (BaseApplication) CheckTx(req RequestCheckTx) ResponseCheckTx {
 	return ResponseCheckTx{Code: CodeTypeOK}
 }
 
-func (BaseApplication) Commit(ctx context.Context) (context.Context, ResponseCommit) {
-	return ctx, ResponseCommit{}
+func (BaseApplication) Commit(req RequestCommit) ResponseCommit {
+	return ResponseCommit{}
 }
 
 func (BaseApplication) Query(req RequestQuery) ResponseQuery {
@@ -118,7 +118,7 @@ func (app *GRPCApplication) Query(ctx context.Context, req *RequestQuery) (*Resp
 }
 
 func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*ResponseCommit, error) {
-	_, res := app.app.Commit(ctx)
+	res := app.app.Commit(*req)
 	return &res, nil
 }
 

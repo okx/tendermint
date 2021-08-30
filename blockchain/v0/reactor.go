@@ -314,6 +314,9 @@ FOR_LOOP:
 				// Try again quickly next loop.
 				didProcessCh <- struct{}{}
 			}
+			if deltas == nil {
+				deltas = &types.Deltas{}
+			}
 
 			firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 			firstPartsHeader := firstParts.Header()

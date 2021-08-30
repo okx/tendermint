@@ -1,7 +1,6 @@
 package abcicli
 
 import (
-	"context"
 	"sync"
 
 	types "github.com/tendermint/tendermint/abci/types"
@@ -117,13 +116,13 @@ func (app *localClient) QueryAsync(req types.RequestQuery) *ReqRes {
 	)
 }
 
-func (app *localClient) CommitAsync() *ReqRes {
+func (app *localClient) CommitAsync(req types.RequestCommit) *ReqRes {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	_, res := app.Application.Commit(context.Background())
+	res := app.Application.Commit(req)
 	return app.callback(
-		types.ToRequestCommit(),
+		types.ToRequestCommit(req),
 		types.ToResponseCommit(res),
 	)
 }
@@ -213,12 +212,12 @@ func (app *localClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery,
 	return &res, nil
 }
 
-func (app *localClient) CommitSync(ctx context.Context) (context.Context, *types.ResponseCommit, error) {
+func (app *localClient) CommitSync(req types.RequestCommit) (*types.ResponseCommit, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
-	ctxNew, res := app.Application.Commit(ctx)
-	return ctxNew, &res, nil
+	res := app.Application.Commit(req)
+	return &res, nil
 }
 
 func (app *localClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {

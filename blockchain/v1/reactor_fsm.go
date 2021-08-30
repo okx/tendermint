@@ -61,6 +61,7 @@ type bReactorEventData struct {
 	base           int64        // for status response
 	height         int64        // for status response; for processed block event
 	block          *types.Block // for block response
+	deltas			*types.Deltas // for deltas response
 	stateName      string       // for state timeout events
 	length         int          // for block response event, length of received block, used to detect slow peers
 	maxNumRequests int          // for request needed event, maximum number of pending requests
@@ -155,6 +156,7 @@ var (
 	errNoErrorFinished        = errors.New("fast sync is finished")
 	errInvalidEvent           = errors.New("invalid event in current state")
 	errMissingBlock           = errors.New("missing blocks")
+	errMissingDeltas		  = errors.New("missing deltas")
 	errNilPeerForBlockRequest = errors.New("peer for block request does not exist in the switch")
 	errSendQueueFull          = errors.New("block request not made, send-queue is full")
 	errPeerTooShort           = errors.New("peer height too low, old peer removed/ new peer not added")
@@ -258,7 +260,7 @@ func init() {
 
 			case blockResponseEv:
 				fsm.logger.Debug("blockResponseEv", "H", data.block.Height)
-				err := fsm.pool.AddBlock(data.peerID, data.block, data.length)
+				err := fsm.pool.AddBlock(data.peerID, data.block, data.deltas, data.length)
 				if err != nil {
 					// A block was received that was unsolicited, from unexpected peer, or that we already have it.
 					// Ignore block, remove peer and send error to switch.
@@ -434,13 +436,14 @@ func (fsm *BcReactorFSM) NeedsBlocks() bool {
 }
 
 // FirstTwoBlocks returns the two blocks at pool height and height+1
-func (fsm *BcReactorFSM) FirstTwoBlocks() (first, second *types.Block, err error) {
+func (fsm *BcReactorFSM) FirstTwoBlocks() (first, second *types.Block, deltas *types.Deltas, err error) {
 	fsm.mtx.Lock()
 	defer fsm.mtx.Unlock()
 	firstBP, secondBP, err := fsm.pool.FirstTwoBlocksAndPeers()
 	if err == nil {
 		first = firstBP.block
 		second = secondBP.block
+		deltas = firstBP.deltas
 	}
 	return
 }

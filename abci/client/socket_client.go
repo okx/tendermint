@@ -3,7 +3,6 @@ package abcicli
 import (
 	"bufio"
 	"container/list"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -251,8 +250,8 @@ func (cli *socketClient) QueryAsync(req types.RequestQuery) *ReqRes {
 	return cli.queueRequest(types.ToRequestQuery(req))
 }
 
-func (cli *socketClient) CommitAsync() *ReqRes {
-	return cli.queueRequest(types.ToRequestCommit())
+func (cli *socketClient) CommitAsync(req types.RequestCommit) *ReqRes {
+	return cli.queueRequest(types.ToRequestCommit(req))
 }
 
 func (cli *socketClient) InitChainAsync(req types.RequestInitChain) *ReqRes {
@@ -314,10 +313,10 @@ func (cli *socketClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery
 	return reqres.Response.GetQuery(), cli.Error()
 }
 
-func (cli *socketClient) CommitSync(ctx context.Context) (context.Context, *types.ResponseCommit, error) {
-	reqres := cli.queueRequest(types.ToRequestCommit())
+func (cli *socketClient) CommitSync(req types.RequestCommit) (*types.ResponseCommit, error) {
+	reqres := cli.queueRequest(types.ToRequestCommit(req))
 	cli.FlushSync()
-	return ctx, reqres.Response.GetCommit(), cli.Error()
+	return reqres.Response.GetCommit(), cli.Error()
 }
 
 func (cli *socketClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {

@@ -1,7 +1,6 @@
 package counter
 
 import (
-	"context"
 	"encoding/binary"
 	"fmt"
 
@@ -82,14 +81,14 @@ func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 	return types.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
-func (app *Application) Commit(ctx context.Context) (context.Context, types.ResponseCommit) {
+func (app *Application) Commit(req types.RequestCommit) types.ResponseCommit {
 	app.hashCount++
 	if app.txCount == 0 {
-		return ctx, types.ResponseCommit{}
+		return types.ResponseCommit{}
 	}
 	hash := make([]byte, 8)
 	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-	return ctx, types.ResponseCommit{Data: hash}
+	return types.ResponseCommit{Data: hash}
 }
 
 func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {

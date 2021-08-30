@@ -53,6 +53,7 @@ func (m *bcNoBlockResponseMessage) String() string {
 
 type bcBlockResponseMessage struct {
 	Block *types.Block
+	Deltas *types.Deltas
 }
 
 // ValidateBasic performs basic validation.
@@ -120,7 +121,9 @@ func (m *bcStatusResponseMessage) String() string {
 
 type blockStore interface {
 	LoadBlock(height int64) *types.Block
+	LoadDeltas(height int64) *types.Deltas
 	SaveBlock(*types.Block, *types.PartSet, *types.Commit)
+	SaveDeltas(deltas *types.Deltas)
 	Base() int64
 	Height() int64
 }
@@ -151,7 +154,7 @@ type blockVerifier interface {
 
 //nolint:deadcode
 type blockApplier interface {
-	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, int64, error)
+	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block, deltas *types.Deltas) (state.State, int64, error)
 }
 
 // XXX: unify naming in this package around tmState
@@ -268,6 +271,7 @@ type bcBlockResponse struct {
 	peerID p2p.ID
 	size   int64
 	block  *types.Block
+	deltas *types.Deltas
 }
 
 // blockNoResponse message received from a peer
@@ -514,8 +518,9 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	case *bcBlockRequestMessage:
 		block := r.store.LoadBlock(msg.Height)
+		deltas := r.store.LoadDeltas(msg.Height)
 		if block != nil {
-			if err = r.io.sendBlockToPeer(block, src.ID()); err != nil {
+			if err = r.io.sendBlockToPeer(block, deltas, src.ID()); err != nil {
 				r.logger.Error("Could not send block message to peer: ", err)
 			}
 		} else {
@@ -533,6 +538,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		r.events <- bcBlockResponse{
 			peerID: src.ID(),
 			block:  msg.Block,
+			deltas: msg.Deltas,
 			size:   int64(len(msgBytes)),
 			time:   time.Now(),
 		}

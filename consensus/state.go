@@ -1497,7 +1497,8 @@ func (cs *State) finalizeCommit(height int64) {
 	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
 		stateCopy,
 		types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()},
-		block)
+		block,
+		&types.Deltas{})
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
 		err := tmos.Kill()

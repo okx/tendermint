@@ -2,7 +2,6 @@ package kvstore
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -114,7 +113,7 @@ func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
-func (app *Application) Commit(ctx context.Context) (context.Context, types.ResponseCommit) {
+func (app *Application) Commit(req types.RequestCommit) types.ResponseCommit {
 	// Using a memdb - just return the big endian size of the db
 	appHash := make([]byte, 8)
 	binary.PutVarint(appHash, app.state.Size)
@@ -126,7 +125,7 @@ func (app *Application) Commit(ctx context.Context) (context.Context, types.Resp
 	if app.RetainBlocks > 0 && app.state.Height >= app.RetainBlocks {
 		resp.RetainHeight = app.state.Height - app.RetainBlocks + 1
 	}
-	return ctx, resp
+	return resp
 }
 
 // Returns an associated value or nil if missing.

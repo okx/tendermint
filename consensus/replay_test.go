@@ -742,7 +742,7 @@ func applyBlock(stateDB dbm.DB, st sm.State, blk *types.Block, proxyApp proxy.Ap
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	blkID := types.BlockID{Hash: blk.Hash(), PartsHeader: blk.MakePartSet(testPartSize).Header()}
-	newState, _, err := blockExec.ApplyBlock(st, blkID, blk)
+	newState, _, err := blockExec.ApplyBlock(st, blkID, blk, &types.Deltas{})
 	if err != nil {
 		panic(err)
 	}
@@ -948,15 +948,15 @@ type badApp struct {
 	onlyLastHashIsWrong bool
 }
 
-func (app *badApp) Commit(ctx context.Context) (context.Context, abci.ResponseCommit) {
+func (app *badApp) Commit(abci.RequestCommit) abci.ResponseCommit {
 	app.height++
 	if app.onlyLastHashIsWrong {
 		if app.height == app.numBlocks {
-			return ctx, abci.ResponseCommit{Data: tmrand.Bytes(8)}
+			return abci.ResponseCommit{Data: tmrand.Bytes(8)}
 		}
-		return ctx, abci.ResponseCommit{Data: []byte{app.height}}
+		return abci.ResponseCommit{Data: []byte{app.height}}
 	} else if app.allHashesAreWrong {
-		return ctx, abci.ResponseCommit{Data: tmrand.Bytes(8)}
+		return abci.ResponseCommit{Data: tmrand.Bytes(8)}
 	}
 
 	panic("either allHashesAreWrong or onlyLastHashIsWrong must be set")

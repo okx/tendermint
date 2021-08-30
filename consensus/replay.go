@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -478,7 +477,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error
-	state, _, err = blockExec.ApplyBlock(state, meta.BlockID, block)
+	state, _, err = blockExec.ApplyBlock(state, meta.BlockID, block, &types.Deltas{})
 	if err != nil {
 		return sm.State{}, err
 	}
@@ -549,6 +548,6 @@ func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlo
 	return *mock.abciResponses.EndBlock
 }
 
-func (mock *mockProxyApp) Commit(ctx context.Context) (context.Context, abci.ResponseCommit) {
-	return ctx, abci.ResponseCommit{Data: mock.appHash}
+func (mock *mockProxyApp) Commit(req abci.RequestCommit) abci.ResponseCommit {
+	return abci.ResponseCommit{Data: mock.appHash}
 }

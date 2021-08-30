@@ -187,8 +187,9 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcBlockRequestMessage,
 	src p2p.Peer) (queued bool) {
 
 	block := bcR.store.LoadBlock(msg.Height)
+	deltas := bcR.store.LoadDeltas(msg.Height)
 	if block != nil {
-		msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponseMessage{Block: block})
+		msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponseMessage{Block: block, Deltas: deltas})
 		return src.TrySend(BlockchainChannel, msgBytes)
 	}
 
@@ -251,17 +252,25 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		}
 
 	case *bcBlockResponseMessage:
-		msgForFSM := bcReactorMessage{
-			event: blockResponseEv,
-			data: bReactorEventData{
-				peerID: src.ID(),
-				height: msg.Block.Height,
-				block:  msg.Block,
-				length: len(msgBytes),
-			},
+		if msg.Deltas == nil {
+			bcR.Logger.Debug("Get Deltas from msg is nil. Try send BlockRequest again")
+			msgBytes := cdc.MustMarshalBinaryBare(&bcNoBlockResponseMessage{Height: msg.Block.Height})
+			src.TrySend(BlockchainChannel, msgBytes)
+		} else {
+			msgForFSM := bcReactorMessage{
+				event: blockResponseEv,
+				data: bReactorEventData{
+					peerID: src.ID(),
+					height: msg.Block.Height,
+					block:  msg.Block,
+					deltas: msg.Deltas,
+					length: len(msgBytes),
+				},
+			}
+			bcR.Logger.Info("Received", "src", src, "height", msg.Block.Height)
+			bcR.messagesForFSMCh <- msgForFSM
 		}
-		bcR.Logger.Info("Received", "src", src, "height", msg.Block.Height)
-		bcR.messagesForFSMCh <- msgForFSM
+
 
 	case *bcStatusResponseMessage:
 		// Got a peer status. Unverified.
@@ -412,7 +421,7 @@ func (bcR *BlockchainReactor) reportPeerErrorToSwitch(err error, peerID p2p.ID) 
 
 func (bcR *BlockchainReactor) processBlock() error {
 
-	first, second, err := bcR.fsm.FirstTwoBlocks()
+	first, second, deltas, err := bcR.fsm.FirstTwoBlocks()
 	if err != nil {
 		// We need both to sync the first block.
 		return err
@@ -436,10 +445,12 @@ func (bcR *BlockchainReactor) processBlock() error {
 
 	bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-	bcR.state, _, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
+	bcR.state, _, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first, deltas)
 	if err != nil {
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 	}
+
+	bcR.store.SaveDeltas(deltas)
 
 	return nil
 }
@@ -584,6 +595,7 @@ func (m *bcNoBlockResponseMessage) String() string {
 
 type bcBlockResponseMessage struct {
 	Block *types.Block
+	Deltas *types.Deltas
 }
 
 // ValidateBasic performs basic validation.
