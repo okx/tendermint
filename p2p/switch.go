@@ -328,7 +328,7 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 		var addr *NetAddress
 		if peer.IsOutbound() { // socket address for outbound peers
 			addr = peer.SocketAddr()
-		} else { // self-reported address for inbound peers
+		} else { //Ï self-reported address for inbound peers
 			var err error
 			addr, err = peer.NodeInfo().NetAddress()
 			if err != nil {

@@ -477,6 +477,7 @@ func (peer *bpPeer) resetTimeout() {
 func (peer *bpPeer) incrPending() {
 	if peer.numPending == 0 {
 		peer.resetMonitor()
+		peer.logger.Error("incrPending")
 		peer.resetTimeout()
 	}
 	peer.numPending++
@@ -488,6 +489,7 @@ func (peer *bpPeer) decrPending(recvSize int) {
 		peer.timeout.Stop()
 	} else {
 		peer.recvMonitor.Update(recvSize)
+		peer.logger.Error("decrPending")
 		peer.resetTimeout()
 	}
 }

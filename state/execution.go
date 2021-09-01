@@ -172,12 +172,17 @@ func (blockExec *BlockExecutor) ApplyBlock(
 			ByzantineValidators: byzVals,
 		})
 
-		bytes := deltas.ABCIRsp
-		err = json.Unmarshal(bytes, &abciResponses)
-		if err != nil {
-			panic(err)
+		if len(deltas.ABCIRsp) == 0 {
+			blockExec.logger.Error("************deltas.ABCIRsp == 0*************")
+			abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+		} else {
+			blockExec.logger.Error("************deltas.ABCIRsp != 0*************")
+			bytes := deltas.ABCIRsp
+			err = json.Unmarshal(bytes, &abciResponses)
+			if err != nil {
+				panic(err)
+			}
 		}
-
 	} else {
 		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	}
@@ -293,6 +298,7 @@ func (blockExec *BlockExecutor) Commit(
 		"height", block.Height,
 		"txs", len(block.Txs),
 		"appHash", fmt.Sprintf("%X", res.Data),
+		"inDeltasLen", len(inDeltas),
 	)
 
 	// Update mempool.

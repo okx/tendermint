@@ -338,6 +338,7 @@ func (bs *BlockStore) saveState() {
 // SaveDeltas persists the given deltas to the underlying db.
 // todo make new store(DeltasStore) and move Deltas from BlockStore.db to DeltasStore.db
 func (bs *BlockStore) SaveDeltas(deltas *types.Deltas) {
+	fmt.Printf("***************saveDeltas:%v**************", len(deltas.ABCIRsp))
 	bs.db.Set(calcDeltasKey(deltas.Height), cdc.MustMarshalBinaryBare(deltas))
 }
 
@@ -354,6 +355,7 @@ func (bs *BlockStore) LoadDeltas(height int64) *types.Deltas {
 	if err != nil {
 		panic(errors.Wrap(err, "Error reading deltas"))
 	}
+	fmt.Printf("**********loadDeltas:%v**************", len(deltas.ABCIRsp))
 	return deltas
 }
 

@@ -195,11 +195,12 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	case *bcBlockRequestMessage:
 		bcR.respondToPeer(msg, src)
 	case *bcBlockResponseMessage:
-		if msg.Deltas == nil {
+		/*if msg.Deltas == nil {
 			bcR.Logger.Debug("Get Deltas from msg is nil. Try send BlockRequest again")
 			msgBytes := cdc.MustMarshalBinaryBare(&bcNoBlockResponseMessage{Height: msg.Block.Height})
 			src.TrySend(BlockchainChannel, msgBytes)
-		} else {
+		} else
+		*/{
 			bcR.pool.AddBlock(src.ID(), msg.Block, msg.Deltas, len(msgBytes))
 		}
 	case *bcStatusRequestMessage:
