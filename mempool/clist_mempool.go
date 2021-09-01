@@ -896,7 +896,7 @@ func (mem *CListMempool) Update(
 	// Update metrics
 	mem.metrics.Size.Set(float64(mem.Size()))
 	if mem.pendingPool != nil {
-		mem.metrics.Size.Set(float64(mem.pendingPool.Size()))
+		mem.metrics.PendingPoolSize.Set(float64(mem.pendingPool.Size()))
 	}
 
 	// WARNING: The txs inserted between [ReapMaxBytesMaxGas, Update) is insert-sorted in the mempool.txs,

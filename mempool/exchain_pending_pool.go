@@ -55,6 +55,9 @@ func (p *PendingPool) removeTx(address string, nonce uint64) {
 			delete(p.addressTxsMap[address], nonce)
 			delete(p.txsMap, txID(pendingTx.mempoolTx.tx))
 		}
+		if len(p.addressTxsMap[address]) == 0 {
+			delete(p.addressTxsMap, address)
+		}
 	}
 }
 
@@ -65,6 +68,9 @@ func (p *PendingPool) removeTxByHash(txHash string) {
 		delete(p.txsMap, txHash)
 		if _, ok := p.addressTxsMap[pendingTx.exTxInfo.Sender]; ok {
 			delete(p.addressTxsMap[pendingTx.exTxInfo.Sender], pendingTx.exTxInfo.Nonce)
+			if len(p.addressTxsMap[pendingTx.exTxInfo.Sender]) == 0 {
+				delete(p.addressTxsMap, pendingTx.exTxInfo.Sender)
+			}
 		}
 	}
 }
