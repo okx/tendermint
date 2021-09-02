@@ -1151,7 +1151,7 @@ func (mem *CListMempool) pendingPoolJob() {
 			mem.consumePendingTx(addr, nonce)
 		}
 		mem.pendingPool.handlePeriodCounter()
-		timeElapse := time.Now().Sub(timeStart).Microseconds()
+		timeElapse := time.Since(timeStart).Microseconds()
 		mem.logger.Debug("pending pool job end", "interval(ms)", timeElapse,
 			"poolSize", mem.pendingPool.Size(),
 			"addressNonceMap", addrNonceMap)
