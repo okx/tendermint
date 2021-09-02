@@ -695,7 +695,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		TxPriceBump:            10,
 		PendingPoolSize:        10000,
 		PendingPoolPeriod:      3,
-		PendingPoolPeriodLimit: 10,
+		PendingPoolPeriodLimit: 20,
 	}
 }
 
