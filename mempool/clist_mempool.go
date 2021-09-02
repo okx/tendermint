@@ -76,9 +76,10 @@ type CListMempool struct {
 
 	metrics *Metrics
 
-	addressRecord map[string]map[string]*clist.CElement // Address -> (txHash -> *CElement)
-	addrMapMtx    sync.RWMutex
-	pendingPool   *PendingPool
+	addressRecord    map[string]map[string]*clist.CElement // Address -> (txHash -> *CElement)
+	addrMapMtx       sync.RWMutex
+	pendingPool      *PendingPool
+	accountRetriever AccountRetriever
 }
 
 var _ Mempool = &CListMempool{}
@@ -117,7 +118,8 @@ func NewCListMempool(
 	mempool.addressRecord = make(map[string]map[string]*clist.CElement)
 
 	if config.EnablePendingPool {
-		mempool.pendingPool = newPendingPool(config.PendingPoolSize, config.ConsumePendingPoolPeriod)
+		mempool.pendingPool = newPendingPool(config.PendingPoolSize, config.PendingPoolPeriod, config.PendingPoolPeriodLimit)
+		go mempool.pendingPoolJob()
 	}
 
 	return mempool
@@ -519,7 +521,7 @@ func (mem *CListMempool) consumePendingTx(address string, nonce uint64) {
 			return
 		}
 		if err := mem.isFull(len(pendingTx.mempoolTx.tx)); err != nil {
-			time.Sleep(time.Duration(mem.pendingPool.consumePeriod) * time.Second)
+			time.Sleep(time.Duration(mem.pendingPool.period) * time.Second)
 			continue
 		}
 
@@ -1133,4 +1135,26 @@ type ExTxInfo struct {
 	SenderNonce uint64   `json:"sender_nonce"`
 	GasPrice    *big.Int `json:"gas_price"`
 	Nonce       uint64   `json:"nonce"`
+}
+
+func (mem *CListMempool) SetAccountRetriever(retriever AccountRetriever) {
+	mem.accountRetriever = retriever
+}
+
+func (mem *CListMempool) pendingPoolJob() {
+	for {
+		time.Sleep(time.Duration(mem.pendingPool.period) * time.Second)
+		timeStart := time.Now()
+		mem.logger.Debug("pending pool job begin", "poolSize", mem.pendingPool.Size())
+		addrNonceMap := mem.pendingPool.handlePendingTxNonce(mem.accountRetriever)
+		for addr, nonce := range addrNonceMap {
+			mem.consumePendingTx(addr, nonce)
+		}
+		mem.pendingPool.handlePeriodCounter()
+		timeElapse := time.Now().Sub(timeStart).Microseconds()
+		mem.logger.Debug("pending pool job end", "interval(ms)", timeElapse,
+			"poolSize", mem.pendingPool.Size(),
+			"addressNonceMap", addrNonceMap)
+
+	}
 }

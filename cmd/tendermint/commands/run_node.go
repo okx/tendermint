@@ -129,9 +129,14 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"Maximum number of transactions in the pending pool",
 	)
 	cmd.Flags().Int(
-		"mempool.consume_pending_pool_period",
-		config.Mempool.ConsumePendingPoolPeriod,
-		"The time period to wait to consume the pending pool when the mempool is full",
+		"mempool.pending_pool_period",
+		config.Mempool.PendingPoolPeriod,
+		"The time period of pending pool job",
+	)
+	cmd.Flags().Int(
+		"mempool.pending_pool_period_limit",
+		config.Mempool.PendingPoolPeriodLimit,
+		"The maximum time period that the address is allowed to remain in the pending pool",
 	)
 
 	// db flags

@@ -10,15 +10,19 @@ type PendingPool struct {
 	addressTxsMap map[string]map[uint64]*PendingTx
 	txsMap        map[string]*PendingTx
 	mtx           sync.RWMutex
-	consumePeriod int
+	period        int
+	periodLimit   int
+	periodCounter map[string]int // address with period count
 }
 
-func newPendingPool(maxSize int, consumePeriod int) *PendingPool {
+func newPendingPool(maxSize int, period int, periodLimit int) *PendingPool {
 	return &PendingPool{
 		maxSize:       maxSize,
 		addressTxsMap: make(map[string]map[uint64]*PendingTx),
 		txsMap:        make(map[string]*PendingTx),
-		consumePeriod: consumePeriod,
+		period:        period,
+		periodLimit:   periodLimit,
+		periodCounter: make(map[string]int),
 	}
 }
 
@@ -57,8 +61,15 @@ func (p *PendingPool) removeTx(address string, nonce uint64) {
 		}
 		if len(p.addressTxsMap[address]) == 0 {
 			delete(p.addressTxsMap, address)
+			delete(p.periodCounter, address)
 		}
+		// update period counter
+		if count, ok := p.periodCounter[address]; ok && count > 0 {
+			p.periodCounter[address] = count - 1
+		}
+
 	}
+
 }
 
 func (p *PendingPool) removeTxByHash(txHash string) {
@@ -70,7 +81,51 @@ func (p *PendingPool) removeTxByHash(txHash string) {
 			delete(p.addressTxsMap[pendingTx.exTxInfo.Sender], pendingTx.exTxInfo.Nonce)
 			if len(p.addressTxsMap[pendingTx.exTxInfo.Sender]) == 0 {
 				delete(p.addressTxsMap, pendingTx.exTxInfo.Sender)
+				delete(p.periodCounter, pendingTx.exTxInfo.Sender)
 			}
+			// update period counter
+			if count, ok := p.periodCounter[pendingTx.exTxInfo.Sender]; ok && count > 0 {
+				p.periodCounter[pendingTx.exTxInfo.Sender] = count - 1
+			}
+		}
+	}
+}
+
+func (p *PendingPool) handlePendingTxNonce(accRetriever AccountRetriever) map[string]uint64 {
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
+	addrMap := make(map[string]uint64)
+	for addr, txMap := range p.addressTxsMap {
+		accountNonce := accRetriever.GetAccountNonce(addr)
+		for nonce, pendingTx := range txMap {
+			// remove invalid pending tx
+			if nonce < accountNonce {
+				delete(p.addressTxsMap[addr], nonce)
+				delete(p.txsMap, txID(pendingTx.mempoolTx.tx))
+			} else if nonce == accountNonce {
+				addrMap[addr] = nonce
+			}
+		}
+		if len(p.addressTxsMap[addr]) == 0 {
+			delete(p.addressTxsMap, addr)
+		}
+	}
+	return addrMap
+}
+
+func (p *PendingPool) handlePeriodCounter() {
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
+	for addr, txMap := range p.addressTxsMap {
+		count := p.periodCounter[addr]
+		if count >= p.periodLimit {
+			delete(p.addressTxsMap, addr)
+			for _, pendingTx := range txMap {
+				delete(p.txsMap, txID(pendingTx.mempoolTx.tx))
+			}
+			delete(p.periodCounter, addr)
+		} else {
+			p.periodCounter[addr] = count + 1
 		}
 	}
 }
@@ -101,4 +156,8 @@ func (e ErrPendingPoolIsFull) Error() string {
 	return fmt.Sprintf(
 		"PendingPool is full: current pending pool size %d, max size %d",
 		e.size, e.maxSize)
+}
+
+type AccountRetriever interface {
+	GetAccountNonce(address string) uint64
 }
