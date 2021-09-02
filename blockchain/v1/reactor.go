@@ -252,11 +252,11 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		}
 
 	case *bcBlockResponseMessage:
-		if msg.Deltas == nil {
+		/*if msg.Deltas == nil {
 			bcR.Logger.Debug("Get Deltas from msg is nil. Try send BlockRequest again")
 			msgBytes := cdc.MustMarshalBinaryBare(&bcNoBlockResponseMessage{Height: msg.Block.Height})
 			src.TrySend(BlockchainChannel, msgBytes)
-		} else {
+		} else */{
 			msgForFSM := bcReactorMessage{
 				event: blockResponseEv,
 				data: bReactorEventData{

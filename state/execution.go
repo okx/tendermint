@@ -163,25 +163,20 @@ func (blockExec *BlockExecutor) ApplyBlock(
 			panic(err)
 		}
 		deltas.ABCIRsp = bytes
-	} else if viper.GetInt32("enable-state-delta") == 2 {
+	} else if viper.GetInt32("enable-state-delta") == 2 && len(deltas.ABCIRsp) != 0 {
 		commitInfo, byzVals := getBeginBlockValidatorInfo(block, blockExec.db)
 		_, _ = blockExec.proxyApp.BeginBlockSync(abci.RequestBeginBlock{
 			Hash:                block.Hash(),
 			Header:              types.TM2PB.Header(&block.Header),
 			LastCommitInfo:      commitInfo,
 			ByzantineValidators: byzVals,
+			UseDeltas: true,
 		})
-
-		if len(deltas.ABCIRsp) == 0 {
-			blockExec.logger.Error("************deltas.ABCIRsp == 0*************")
-			abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
-		} else {
-			blockExec.logger.Error("************deltas.ABCIRsp != 0*************")
-			bytes := deltas.ABCIRsp
-			err = json.Unmarshal(bytes, &abciResponses)
-			if err != nil {
-				panic(err)
-			}
+		blockExec.logger.Error("************fsc:deltas.ABCIRsp != 0*************")
+		bytes := deltas.ABCIRsp
+		err = json.Unmarshal(bytes, &abciResponses)
+		if err != nil {
+			panic(err)
 		}
 	} else {
 		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)

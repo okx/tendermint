@@ -193,6 +193,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
+		fmt.Printf("***************fsc:bcReq:%v**************", msg.Height)
 		bcR.respondToPeer(msg, src)
 	case *bcBlockResponseMessage:
 		/*if msg.Deltas == nil {
@@ -283,6 +284,7 @@ FOR_LOOP:
 				if ok {
 					conR.SwitchToConsensus(state, blocksSynced)
 				}
+
 				// else {
 				// should only happen during testing
 				// }
@@ -362,6 +364,7 @@ FOR_LOOP:
 				blocksSynced++
 
 				// persists the given deltas to the underlying db.
+				deltas.Height = first.Height
 				bcR.store.SaveDeltas(deltas)
 
 				if blocksSynced%100 == 0 {

@@ -528,6 +528,7 @@ func newBPRequester(pool *BlockPool, height int64) *bpRequester {
 
 		peerID: "",
 		block:  nil,
+		deltas: nil,
 	}
 	bpr.BaseService = *service.NewBaseService(nil, "bpRequester", bpr)
 	return bpr
@@ -585,6 +586,7 @@ func (bpr *bpRequester) reset() {
 
 	bpr.peerID = ""
 	bpr.block = nil
+	bpr.deltas = nil
 }
 
 // Tells bpRequester to pick another peer and try again.

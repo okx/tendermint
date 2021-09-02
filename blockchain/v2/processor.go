@@ -144,6 +144,9 @@ func (state *pcState) handle(event Event) (Event, error) {
 		}
 		first, second := firstItem.block, secondItem.block
 		deltas := firstItem.deltas
+		if deltas == nil {
+			deltas = &types.Deltas{}
+		}
 
 		firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 		firstPartsHeader := firstParts.Header()
