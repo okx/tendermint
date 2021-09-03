@@ -200,9 +200,9 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *Stat
 	t.Logf("Byzantine: broadcasting conflicting proposals to %d peers", len(peers))
 	for i, peer := range peers {
 		if i < len(peers)/2 {
-			go sendProposalAndParts(height, round, cs, peer, proposal1, block1Hash, blockParts1)
+			go sendProposalAndParts(height, round, cs, peer, proposal1, block1Hash, blockParts1, &types.Deltas{})
 		} else {
-			go sendProposalAndParts(height, round, cs, peer, proposal2, block2Hash, blockParts2)
+			go sendProposalAndParts(height, round, cs, peer, proposal2, block2Hash, blockParts2, &types.Deltas{})
 		}
 	}
 }
@@ -215,6 +215,7 @@ func sendProposalAndParts(
 	proposal *types.Proposal,
 	blockHash []byte,
 	parts *types.PartSet,
+	deltas *types.Deltas,
 ) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
@@ -227,6 +228,7 @@ func sendProposalAndParts(
 			Height: height, // This tells peer that this part applies to us.
 			Round:  round,  // This tells peer that this part applies to us.
 			Part:   part,
+			Deltas: deltas,
 		}
 		peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
 	}

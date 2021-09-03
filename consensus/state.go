@@ -426,12 +426,12 @@ func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.ID) error {
 }
 
 // AddProposalBlockPart inputs a part of the proposal block.
-func (cs *State) AddProposalBlockPart(height int64, round int, part *types.Part, peerID p2p.ID) error {
+func (cs *State) AddProposalBlockPart(height int64, round int, part *types.Part, deltas *types.Deltas, peerID p2p.ID) error {
 
 	if peerID == "" {
-		cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, ""}
+		cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part, deltas}, ""}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, peerID}
+		cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part, deltas}, peerID}
 	}
 
 	// TODO: wait for event?!
@@ -443,6 +443,7 @@ func (cs *State) SetProposalAndBlock(
 	proposal *types.Proposal,
 	block *types.Block,
 	parts *types.PartSet,
+	deltas *types.Deltas,
 	peerID p2p.ID,
 ) error {
 	if err := cs.SetProposal(proposal, peerID); err != nil {
@@ -450,7 +451,7 @@ func (cs *State) SetProposalAndBlock(
 	}
 	for i := 0; i < parts.Total(); i++ {
 		part := parts.GetPart(i)
-		if err := cs.AddProposalBlockPart(proposal.Height, proposal.Round, part, peerID); err != nil {
+		if err := cs.AddProposalBlockPart(proposal.Height, proposal.Round, part, deltas, peerID); err != nil {
 			return err
 		}
 	}
@@ -987,6 +988,7 @@ func (cs *State) isProposer(address []byte) bool {
 func (cs *State) defaultDecideProposal(height int64, round int) {
 	var block *types.Block
 	var blockParts *types.PartSet
+	var deltas *types.Deltas
 
 	// Decide on block
 	if cs.ValidBlock != nil {
@@ -998,6 +1000,13 @@ func (cs *State) defaultDecideProposal(height int64, round int) {
 		if block == nil {
 			return
 		}
+	}
+
+	// Decide on Deltas
+	if cs.Deltas != nil {
+		deltas = cs.Deltas
+	} else {
+		deltas = &types.Deltas{}
 	}
 
 	// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
@@ -1013,7 +1022,7 @@ func (cs *State) defaultDecideProposal(height int64, round int) {
 		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
 		for i := 0; i < blockParts.Total(); i++ {
 			part := blockParts.GetPart(i)
-			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
+			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part, deltas}, ""})
 		}
 		cs.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
 		cs.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
@@ -1494,11 +1503,15 @@ func (cs *State) finalizeCommit(height int64) {
 
 	var err error
 	var retainHeight int64
+	deltas := cs.Deltas
+	if deltas == nil {
+		deltas = &types.Deltas{}
+	}
 	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
 		stateCopy,
 		types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()},
 		block,
-		&types.Deltas{})
+		deltas)
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
 		err := tmos.Kill()
@@ -1507,6 +1520,8 @@ func (cs *State) finalizeCommit(height int64) {
 		}
 		return
 	}
+
+	cs.blockStore.SaveDeltas(deltas)
 
 	fail.Fail() // XXX
 
@@ -1711,6 +1726,10 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 		if err != nil {
 			return added, err
 		}
+
+		// receive Deltas from BlockMessage and put into State(cs)
+		cs.Deltas = msg.Deltas
+
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent())

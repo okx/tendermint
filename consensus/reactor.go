@@ -585,11 +585,13 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 			time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 			return
 		}
+		deltas := conR.conS.blockStore.LoadDeltas(prs.Height)
 		// Send the part
 		msg := &BlockPartMessage{
 			Height: prs.Height, // Not our height, so it doesn't matter.
 			Round:  prs.Round,  // Not our height, so it doesn't matter.
 			Part:   part,
+			Deltas: deltas,
 		}
 		logger.Debug("Sending block part for catchup", "round", prs.Round, "index", index)
 		if peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg)) {
@@ -1550,6 +1552,7 @@ type BlockPartMessage struct {
 	Height int64
 	Round  int
 	Part   *types.Part
+	Deltas	*types.Deltas
 }
 
 // ValidateBasic performs basic validation.

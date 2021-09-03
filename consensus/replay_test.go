@@ -361,7 +361,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, &types.Deltas{}, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)
@@ -387,7 +387,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, &types.Deltas{}, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)
@@ -436,7 +436,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, &types.Deltas{}, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)
@@ -498,7 +498,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, &types.Deltas{}, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)

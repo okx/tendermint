@@ -30,6 +30,10 @@ type BlockStore interface {
 
 	LoadBlockCommit(height int64) *types.Commit
 	LoadSeenCommit(height int64) *types.Commit
+
+
+	SaveDeltas(deltas *types.Deltas)
+	LoadDeltas(height int64) *types.Deltas
 }
 
 //-----------------------------------------------------------------------------
