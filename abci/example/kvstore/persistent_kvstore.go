@@ -39,7 +39,7 @@ func (app *PersistentKVStoreApplication) DeliverTxWithCache(tx types.RequestDeli
 	return nil
 }
 
-func (app *PersistentKVStoreApplication) SetAsyncConfig(sw bool) {
+func (app *PersistentKVStoreApplication) SetAsyncConfig(sw bool, l int) {
 }
 
 func (app *PersistentKVStoreApplication) SetAsyncDeliverTxCb(cb types.AsyncCallBack) {

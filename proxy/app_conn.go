@@ -11,7 +11,7 @@ import (
 type AppConnConsensus interface {
 	SetResponseCallback(abcicli.Callback)
 	SetAsyncCallBack(types.AsyncCallBack)
-	SetAsyncConfig(bool)
+	SetAsyncConfig(bool, int)
 	Error() error
 
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
@@ -54,11 +54,11 @@ type appConnConsensus struct {
 }
 
 func (app *appConnConsensus) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool, u uint32) types.ExecuteRes {
-	return app.appConn.DeliverTxWithCache(tx, needAnte, 0)
+	return app.appConn.DeliverTxWithCache(tx, needAnte, u)
 }
 
-func (app *appConnConsensus) SetAsyncConfig(sw bool) {
-	app.appConn.SetAsyncConfig(sw)
+func (app *appConnConsensus) SetAsyncConfig(sw bool, l int) {
+	app.appConn.SetAsyncConfig(sw, l)
 }
 
 func (app *appConnConsensus) SetAsyncCallBack(back types.AsyncCallBack) {

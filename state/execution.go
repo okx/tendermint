@@ -352,7 +352,7 @@ func execBlockOnProxyApp(
 			res, ok := execRes[i]
 			if !ok {
 				//wtf, maybe need to panic program
-				fmt.Printf("No such those tx in map,idx : %d\n", i)
+				fmt.Printf("No such tx in map,idx : %d\n", i)
 				continue
 			}
 			tmp := res.GetResponse()
@@ -371,7 +371,7 @@ func execBlockOnProxyApp(
 					invalidTxs++
 				}
 			} else {
-				fmt.Printf("rerun tx %d\n", i)
+				fmt.Printf("rerun tx %d with NeedAnte %v\n", i, res.NeedAnte())
 				//rerun current tx
 				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, res.NeedAnte(), res.GetEvmTxCounter())
 				if proxyAppConn.Error() != nil {
@@ -400,7 +400,7 @@ func execBlockOnProxyApp(
 	}
 
 	if isAsync {
-		proxyAppConn.SetAsyncConfig(isAsync)
+		proxyAppConn.SetAsyncConfig(isAsync, len(block.Txs))
 		proxyAppConn.SetAsyncCallBack(AsyncCb)
 	}
 

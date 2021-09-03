@@ -50,7 +50,7 @@ func (cli *socketClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte 
 func (cli *socketClient) SetAsyncCallBack(back types.AsyncCallBack) {
 }
 
-func (cli *socketClient) SetAsyncConfig(b bool) {
+func (cli *socketClient) SetAsyncConfig(b bool, l int) {
 }
 
 func NewSocketClient(addr string, mustConnect bool) Client {

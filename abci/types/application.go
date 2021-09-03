@@ -43,7 +43,7 @@ type Application interface {
 	EndBlock(RequestEndBlock) ResponseEndBlock // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                    // Commit the state and return the application Merkle root hash
 	SetAsyncDeliverTxCb(cb AsyncCallBack)
-	SetAsyncConfig(sw bool)
+	SetAsyncConfig(sw bool, l int)
 }
 
 //-------------------------------------------------------
@@ -58,7 +58,7 @@ func (a BaseApplication) DeliverTxWithCache(_ RequestDeliverTx, _ bool, _ uint32
 	return nil
 }
 
-func (a BaseApplication) SetAsyncConfig(_ bool) {
+func (a BaseApplication) SetAsyncConfig(_ bool, _ int) {
 }
 
 func (a BaseApplication) SetAsyncDeliverTxCb(cb AsyncCallBack) {

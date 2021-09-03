@@ -38,7 +38,7 @@ func (cli *grpcClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bo
 func (cli *grpcClient) SetAsyncCallBack(back types.AsyncCallBack) {
 }
 
-func (cli *grpcClient) SetAsyncConfig(b bool) {
+func (cli *grpcClient) SetAsyncConfig(b bool, i int) {
 }
 
 func NewGRPCClient(addr string, mustConnect bool) Client {

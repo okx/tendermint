@@ -51,8 +51,8 @@ func (app *localClient) SetAsyncCallBack(cb types.AsyncCallBack) {
 	app.mtx.Unlock()
 }
 
-func (app *localClient) SetAsyncConfig(sw bool) {
-	app.Application.SetAsyncConfig(sw)
+func (app *localClient) SetAsyncConfig(sw bool, l int) {
+	app.Application.SetAsyncConfig(sw, l)
 }
 
 // TODO: change types.Application to include Error()?
