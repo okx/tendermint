@@ -349,12 +349,12 @@ func execBlockOnProxyApp(
 		txIndex = 0
 		rerunIdx := 0
 
-		fmt.Printf("Deliver tx for %d txs\n", len(abciResponses.DeliverTxs))
+		logger.Info(fmt.Sprintf("Deliver tx for %d txs\n", len(abciResponses.DeliverTxs)))
 		for i := 0; i < len(abciResponses.DeliverTxs); i++ {
 			res, ok := execRes[i]
 			if !ok {
 				//wtf, maybe need to panic program
-				fmt.Printf("No such tx in map,idx : %d\n", i)
+				logger.Info(fmt.Sprintf("No such tx in map,idx : %d\n", i))
 				continue
 			}
 			tmp := res.GetResponse()
@@ -394,7 +394,7 @@ func execBlockOnProxyApp(
 			}
 			txIndex++
 		}
-		fmt.Printf("Paralle run %d, Conflected tx %d/n", len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx)
+		logger.Info(fmt.Sprintf("Paralle run %d, Conflected tx %d/n", len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
 		//keep running
 		signal <- 0
 		return
