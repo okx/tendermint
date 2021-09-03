@@ -347,6 +347,8 @@ func execBlockOnProxyApp(
 		validTxs = 0
 		invalidTxs = 0
 		txIndex = 0
+		rerunIdx := 0
+
 		fmt.Printf("Deliver tx for %d txs\n", len(abciResponses.DeliverTxs))
 		for i := 0; i < len(abciResponses.DeliverTxs); i++ {
 			res, ok := execRes[i]
@@ -358,7 +360,6 @@ func execBlockOnProxyApp(
 			tmp := res.GetResponse()
 			abciResponses.DeliverTxs[i] = &tmp
 			if !res.Recheck(asCache) {
-				fmt.Printf("commit directly for tx %d\n", i)
 				//we don't need to rerun the tx, just commit it and save dirty data into cache
 				if res.Error() == nil {
 					res.Collect(asCache)
@@ -371,7 +372,7 @@ func execBlockOnProxyApp(
 					invalidTxs++
 				}
 			} else {
-				fmt.Printf("rerun tx %d with NeedAnte %v\n", i, res.NeedAnte())
+				rerunIdx++
 				//rerun current tx
 				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, res.NeedAnte(), res.GetEvmTxCounter())
 				if proxyAppConn.Error() != nil {
@@ -390,10 +391,10 @@ func execBlockOnProxyApp(
 					logger.Debug("Invalid tx", "code", tmp.Code, "log", tmp.Log)
 					invalidTxs++
 				}
-				fmt.Printf("rerun tx %d,ret is %v\n", txIndex, ret.Error())
 			}
 			txIndex++
 		}
+		fmt.Printf("Paralle run %d, Conflected tx %d/n", len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx)
 		//keep running
 		signal <- 0
 		return
