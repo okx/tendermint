@@ -674,7 +674,7 @@ type MempoolConfig struct {
 	EnablePendingPool          bool   `mapstructure:"enable_pending_pool"`
 	PendingPoolSize            int    `mapstructure:"pending_pool_size"`
 	PendingPoolPeriod          int    `mapstructure:"pending_pool_period"`
-	PendingPoolReservePeriod   int    `mapstructure:"pending_pool_reserve_period"`
+	PendingPoolReserveBlocks   int    `mapstructure:"pending_pool_reserve_blocks"`
 	PendingPoolMaxTxPerAddress int    `mapstructure:"pending_pool_max_tx_per_address"`
 }
 
@@ -696,8 +696,8 @@ func DefaultMempoolConfig() *MempoolConfig {
 		TxPriceBump:                10,
 		PendingPoolSize:            10000,
 		PendingPoolPeriod:          3,
-		PendingPoolReservePeriod:   20,
-		PendingPoolMaxTxPerAddress: 200,
+		PendingPoolReserveBlocks:   100,
+		PendingPoolMaxTxPerAddress: 500,
 	}
 }
 

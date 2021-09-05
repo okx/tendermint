@@ -121,7 +121,7 @@ func NewCListMempool(
 
 	if config.EnablePendingPool {
 		mempool.pendingPool = newPendingPool(config.PendingPoolSize, config.PendingPoolPeriod,
-			config.PendingPoolReservePeriod, config.PendingPoolMaxTxPerAddress)
+			config.PendingPoolReserveBlocks, config.PendingPoolMaxTxPerAddress)
 		mempool.pendingPoolNotify = make(chan map[string]uint64, 1)
 		go mempool.pendingPoolJob()
 	}

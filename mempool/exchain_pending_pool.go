@@ -10,7 +10,7 @@ type PendingPool struct {
 	txsMap          map[string]*PendingTx
 	mtx             sync.RWMutex
 	period          int
-	reservePeriod   int
+	reserveBlocks   int
 	periodCounter   map[string]int // address with period count
 	maxTxPerAddress int
 }
@@ -21,7 +21,7 @@ func newPendingPool(maxSize int, period int, reserveBlocks int, maxTxPerAddress 
 		addressTxsMap:   make(map[string]map[uint64]*PendingTx),
 		txsMap:          make(map[string]*PendingTx),
 		period:          period,
-		reservePeriod:   reserveBlocks,
+		reserveBlocks:   reserveBlocks,
 		periodCounter:   make(map[string]int),
 		maxTxPerAddress: maxTxPerAddress,
 	}
@@ -129,7 +129,7 @@ func (p *PendingPool) handlePeriodCounter() {
 	defer p.mtx.Unlock()
 	for addr, txMap := range p.addressTxsMap {
 		count := p.periodCounter[addr]
-		if count >= p.reservePeriod {
+		if count >= p.reserveBlocks {
 			delete(p.addressTxsMap, addr)
 			for _, pendingTx := range txMap {
 				delete(p.txsMap, txID(pendingTx.mempoolTx.tx))
