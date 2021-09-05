@@ -76,10 +76,12 @@ type CListMempool struct {
 
 	metrics *Metrics
 
-	addressRecord    map[string]map[string]*clist.CElement // Address -> (txHash -> *CElement)
-	addrMapMtx       sync.RWMutex
-	pendingPool      *PendingPool
-	accountRetriever AccountRetriever
+	addressRecord map[string]map[string]*clist.CElement // Address -> (txHash -> *CElement)
+	addrMapMtx    sync.RWMutex
+
+	pendingPool       *PendingPool
+	accountRetriever  AccountRetriever
+	pendingPoolNotify chan map[string]uint64
 }
 
 var _ Mempool = &CListMempool{}
@@ -118,7 +120,9 @@ func NewCListMempool(
 	mempool.addressRecord = make(map[string]map[string]*clist.CElement)
 
 	if config.EnablePendingPool {
-		mempool.pendingPool = newPendingPool(config.PendingPoolSize, config.PendingPoolPeriod, config.PendingPoolPeriodLimit)
+		mempool.pendingPool = newPendingPool(config.PendingPoolSize, config.PendingPoolPeriod,
+			config.PendingPoolReservePeriod, config.PendingPoolMaxTxPerAddress)
+		mempool.pendingPoolNotify = make(chan map[string]uint64, 1)
 		go mempool.pendingPoolJob()
 	}
 
@@ -502,7 +506,7 @@ func (mem *CListMempool) addPendingTx(memTx *mempoolTx, exTxInfo ExTxInfo) error
 	}
 
 	// add tx to PendingPool
-	if err := mem.pendingPool.isFull(); err != nil {
+	if err := mem.pendingPool.validate(exTxInfo.Sender); err != nil {
 		return err
 	}
 	pendingTx := &PendingTx{
@@ -510,6 +514,7 @@ func (mem *CListMempool) addPendingTx(memTx *mempoolTx, exTxInfo ExTxInfo) error
 		exTxInfo:  exTxInfo,
 	}
 	mem.pendingPool.addTx(pendingTx)
+	mem.logger.Debug("pending pool addTx", "tx", pendingTx)
 
 	return nil
 }
@@ -836,6 +841,7 @@ func (mem *CListMempool) Update(
 	}
 
 	toCleanAccMap := make(map[string]uint64)
+	addressNonce := make(map[string]uint64)
 	for i, tx := range txs {
 		txCode := deliverTxResponses[i].Code
 		if txCode == abci.CodeTypeOK || txCode > abci.CodeTypeNonceInc {
@@ -862,6 +868,8 @@ func (mem *CListMempool) Update(
 				toCleanAccMap[ele.Address] = ele.Nonce
 			}
 			mem.removeTx(tx, ele, false)
+			addressNonce[ele.Address] = ele.Nonce
+			mem.logger.Debug("Mempool update", "address", ele.Address, "nonce", ele.Nonce)
 		}
 
 		if mem.pendingPool != nil {
@@ -900,6 +908,7 @@ func (mem *CListMempool) Update(
 	// Update metrics
 	mem.metrics.Size.Set(float64(mem.Size()))
 	if mem.pendingPool != nil {
+		mem.pendingPoolNotify <- addressNonce
 		mem.metrics.PendingPoolSize.Set(float64(mem.pendingPool.Size()))
 	}
 
@@ -1143,18 +1152,19 @@ func (mem *CListMempool) SetAccountRetriever(retriever AccountRetriever) {
 
 func (mem *CListMempool) pendingPoolJob() {
 	for {
-		time.Sleep(time.Duration(mem.pendingPool.period) * time.Second)
-		timeStart := time.Now()
-		mem.logger.Debug("pending pool job begin", "poolSize", mem.pendingPool.Size())
-		addrNonceMap := mem.pendingPool.handlePendingTxNonce(mem.accountRetriever)
-		for addr, nonce := range addrNonceMap {
-			mem.consumePendingTx(addr, nonce)
+		select {
+		case addressNonce := <-mem.pendingPoolNotify:
+			timeStart := time.Now()
+			mem.logger.Debug("pending pool job begin", "poolSize", mem.pendingPool.Size())
+			addrNonceMap := mem.pendingPool.handlePendingTx(addressNonce)
+			for addr, nonce := range addrNonceMap {
+				mem.consumePendingTx(addr, nonce)
+			}
+			mem.pendingPool.handlePeriodCounter()
+			timeElapse := time.Since(timeStart).Microseconds()
+			mem.logger.Debug("pending pool job end", "interval(ms)", timeElapse,
+				"poolSize", mem.pendingPool.Size(),
+				"addressNonceMap", addrNonceMap)
 		}
-		mem.pendingPool.handlePeriodCounter()
-		timeElapse := time.Since(timeStart).Microseconds()
-		mem.logger.Debug("pending pool job end", "interval(ms)", timeElapse,
-			"poolSize", mem.pendingPool.Size(),
-			"addressNonceMap", addrNonceMap)
-
 	}
 }

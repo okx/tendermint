@@ -1,28 +1,29 @@
 package mempool
 
 import (
-	"fmt"
 	"sync"
 )
 
 type PendingPool struct {
-	maxSize       int
-	addressTxsMap map[string]map[uint64]*PendingTx
-	txsMap        map[string]*PendingTx
-	mtx           sync.RWMutex
-	period        int
-	periodLimit   int
-	periodCounter map[string]int // address with period count
+	maxSize         int
+	addressTxsMap   map[string]map[uint64]*PendingTx
+	txsMap          map[string]*PendingTx
+	mtx             sync.RWMutex
+	period          int
+	reservePeriod   int
+	periodCounter   map[string]int // address with period count
+	maxTxPerAddress int
 }
 
-func newPendingPool(maxSize int, period int, periodLimit int) *PendingPool {
+func newPendingPool(maxSize int, period int, reserveBlocks int, maxTxPerAddress int) *PendingPool {
 	return &PendingPool{
-		maxSize:       maxSize,
-		addressTxsMap: make(map[string]map[uint64]*PendingTx),
-		txsMap:        make(map[string]*PendingTx),
-		period:        period,
-		periodLimit:   periodLimit,
-		periodCounter: make(map[string]int),
+		maxSize:         maxSize,
+		addressTxsMap:   make(map[string]map[uint64]*PendingTx),
+		txsMap:          make(map[string]*PendingTx),
+		period:          period,
+		reservePeriod:   reserveBlocks,
+		periodCounter:   make(map[string]int),
+		maxTxPerAddress: maxTxPerAddress,
 	}
 }
 
@@ -30,6 +31,15 @@ func (p *PendingPool) Size() int {
 	p.mtx.RLock()
 	defer p.mtx.RUnlock()
 	return len(p.txsMap)
+}
+
+func (p *PendingPool) txCount(address string) int {
+	p.mtx.RLock()
+	defer p.mtx.RUnlock()
+	if _, ok := p.addressTxsMap[address]; !ok {
+		return 0
+	}
+	return len(p.addressTxsMap[address])
 }
 
 func (p *PendingPool) getTx(address string, nonce uint64) *PendingTx {
@@ -91,23 +101,24 @@ func (p *PendingPool) removeTxByHash(txHash string) {
 	}
 }
 
-func (p *PendingPool) handlePendingTxNonce(accRetriever AccountRetriever) map[string]uint64 {
+func (p *PendingPool) handlePendingTx(addressNonce map[string]uint64) map[string]uint64 {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	addrMap := make(map[string]uint64)
-	for addr, txMap := range p.addressTxsMap {
-		accountNonce := accRetriever.GetAccountNonce(addr)
-		for nonce, pendingTx := range txMap {
-			// remove invalid pending tx
-			if nonce < accountNonce {
-				delete(p.addressTxsMap[addr], nonce)
-				delete(p.txsMap, txID(pendingTx.mempoolTx.tx))
-			} else if nonce == accountNonce {
-				addrMap[addr] = nonce
+	for addr, accountNonce := range addressNonce {
+		if txsMap, ok := p.addressTxsMap[addr]; ok {
+			for nonce, pendingTx := range txsMap {
+				// remove invalid pending tx
+				if nonce <= accountNonce {
+					delete(p.addressTxsMap[addr], nonce)
+					delete(p.txsMap, txID(pendingTx.mempoolTx.tx))
+				} else if nonce == accountNonce+1 {
+					addrMap[addr] = nonce
+				}
 			}
-		}
-		if len(p.addressTxsMap[addr]) == 0 {
-			delete(p.addressTxsMap, addr)
+			if len(p.addressTxsMap[addr]) == 0 {
+				delete(p.addressTxsMap, addr)
+			}
 		}
 	}
 	return addrMap
@@ -118,7 +129,7 @@ func (p *PendingPool) handlePeriodCounter() {
 	defer p.mtx.Unlock()
 	for addr, txMap := range p.addressTxsMap {
 		count := p.periodCounter[addr]
-		if count >= p.periodLimit {
+		if count >= p.reservePeriod {
 			delete(p.addressTxsMap, addr)
 			for _, pendingTx := range txMap {
 				delete(p.txsMap, txID(pendingTx.mempoolTx.tx))
@@ -130,12 +141,20 @@ func (p *PendingPool) handlePeriodCounter() {
 	}
 }
 
-func (p *PendingPool) isFull() error {
+func (p *PendingPool) validate(address string) error {
 	poolSize := p.Size()
 	if poolSize >= p.maxSize {
 		return ErrPendingPoolIsFull{
 			size:    poolSize,
 			maxSize: p.maxSize,
+		}
+	}
+	txCount := p.txCount(address)
+	if txCount >= p.maxTxPerAddress {
+		return ErrPendingPoolAddressLimit{
+			address: address,
+			size:    txCount,
+			maxSize: p.maxTxPerAddress,
 		}
 	}
 	return nil
@@ -144,18 +163,6 @@ func (p *PendingPool) isFull() error {
 type PendingTx struct {
 	mempoolTx *mempoolTx
 	exTxInfo  ExTxInfo
-}
-
-// ErrPendingPoolIsFull means PendingPool can't handle that much load
-type ErrPendingPoolIsFull struct {
-	size    int
-	maxSize int
-}
-
-func (e ErrPendingPoolIsFull) Error() string {
-	return fmt.Sprintf(
-		"PendingPool is full: current pending pool size %d, max size %d",
-		e.size, e.maxSize)
 }
 
 type AccountRetriever interface {
