@@ -1151,20 +1151,17 @@ func (mem *CListMempool) SetAccountRetriever(retriever AccountRetriever) {
 }
 
 func (mem *CListMempool) pendingPoolJob() {
-	for {
-		select {
-		case addressNonce := <-mem.pendingPoolNotify:
-			timeStart := time.Now()
-			mem.logger.Debug("pending pool job begin", "poolSize", mem.pendingPool.Size())
-			addrNonceMap := mem.pendingPool.handlePendingTx(addressNonce)
-			for addr, nonce := range addrNonceMap {
-				mem.consumePendingTx(addr, nonce)
-			}
-			mem.pendingPool.handlePeriodCounter()
-			timeElapse := time.Since(timeStart).Microseconds()
-			mem.logger.Debug("pending pool job end", "interval(ms)", timeElapse,
-				"poolSize", mem.pendingPool.Size(),
-				"addressNonceMap", addrNonceMap)
+	for addressNonce := range mem.pendingPoolNotify {
+		timeStart := time.Now()
+		mem.logger.Debug("pending pool job begin", "poolSize", mem.pendingPool.Size())
+		addrNonceMap := mem.pendingPool.handlePendingTx(addressNonce)
+		for addr, nonce := range addrNonceMap {
+			mem.consumePendingTx(addr, nonce)
 		}
+		mem.pendingPool.handlePeriodCounter()
+		timeElapse := time.Since(timeStart).Microseconds()
+		mem.logger.Debug("pending pool job end", "interval(ms)", timeElapse,
+			"poolSize", mem.pendingPool.Size(),
+			"addressNonceMap", addrNonceMap)
 	}
 }
