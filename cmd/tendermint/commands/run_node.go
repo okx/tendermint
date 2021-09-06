@@ -131,7 +131,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Int(
 		"mempool.pending_pool_period",
 		config.Mempool.PendingPoolPeriod,
-		"The time period to wait to consume the pending pool txs when the mempool is full ",
+		"The time period in second to wait to consume the pending pool txs when the mempool is full ",
 	)
 	cmd.Flags().Int(
 		"mempool.pending_pool_reserve_blocks",
