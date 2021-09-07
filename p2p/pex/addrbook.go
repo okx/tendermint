@@ -371,7 +371,9 @@ func (a *addrBook) ReinstateBadPeers() {
 			continue
 		}
 
-		a.addToNewBucket(ka, bucket)
+		if err := a.addToNewBucket(ka, bucket); err != nil {
+			a.Logger.Error("Error adding peer to new bucket", "err", err)
+		}
 		delete(a.badPeers, ka.ID())
 
 		a.Logger.Info("Reinstated address", "addr", ka.Addr)
@@ -516,11 +518,10 @@ func (a *addrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAd
 
 // Adds ka to new bucket. Returns false if it couldn't do it cuz buckets full.
 // NOTE: currently it always returns true.
-func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) {
-	// Sanity check
+func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) error {
+	// Consistency check to ensure we don't add an already known address
 	if ka.isOld() {
-		a.Logger.Error("Failed Sanity Check! Cant add old address to new bucket", "ka", ka, "bucket", bucketIdx)
-		return
+		return errAddrBookOldAddressNewBucket{ka.Addr, bucketIdx}
 	}
 
 	addrStr := ka.Addr.String()
@@ -528,7 +529,7 @@ func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) {
 
 	// Already exists?
 	if _, ok := bucket[addrStr]; ok {
-		return
+		return nil
 	}
 
 	// Enforce max addresses.
@@ -546,6 +547,7 @@ func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) {
 
 	// Add it to addrLookup
 	a.addrLookup[ka.ID()] = ka
+	return nil
 }
 
 // Adds ka to old bucket. Returns false if it couldn't do it cuz buckets full.
@@ -684,8 +686,7 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	if err != nil {
 		return err
 	}
-	a.addToNewBucket(ka, bucket)
-	return nil
+	return a.addToNewBucket(ka, bucket)
 }
 
 func (a *addrBook) randomPickAddresses(bucketType byte, num int) []*p2p.NetAddress {
@@ -776,7 +777,9 @@ func (a *addrBook) moveToOld(ka *knownAddress) error {
 		if err != nil {
 			return err
 		}
-		a.addToNewBucket(oldest, newBucketIdx)
+		if err := a.addToNewBucket(oldest, newBucketIdx); err != nil {
+			a.Logger.Error("Error adding peer to old bucket", "err", err)
+		}
 
 		// Finally, add our ka to old bucket again.
 		added = a.addToOldBucket(ka, oldBucketIdx)
