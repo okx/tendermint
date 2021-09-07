@@ -167,7 +167,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 		}
 
-		state.context.saveDeltas(deltas)
+		state.context.saveDeltas(deltas, first.Height)
 
 		delete(state.queue, first.Height)
 		state.blocksSynced++

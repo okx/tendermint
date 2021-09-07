@@ -156,6 +156,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 	var abciResponses *ABCIResponses
 	var err error
+	blockExec.logger.Error("************fsc:deltas.len:", len(deltas.ABCIRsp))
 	if viper.GetInt32("enable-state-delta") == 1 {
 		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 		bytes, err := json.Marshal(abciResponses)

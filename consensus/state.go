@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"github.com/spf13/viper"
 	"reflect"
 	"runtime/debug"
 	"sync"
@@ -1503,10 +1504,16 @@ func (cs *State) finalizeCommit(height int64) {
 
 	var err error
 	var retainHeight int64
-	deltas := cs.Deltas
-	if deltas == nil {
+	var deltas *types.Deltas
+	if viper.GetInt32("enable-state-delta") != 2 {
 		deltas = &types.Deltas{}
+	} else {
+		deltas = cs.Deltas
+		if deltas == nil {
+			deltas = &types.Deltas{}
+		}
 	}
+
 	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
 		stateCopy,
 		types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()},
@@ -1521,7 +1528,7 @@ func (cs *State) finalizeCommit(height int64) {
 		return
 	}
 
-	cs.blockStore.SaveDeltas(deltas)
+	cs.blockStore.SaveDeltas(deltas, block.Height)
 
 	fail.Fail() // XXX
 

@@ -3,6 +3,7 @@ package v0
 import (
 	"errors"
 	"fmt"
+	"github.com/spf13/viper"
 	"reflect"
 	"time"
 
@@ -320,6 +321,9 @@ FOR_LOOP:
 			if deltas == nil {
 				deltas = &types.Deltas{}
 			}
+			if viper.GetInt32("enable-state-delta") == 1 {
+				deltas = &types.Deltas{}
+			}
 
 			firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 			firstPartsHeader := firstParts.Header()
@@ -365,7 +369,7 @@ FOR_LOOP:
 
 				// persists the given deltas to the underlying db.
 				deltas.Height = first.Height
-				bcR.store.SaveDeltas(deltas)
+				bcR.store.SaveDeltas(deltas, first.Height)
 
 				if blocksSynced%100 == 0 {
 					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())

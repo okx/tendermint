@@ -130,4 +130,4 @@ func (mockBlockStore) PruneBlocks(height int64) (uint64, error)          { retur
 func (mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {}
 
 func (mockBlockStore) LoadDeltas(height int64) *types.Deltas {return nil}
-func (mockBlockStore) SaveDeltas(deltas *types.Deltas) {}
+func (mockBlockStore) SaveDeltas(deltas *types.Deltas, height int64) {}

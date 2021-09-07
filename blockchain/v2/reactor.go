@@ -123,7 +123,7 @@ type blockStore interface {
 	LoadBlock(height int64) *types.Block
 	LoadDeltas(height int64) *types.Deltas
 	SaveBlock(*types.Block, *types.PartSet, *types.Commit)
-	SaveDeltas(deltas *types.Deltas)
+	SaveDeltas(deltas *types.Deltas, height int64)
 	Base() int64
 	Height() int64
 }

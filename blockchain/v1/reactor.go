@@ -450,7 +450,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 	}
 
-	bcR.store.SaveDeltas(deltas)
+	bcR.store.SaveDeltas(deltas, first.Height)
 
 	return nil
 }

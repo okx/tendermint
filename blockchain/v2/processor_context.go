@@ -11,7 +11,7 @@ type processorContext interface {
 	applyBlock(blockID types.BlockID, block *types.Block, deltas *types.Deltas) error
 	verifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error
 	saveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
-	saveDeltas(deltas *types.Deltas)
+	saveDeltas(deltas *types.Deltas, height int64)
 	tmState() state.State
 }
 
@@ -47,8 +47,8 @@ func (pc *pContext) saveBlock(block *types.Block, blockParts *types.PartSet, see
 	pc.store.SaveBlock(block, blockParts, seenCommit)
 }
 
-func (pc *pContext) saveDeltas(deltas *types.Deltas) {
-	pc.store.SaveDeltas(deltas)
+func (pc *pContext) saveDeltas(deltas *types.Deltas, height int64) {
+	pc.store.SaveDeltas(deltas, height)
 }
 
 type mockPContext struct {
@@ -91,7 +91,7 @@ func (mpc *mockPContext) saveBlock(block *types.Block, blockParts *types.PartSet
 
 }
 
-func (mpc *mockPContext) saveDeltas(deltas *types.Deltas) {
+func (mpc *mockPContext) saveDeltas(deltas *types.Deltas, height int64) {
 
 }
 
