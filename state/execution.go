@@ -1,8 +1,8 @@
 package state
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/json-iterator/go"
 	"github.com/spf13/viper"
 	dbm "github.com/tendermint/tm-db"
 	"time"
@@ -14,6 +14,8 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
+
+var itjs = jsoniter.ConfigCompatibleWithStandardLibrary
 
 //-----------------------------------------------------------------------------
 // BlockExecutor handles block execution and state updates.
@@ -156,15 +158,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 	var abciResponses *ABCIResponses
 	var err error
-	blockExec.logger.Error("************fsc:deltas.len:", len(deltas.ABCIRsp))
-	if viper.GetInt32("enable-state-delta") == 1 {
-		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
-		bytes, err := json.Marshal(abciResponses)
-		if err != nil {
-			panic(err)
-		}
-		deltas.ABCIRsp = bytes
-	} else if viper.GetInt32("enable-state-delta") == 2 && len(deltas.ABCIRsp) != 0 {
+	if viper.GetInt32("enable-state-delta") == 2 && len(deltas.ABCIRsp) != 0 {
 		commitInfo, byzVals := getBeginBlockValidatorInfo(block, blockExec.db)
 		_, _ = blockExec.proxyApp.BeginBlockSync(abci.RequestBeginBlock{
 			Hash:                block.Hash(),
@@ -173,14 +167,18 @@ func (blockExec *BlockExecutor) ApplyBlock(
 			ByzantineValidators: byzVals,
 			UseDeltas: true,
 		})
-		blockExec.logger.Error("************fsc:deltas.ABCIRsp != 0*************")
 		bytes := deltas.ABCIRsp
-		err = json.Unmarshal(bytes, &abciResponses)
+		err = itjs.Unmarshal(bytes, &abciResponses)
 		if err != nil {
 			panic(err)
 		}
 	} else {
 		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+		bytes, err := itjs.Marshal(abciResponses)
+		if err != nil {
+			panic(err)
+		}
+		deltas.ABCIRsp = bytes
 	}
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)

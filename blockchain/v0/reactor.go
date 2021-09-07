@@ -194,17 +194,9 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
-		fmt.Printf("***************fsc:bcReq:%v**************", msg.Height)
 		bcR.respondToPeer(msg, src)
 	case *bcBlockResponseMessage:
-		/*if msg.Deltas == nil {
-			bcR.Logger.Debug("Get Deltas from msg is nil. Try send BlockRequest again")
-			msgBytes := cdc.MustMarshalBinaryBare(&bcNoBlockResponseMessage{Height: msg.Block.Height})
-			src.TrySend(BlockchainChannel, msgBytes)
-		} else
-		*/{
 			bcR.pool.AddBlock(src.ID(), msg.Block, msg.Deltas, len(msgBytes))
-		}
 	case *bcStatusRequestMessage:
 		// Send peer our state.
 		src.TrySend(BlockchainChannel, cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{
@@ -368,8 +360,10 @@ FOR_LOOP:
 				blocksSynced++
 
 				// persists the given deltas to the underlying db.
-				deltas.Height = first.Height
-				bcR.store.SaveDeltas(deltas, first.Height)
+				if viper.GetInt32("enable-state-delta") != 0 {
+					deltas.Height = first.Height
+					bcR.store.SaveDeltas(deltas, first.Height)
+				}
 
 				if blocksSynced%100 == 0 {
 					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())

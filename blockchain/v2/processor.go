@@ -2,6 +2,7 @@ package v2
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
 
 	"github.com/tendermint/tendermint/p2p"
 	tmState "github.com/tendermint/tendermint/state"
@@ -147,6 +148,9 @@ func (state *pcState) handle(event Event) (Event, error) {
 		if deltas == nil {
 			deltas = &types.Deltas{}
 		}
+		if viper.GetInt32("enable-state-delta") == 1 {
+			deltas = &types.Deltas{}
+		}
 
 		firstParts := first.MakePartSet(types.BlockPartSizeBytes)
 		firstPartsHeader := firstParts.Header()
@@ -167,7 +171,10 @@ func (state *pcState) handle(event Event) (Event, error) {
 			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 		}
 
-		state.context.saveDeltas(deltas, first.Height)
+		if viper.GetInt32("enable-state-delta") != 0 {
+			deltas.Height = first.Height
+			state.context.saveDeltas(deltas, first.Height)
+		}
 
 		delete(state.queue, first.Height)
 		state.blocksSynced++

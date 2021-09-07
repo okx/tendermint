@@ -1528,7 +1528,10 @@ func (cs *State) finalizeCommit(height int64) {
 		return
 	}
 
-	cs.blockStore.SaveDeltas(deltas, block.Height)
+	if viper.GetInt32("enable-state-delta") != 0 {
+		deltas.Height = block.Height
+		cs.blockStore.SaveDeltas(deltas, block.Height)
+	}
 
 	fail.Fail() // XXX
 

@@ -3,6 +3,7 @@ package v1
 import (
 	"errors"
 	"fmt"
+	"github.com/spf13/viper"
 	"reflect"
 	"time"
 
@@ -252,11 +253,6 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		}
 
 	case *bcBlockResponseMessage:
-		/*if msg.Deltas == nil {
-			bcR.Logger.Debug("Get Deltas from msg is nil. Try send BlockRequest again")
-			msgBytes := cdc.MustMarshalBinaryBare(&bcNoBlockResponseMessage{Height: msg.Block.Height})
-			src.TrySend(BlockchainChannel, msgBytes)
-		} else */{
 			msgForFSM := bcReactorMessage{
 				event: blockResponseEv,
 				data: bReactorEventData{
@@ -269,8 +265,6 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			}
 			bcR.Logger.Info("Received", "src", src, "height", msg.Block.Height)
 			bcR.messagesForFSMCh <- msgForFSM
-		}
-
 
 	case *bcStatusResponseMessage:
 		// Got a peer status. Unverified.
@@ -426,6 +420,12 @@ func (bcR *BlockchainReactor) processBlock() error {
 		// We need both to sync the first block.
 		return err
 	}
+	if deltas == nil {
+		deltas = &types.Deltas{}
+	}
+	if viper.GetInt32("enable-state-delta") == 1 {
+		deltas = &types.Deltas{}
+	}
 
 	chainID := bcR.initialState.ChainID
 
@@ -450,7 +450,10 @@ func (bcR *BlockchainReactor) processBlock() error {
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 	}
 
-	bcR.store.SaveDeltas(deltas, first.Height)
+	if viper.GetInt32("enable-state-delta") != 0 {
+		deltas.Height = first.Height
+		bcR.store.SaveDeltas(deltas, first.Height)
+	}
 
 	return nil
 }
