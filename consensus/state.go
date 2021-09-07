@@ -1509,7 +1509,7 @@ func (cs *State) finalizeCommit(height int64) {
 		deltas = &types.Deltas{}
 	} else {
 		deltas = cs.Deltas
-		if deltas == nil {
+		if deltas == nil || deltas.Height != block.Height {
 			deltas = &types.Deltas{}
 		}
 	}

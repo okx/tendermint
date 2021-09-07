@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
 	"reflect"
 	"sync"
 	"time"
@@ -585,7 +586,13 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 			time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 			return
 		}
-		deltas := conR.conS.blockStore.LoadDeltas(prs.Height)
+		var deltas *types.Deltas
+		if viper.GetInt32("enable-state-delta") != 0 {
+			deltas = conR.conS.blockStore.LoadDeltas(prs.Height)
+			if deltas.Height != prs.Height {
+				deltas = nil
+			}
+		}
 		// Send the part
 		msg := &BlockPartMessage{
 			Height: prs.Height, // Not our height, so it doesn't matter.
