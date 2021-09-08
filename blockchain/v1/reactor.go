@@ -189,6 +189,9 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcBlockRequestMessage,
 
 	block := bcR.store.LoadBlock(msg.Height)
 	deltas := bcR.store.LoadDeltas(msg.Height)
+	if deltas == nil || deltas.Height != msg.Height {
+		deltas = &types.Deltas{}
+	}
 	if block != nil {
 		msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponseMessage{Block: block, Deltas: deltas})
 		return src.TrySend(BlockchainChannel, msgBytes)
@@ -450,7 +453,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 	}
 
-	if viper.GetInt32("enable-state-delta") != 0 {
+	if viper.GetInt32("enable-state-delta") != 0 && len(deltas.DeltasBytes) > 0 {
 		deltas.Height = first.Height
 		bcR.store.SaveDeltas(deltas, first.Height)
 	}

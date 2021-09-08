@@ -473,7 +473,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 	deltas := h.store.LoadDeltas(height)
-	if deltas == nil {
+	if deltas == nil || deltas.Height != height {
 		deltas = &types.Deltas{}
 	}
 
@@ -553,5 +553,5 @@ func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlo
 }
 
 func (mock *mockProxyApp) Commit(req abci.RequestCommit) abci.ResponseCommit {
-	return abci.ResponseCommit{Data: mock.appHash}
+	return abci.ResponseCommit{Data: mock.appHash, Deltas: &abci.Deltas{}}
 }

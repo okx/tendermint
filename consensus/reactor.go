@@ -589,8 +589,8 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 		var deltas *types.Deltas
 		if viper.GetInt32("enable-state-delta") != 0 {
 			deltas = conR.conS.blockStore.LoadDeltas(prs.Height)
-			if deltas.Height != prs.Height {
-				deltas = nil
+			if deltas == nil || deltas.Height != prs.Height {
+				deltas = &types.Deltas{}
 			}
 		}
 		// Send the part

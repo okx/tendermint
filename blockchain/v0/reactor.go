@@ -164,6 +164,9 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 
 	block := bcR.store.LoadBlock(msg.Height)
 	deltas := bcR.store.LoadDeltas(msg.Height)
+	if deltas == nil || deltas.Height != msg.Height {
+		deltas = &types.Deltas{}
+	}
 	if block != nil {
 		msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponseMessage{Block: block, Deltas: deltas})
 		return src.TrySend(BlockchainChannel, msgBytes)
@@ -360,7 +363,7 @@ FOR_LOOP:
 				blocksSynced++
 
 				// persists the given deltas to the underlying db.
-				if viper.GetInt32("enable-state-delta") != 0 {
+				if viper.GetInt32("enable-state-delta") != 0 && len(deltas.DeltasBytes) > 0 {
 					deltas.Height = first.Height
 					bcR.store.SaveDeltas(deltas, first.Height)
 				}

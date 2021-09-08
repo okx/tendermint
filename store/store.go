@@ -338,6 +338,9 @@ func (bs *BlockStore) saveState() {
 // SaveDeltas persists the given deltas to the underlying db.
 // todo make new store(DeltasStore) and move Deltas from BlockStore.db to DeltasStore.db
 func (bs *BlockStore) SaveDeltas(deltas *types.Deltas, height int64) {
+	if deltas == nil {
+		return
+	}
 	keyHeight := deltas.Height
 	if keyHeight == 0 {
 		keyHeight = height

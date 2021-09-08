@@ -519,6 +519,9 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case *bcBlockRequestMessage:
 		block := r.store.LoadBlock(msg.Height)
 		deltas := r.store.LoadDeltas(msg.Height)
+		if deltas == nil || deltas.Height != msg.Height {
+			deltas = &types.Deltas{}
+		}
 		if block != nil {
 			if err = r.io.sendBlockToPeer(block, deltas, src.ID()); err != nil {
 				r.logger.Error("Could not send block message to peer: ", err)

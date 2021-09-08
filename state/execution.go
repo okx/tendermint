@@ -222,9 +222,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	startTime = time.Now().UnixNano()
 
 	// Lock mempool, commit app state, update mempoool.
-	outDeltas, appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs, deltas.DeltasBytes)
-	// todo get outDeltas
-	deltas.DeltasBytes = outDeltas
+	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs, deltas)
 	endTime = time.Now().UnixNano()
 	blockExec.metrics.CommitTime.Set(float64(endTime-startTime) / 1e6)
 	if err != nil {
@@ -263,27 +261,35 @@ func (blockExec *BlockExecutor) Commit(
 	state State,
 	block *types.Block,
 	deliverTxResponses []*abci.ResponseDeliverTx,
-	inDeltas []byte,
-) ([]byte, []byte, int64, error) {
+//	inDeltas []byte,
+	deltas *types.Deltas,
+) ([]byte, int64, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
+
+	if deltas == nil {
+		deltas = &types.Deltas{}
+	}
 
 	// while mempool is Locked, flush to ensure all async requests have completed
 	// in the ABCI app before Commit.
 	err := blockExec.mempool.FlushAppConn()
 	if err != nil {
 		blockExec.logger.Error("Client error during mempool.FlushAppConn", "err", err)
-		return nil, nil, 0, err
+		return nil, 0, err
 	}
 
 	// Commit block, get hash back
-	res, err := blockExec.proxyApp.CommitSync(abci.RequestCommit{Deltas: &abci.Deltas{DeltasByte: inDeltas}})
+	res, err := blockExec.proxyApp.CommitSync(abci.RequestCommit{Deltas: &abci.Deltas{DeltasByte: deltas.DeltasBytes}})
 	if err != nil {
 		blockExec.logger.Error(
 			"Client error during proxyAppConn.CommitSync",
 			"err", err,
 		)
-		return nil, nil, 0, err
+		return nil, 0, err
+	}
+	if res.Deltas == nil  {
+		res.Deltas = &abci.Deltas{}
 	}
 	// ResponseCommit has no error code - just data
 
@@ -292,8 +298,10 @@ func (blockExec *BlockExecutor) Commit(
 		"height", block.Height,
 		"txs", len(block.Txs),
 		"appHash", fmt.Sprintf("%X", res.Data),
-		"inDeltasLen", len(inDeltas),
+		"inDeltasLen", len(deltas.DeltasBytes),
+		"outDeltasLen", len(res.Deltas.DeltasByte),
 	)
+	deltas.DeltasBytes = res.Deltas.DeltasByte
 
 	// Update mempool.
 	err = blockExec.mempool.Update(
@@ -312,7 +320,7 @@ func (blockExec *BlockExecutor) Commit(
 		})
 	}
 
-	return res.Deltas.DeltasByte, res.Data, res.RetainHeight, err
+	return res.Data, res.RetainHeight, err
 }
 
 //---------------------------------------------------------
