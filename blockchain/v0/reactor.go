@@ -316,7 +316,7 @@ FOR_LOOP:
 			if deltas == nil {
 				deltas = &types.Deltas{}
 			}
-			if viper.GetInt32("enable-state-delta") == 1 {
+			if viper.GetInt32("enable-state-delta") != 2 {
 				deltas = &types.Deltas{}
 			}
 

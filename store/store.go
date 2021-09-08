@@ -344,6 +344,7 @@ func (bs *BlockStore) SaveDeltas(deltas *types.Deltas, height int64) {
 	keyHeight := deltas.Height
 	if keyHeight == 0 {
 		keyHeight = height
+		deltas.Height = height
 	}
 	bs.db.Set(calcDeltasKey(keyHeight), cdc.MustMarshalBinaryBare(deltas))
 }
