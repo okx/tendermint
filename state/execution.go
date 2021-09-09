@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"github.com/json-iterator/go"
 	"github.com/spf13/viper"
-	dbm "github.com/tendermint/tm-db"
-	"time"
-
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
+	"time"
 )
 
 var itjs = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -312,8 +312,7 @@ func (blockExec *BlockExecutor) Commit(
 		TxPostCheck(state),
 	)
 
-	memCfg := blockExec.mempool.GetConfig()
-	if !memCfg.Recheck && block.Height%memCfg.ForceRecheckGap == 0 {
+	if !cfg.DynamicConfig.GetMempoolRecheck() && block.Height%cfg.DynamicConfig.GetMempoolForceRecheckGap() == 0 {
 		// reset checkState
 		blockExec.proxyApp.SetOptionAsync(abci.RequestSetOption{
 			Key: "ResetCheckState",

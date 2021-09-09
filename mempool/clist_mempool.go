@@ -6,11 +6,13 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"math/big"
 	"sort"
 	"sync"
 	"sync/atomic"
+	"time"
+
+	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -76,6 +78,10 @@ type CListMempool struct {
 
 	addressRecord map[string]map[string]*clist.CElement // Address -> (txHash -> *CElement)
 	addrMapMtx    sync.RWMutex
+
+	pendingPool       *PendingPool
+	accountRetriever  AccountRetriever
+	pendingPoolNotify chan map[string]uint64
 }
 
 var _ Mempool = &CListMempool{}
@@ -112,6 +118,13 @@ func NewCListMempool(
 		option(mempool)
 	}
 	mempool.addressRecord = make(map[string]map[string]*clist.CElement)
+
+	if config.EnablePendingPool {
+		mempool.pendingPool = newPendingPool(config.PendingPoolSize, config.PendingPoolPeriod,
+			config.PendingPoolReserveBlocks, config.PendingPoolMaxTxPerAddress)
+		mempool.pendingPoolNotify = make(chan map[string]uint64, 1)
+		go mempool.pendingPoolJob()
+	}
 
 	return mempool
 }
@@ -369,6 +382,9 @@ func (mem *CListMempool) reqResCb(
 
 		// update metrics
 		mem.metrics.Size.Set(float64(mem.Size()))
+		if mem.pendingPool != nil {
+			mem.metrics.PendingPoolSize.Set(float64(mem.pendingPool.Size()))
+		}
 
 		// passed in by the caller of CheckTx, eg. the RPC
 		if externalCb != nil {
@@ -413,6 +429,9 @@ func (mem *CListMempool) addAndSortTx(memTx *mempoolTx, info ExTxInfo) error {
 // Called from:
 //  - resCbFirstTime (lock not held) if tx is valid
 func (mem *CListMempool) addTx(memTx *mempoolTx, info ExTxInfo) error {
+	if mem.config.SortTxByGp {
+		return mem.addAndSortTx(memTx, info)
+	}
 	e := mem.txs.PushBack(memTx)
 	e.Address = info.Sender
 
@@ -466,14 +485,68 @@ func (mem *CListMempool) isFull(txSize int) error {
 		txsBytes = mem.TxsBytes()
 	)
 
-	if memSize >= mem.config.Size || int64(txSize)+txsBytes > mem.config.MaxTxsBytes {
+	if memSize >= cfg.DynamicConfig.GetMempoolSize() || int64(txSize)+txsBytes > mem.config.MaxTxsBytes {
 		return ErrMempoolIsFull{
-			memSize, mem.config.Size,
+			memSize, cfg.DynamicConfig.GetMempoolSize(),
 			txsBytes, mem.config.MaxTxsBytes,
 		}
 	}
 
 	return nil
+}
+
+func (mem *CListMempool) addPendingTx(memTx *mempoolTx, exTxInfo ExTxInfo) error {
+	// nonce is continuous
+	if exTxInfo.Nonce == exTxInfo.SenderNonce {
+		err := mem.addTx(memTx, exTxInfo)
+		if err == nil {
+			go mem.consumePendingTx(exTxInfo.Sender, exTxInfo.Nonce+1)
+		}
+		return err
+	}
+
+	// add tx to PendingPool
+	if err := mem.pendingPool.validate(exTxInfo.Sender); err != nil {
+		return err
+	}
+	pendingTx := &PendingTx{
+		mempoolTx: memTx,
+		exTxInfo:  exTxInfo,
+	}
+	mem.pendingPool.addTx(pendingTx)
+	mem.logger.Debug("pending pool addTx", "tx", pendingTx)
+
+	return nil
+}
+
+func (mem *CListMempool) consumePendingTx(address string, nonce uint64) {
+	for {
+		pendingTx := mem.pendingPool.getTx(address, nonce)
+		if pendingTx == nil {
+			return
+		}
+		if err := mem.isFull(len(pendingTx.mempoolTx.tx)); err != nil {
+			time.Sleep(time.Duration(mem.pendingPool.period) * time.Second)
+			continue
+		}
+
+		mempoolTx := pendingTx.mempoolTx
+		mempoolTx.height = mem.height
+		if err := mem.addTx(mempoolTx, pendingTx.exTxInfo); err != nil {
+			mem.logger.Error(fmt.Sprintf("Pending Pool add tx failed:%s", err.Error()))
+			mem.pendingPool.removeTx(address, nonce)
+			return
+		}
+
+		mem.logger.Info("Added good transaction",
+			"tx", txID(mempoolTx.tx),
+			"height", mempoolTx.height,
+			"total", mem.Size(),
+		)
+		mem.notifyTxsAvailable()
+		mem.pendingPool.removeTx(address, nonce)
+		nonce++
+	}
 }
 
 // callback, which is called after the app checked the tx for the first time.
@@ -501,7 +574,6 @@ func (mem *CListMempool) resCbFirstTime(
 				mem.logger.Error(err.Error())
 				return
 			}
-
 			memTx := &mempoolTx{
 				height:    mem.height,
 				gasWanted: r.CheckTx.GasWanted,
@@ -511,21 +583,19 @@ func (mem *CListMempool) resCbFirstTime(
 
 			var exTxInfo ExTxInfo
 			if err := json.Unmarshal(r.CheckTx.Data, &exTxInfo); err != nil {
-				// remove from cache (mempool might have a space later)
 				mem.cache.Remove(tx)
-				mem.logger.Error(err.Error())
+				mem.logger.Error(fmt.Sprintf("Unmarshal ExTxInfo error:%s", err.Error()))
 				return
 			}
 			if exTxInfo.GasPrice.Cmp(big.NewInt(0)) <= 0 {
-				// remove from cache (mempool might have a space later)
 				mem.cache.Remove(tx)
 				mem.logger.Error("Failed to get extra info for this tx!")
 				return
 			}
 
 			var err error
-			if mem.config.SortTxByGp {
-				err = mem.addAndSortTx(memTx, exTxInfo)
+			if mem.pendingPool != nil {
+				err = mem.addPendingTx(memTx, exTxInfo)
 			} else {
 				err = mem.addTx(memTx, exTxInfo)
 			}
@@ -599,9 +669,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			mem.logger.Info("Done rechecking txs")
 
 			// incase the recheck removed all txs
-			if mem.Size() > 0 {
-				mem.notifyTxsAvailable()
-			}
+			mem.notifyTxsAvailable()
 		}
 	default:
 		// ignore other messages
@@ -615,7 +683,7 @@ func (mem *CListMempool) TxsAvailable() <-chan struct{} {
 
 func (mem *CListMempool) notifyTxsAvailable() {
 	if mem.Size() == 0 {
-		panic("notified txs available but mempool is empty!")
+		return
 	}
 	if mem.txsAvailable != nil && !mem.notifiedTxsAvailable {
 		// channel cap is 1, so this will send once
@@ -660,6 +728,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		if totalTxNum >= mem.config.MaxTxNumPerBlock {
 			return txs
 		}
+
 		totalTxNum++
 		totalGas = newTotalGas
 		txs = append(txs, memTx.tx)
@@ -771,8 +840,11 @@ func (mem *CListMempool) Update(
 		mem.postCheck = postCheck
 	}
 
+	toCleanAccMap := make(map[string]uint64)
+	addressNonce := make(map[string]uint64)
 	for i, tx := range txs {
-		if deliverTxResponses[i].Code == abci.CodeTypeOK {
+		txCode := deliverTxResponses[i].Code
+		if txCode == abci.CodeTypeOK || txCode > abci.CodeTypeNonceInc {
 			// Add valid committed tx to the cache (if missing).
 			_ = mem.cache.Push(tx)
 		} else {
@@ -791,14 +863,34 @@ func (mem *CListMempool) Update(
 		//   100
 		// https://github.com/tendermint/tendermint/issues/3322.
 		if e, ok := mem.txsMap.Load(txKey(tx)); ok {
-			mem.removeTx(tx, e.(*clist.CElement), false)
+			ele := e.(*clist.CElement)
+			if txCode == abci.CodeTypeOK || txCode > abci.CodeTypeNonceInc {
+				toCleanAccMap[ele.Address] = ele.Nonce
+			}
+			mem.removeTx(tx, ele, false)
+			addressNonce[ele.Address] = ele.Nonce
+			mem.logger.Debug("Mempool update", "address", ele.Address, "nonce", ele.Nonce)
+		}
+
+		if mem.pendingPool != nil {
+			mem.pendingPool.removeTxByHash(txID(tx))
+		}
+	}
+
+	for accAddr, accMaxNonce := range toCleanAccMap {
+		if txsRecord, ok := mem.addressRecord[accAddr]; ok {
+			for _, ele := range txsRecord {
+				if ele.Nonce <= accMaxNonce {
+					mem.removeTx(ele.Value.(*mempoolTx).tx, ele, false)
+				}
+			}
 		}
 	}
 
 	// Either recheck non-committed txs to see if they became invalid
 	// or just notify there're some txs left.
 	if mem.Size() > 0 {
-		if mem.config.Recheck || height%mem.config.ForceRecheckGap == 0 {
+		if cfg.DynamicConfig.GetMempoolRecheck() || height%cfg.DynamicConfig.GetMempoolForceRecheckGap() == 0 {
 			mem.logger.Info("Recheck txs", "numtxs", mem.Size(), "height", height)
 			mem.recheckTxs()
 			mem.logger.Info("After Recheck txs", "numtxs", mem.Size(), "height", height)
@@ -808,13 +900,17 @@ func (mem *CListMempool) Update(
 		} else {
 			mem.notifyTxsAvailable()
 		}
-	} else if height%mem.config.ForceRecheckGap == 0 {
+	} else if height%cfg.DynamicConfig.GetMempoolForceRecheckGap() == 0 {
 		// saftly clean dirty data that stucks in the cache
 		mem.cache.Reset()
 	}
 
 	// Update metrics
 	mem.metrics.Size.Set(float64(mem.Size()))
+	if mem.pendingPool != nil {
+		mem.pendingPoolNotify <- addressNonce
+		mem.metrics.PendingPoolSize.Set(float64(mem.pendingPool.Size()))
+	}
 
 	// WARNING: The txs inserted between [ReapMaxBytesMaxGas, Update) is insert-sorted in the mempool.txs,
 	// but they are not included in the latest block, after remove the latest block txs, these txs may
@@ -1044,7 +1140,28 @@ func txID(tx []byte) string {
 
 //--------------------------------------------------------------------------------
 type ExTxInfo struct {
-	Sender   string   `json:"sender"`
-	GasPrice *big.Int `json:"gas_price"`
-	Nonce    uint64   `json:"nonce"`
+	Sender      string   `json:"sender"`
+	SenderNonce uint64   `json:"sender_nonce"`
+	GasPrice    *big.Int `json:"gas_price"`
+	Nonce       uint64   `json:"nonce"`
+}
+
+func (mem *CListMempool) SetAccountRetriever(retriever AccountRetriever) {
+	mem.accountRetriever = retriever
+}
+
+func (mem *CListMempool) pendingPoolJob() {
+	for addressNonce := range mem.pendingPoolNotify {
+		timeStart := time.Now()
+		mem.logger.Debug("pending pool job begin", "poolSize", mem.pendingPool.Size())
+		addrNonceMap := mem.pendingPool.handlePendingTx(addressNonce)
+		for addr, nonce := range addrNonceMap {
+			mem.consumePendingTx(addr, nonce)
+		}
+		mem.pendingPool.handlePeriodCounter()
+		timeElapse := time.Since(timeStart).Microseconds()
+		mem.logger.Debug("pending pool job end", "interval(ms)", timeElapse,
+			"poolSize", mem.pendingPool.Size(),
+			"addressNonceMap", addrNonceMap)
+	}
 }
