@@ -154,21 +154,18 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	trc.pin("abci")
 	startTime := time.Now().UnixNano()
 	if deltas == nil {
-		panic(fmt.Errorf("deltas is nil"))
+		deltas = &types.Deltas{}
+	}
+	useDeltas := false
+	if viper.GetInt32("enable-state-delta") == 2 && len(deltas.ABCIRsp) != 0 {
+		useDeltas = true
 	}
 	var abciResponses *ABCIResponses
 	var err error
-	if viper.GetInt32("enable-state-delta") == 2 && len(deltas.ABCIRsp) != 0 {
-		commitInfo, byzVals := getBeginBlockValidatorInfo(block, blockExec.db)
-		_, _ = blockExec.proxyApp.BeginBlockSync(abci.RequestBeginBlock{
-			Hash:                block.Hash(),
-			Header:              types.TM2PB.Header(&block.Header),
-			LastCommitInfo:      commitInfo,
-			ByzantineValidators: byzVals,
-			UseDeltas: true,
-		})
-		bytes := deltas.ABCIRsp
-		err = itjs.Unmarshal(bytes, &abciResponses)
+	if useDeltas {
+		execBlockOnProxyAppWithDeltas(blockExec.proxyApp, block, blockExec.db)
+
+		err = itjs.Unmarshal(deltas.ABCIRsp, &abciResponses)
 		if err != nil {
 			panic(err)
 		}
@@ -269,7 +266,6 @@ func (blockExec *BlockExecutor) Commit(
 	if deltas == nil {
 		deltas = &types.Deltas{}
 	}
-	inDeltaByte := deltas.DeltasBytes
 
 	// while mempool is Locked, flush to ensure all async requests have completed
 	// in the ABCI app before Commit.
@@ -291,13 +287,7 @@ func (blockExec *BlockExecutor) Commit(
 	if res.Deltas == nil {
 		res.Deltas = &abci.Deltas{}
 	}
-	if viper.GetInt32("enable-state-delta") != 2 {
-		deltas.DeltasBytes = res.Deltas.DeltasByte
-	} else {
-		if len(deltas.DeltasBytes) == 0 {
-			deltas.DeltasBytes = res.Deltas.DeltasByte
-		}
-	}
+
 	// ResponseCommit has no error code - just data
 
 	blockExec.logger.Info(
@@ -305,9 +295,11 @@ func (blockExec *BlockExecutor) Commit(
 		"height", block.Height,
 		"txs", len(block.Txs),
 		"appHash", fmt.Sprintf("%X", res.Data),
-		"inDeltasLen", len(inDeltaByte),
-		"outDeltasLen", len(deltas.DeltasBytes),
+		"inDeltasLen", len(deltas.DeltasBytes),
+		"outDeltasLen", len(res.Deltas.DeltasByte),
 	)
+
+	deltas.DeltasBytes = res.Deltas.DeltasByte
 
 	// Update mempool.
 	err = blockExec.mempool.Update(
@@ -345,7 +337,7 @@ func execBlockOnProxyApp(
 	abciResponses := NewABCIResponses(block)
 
 	// Execute transactions and get hash.
-	proxyCb := func(req *abci.Request, res *abci.Response) {
+	proxyCb := func(_ *abci.Request, res *abci.Response) {
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
 			// TODO: make use of res.Log
 			// TODO: make use of this info
@@ -396,6 +388,25 @@ func execBlockOnProxyApp(
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 
 	return abciResponses, nil
+}
+
+func execBlockOnProxyAppWithDeltas(
+	proxyAppConn proxy.AppConnConsensus,
+	block *types.Block,
+	stateDB dbm.DB,
+) {
+	proxyCb := func(req *abci.Request, res *abci.Response) {
+	}
+	proxyAppConn.SetResponseCallback(proxyCb)
+
+	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
+	_, _ = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
+		Hash:                block.Hash(),
+		Header:              types.TM2PB.Header(&block.Header),
+		LastCommitInfo:      commitInfo,
+		ByzantineValidators: byzVals,
+		UseDeltas: true,
+	})
 }
 
 func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
