@@ -261,7 +261,6 @@ func (blockExec *BlockExecutor) Commit(
 	state State,
 	block *types.Block,
 	deliverTxResponses []*abci.ResponseDeliverTx,
-//	inDeltas []byte,
 	deltas *types.Deltas,
 ) ([]byte, int64, error) {
 	blockExec.mempool.Lock()
@@ -288,7 +287,7 @@ func (blockExec *BlockExecutor) Commit(
 		)
 		return nil, 0, err
 	}
-	if res.Deltas == nil  {
+	if res.Deltas == nil {
 		res.Deltas = &abci.Deltas{}
 	}
 	// ResponseCommit has no error code - just data
@@ -301,7 +300,9 @@ func (blockExec *BlockExecutor) Commit(
 		"inDeltasLen", len(deltas.DeltasBytes),
 		"outDeltasLen", len(res.Deltas.DeltasByte),
 	)
-	deltas.DeltasBytes = res.Deltas.DeltasByte
+	if viper.GetInt32("enable-state-delta") != 2 {
+		deltas.DeltasBytes = res.Deltas.DeltasByte
+	}
 
 	// Update mempool.
 	err = blockExec.mempool.Update(
