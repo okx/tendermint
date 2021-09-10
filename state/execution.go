@@ -316,7 +316,7 @@ func (blockExec *BlockExecutor) Commit(
 
 	if !cfg.DynamicConfig.GetMempoolRecheck() && block.Height%cfg.DynamicConfig.GetMempoolForceRecheckGap() == 0 {
 		// reset checkState
-		blockExec.proxyApp.SetOptionAsync(abci.RequestSetOption{
+		blockExec.proxyApp.SetOptionSync(abci.RequestSetOption{
 			Key: "ResetCheckState",
 		})
 	}
