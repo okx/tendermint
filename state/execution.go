@@ -293,6 +293,10 @@ func (blockExec *BlockExecutor) Commit(
 	}
 	if viper.GetInt32("enable-state-delta") != 2 {
 		deltas.DeltasBytes = res.Deltas.DeltasByte
+	} else {
+		if len(deltas.DeltasBytes) == 0 {
+			deltas.DeltasBytes = res.Deltas.DeltasByte
+		}
 	}
 	// ResponseCommit has no error code - just data
 
