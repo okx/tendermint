@@ -269,6 +269,7 @@ func (blockExec *BlockExecutor) Commit(
 	if deltas == nil {
 		deltas = &types.Deltas{}
 	}
+	inDeltaByte := deltas.DeltasBytes
 
 	// while mempool is Locked, flush to ensure all async requests have completed
 	// in the ABCI app before Commit.
@@ -290,6 +291,9 @@ func (blockExec *BlockExecutor) Commit(
 	if res.Deltas == nil {
 		res.Deltas = &abci.Deltas{}
 	}
+	if viper.GetInt32("enable-state-delta") != 2 {
+		deltas.DeltasBytes = res.Deltas.DeltasByte
+	}
 	// ResponseCommit has no error code - just data
 
 	blockExec.logger.Info(
@@ -297,12 +301,9 @@ func (blockExec *BlockExecutor) Commit(
 		"height", block.Height,
 		"txs", len(block.Txs),
 		"appHash", fmt.Sprintf("%X", res.Data),
-		"inDeltasLen", len(deltas.DeltasBytes),
-		"outDeltasLen", len(res.Deltas.DeltasByte),
+		"inDeltasLen", len(inDeltaByte),
+		"outDeltasLen", len(deltas.DeltasBytes),
 	)
-	if viper.GetInt32("enable-state-delta") != 2 {
-		deltas.DeltasBytes = res.Deltas.DeltasByte
-	}
 
 	// Update mempool.
 	err = blockExec.mempool.Update(
