@@ -201,6 +201,7 @@ type Handshaker struct {
 	stateDB      dbm.DB
 	initialState sm.State
 	store        sm.BlockStore
+	dstore		 sm.DeltaStore
 	eventBus     types.BlockEventPublisher
 	genDoc       *types.GenesisDoc
 	logger       log.Logger
@@ -209,12 +210,13 @@ type Handshaker struct {
 }
 
 func NewHandshaker(stateDB dbm.DB, state sm.State,
-	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
+	store sm.BlockStore, dstore sm.DeltaStore, genDoc *types.GenesisDoc) *Handshaker {
 
 	return &Handshaker{
 		stateDB:      stateDB,
 		initialState: state,
 		store:        store,
+		dstore: 	  dstore,
 		eventBus:     types.NopEventBus{},
 		genDoc:       genDoc,
 		logger:       log.NewNopLogger(),
@@ -472,7 +474,7 @@ func (h *Handshaker) replayBlocks(
 func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.AppConnConsensus) (sm.State, error) {
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
-	deltas := h.store.LoadDeltas(height)
+	deltas := h.dstore.LoadDeltas(height)
 	if deltas == nil || deltas.Height != height {
 		deltas = &types.Deltas{}
 	}

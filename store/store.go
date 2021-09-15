@@ -334,10 +334,29 @@ func (bs *BlockStore) saveState() {
 }
 
 //-----------------------------------------------------------------------------
+/*
+DeltaStore is a simple low level store for deltas.
+Now base and height is invalid
+*/
+type DeltaStore struct {
+	db dbm.DB
+
+	mtx    sync.RWMutex
+	base   int64
+	height int64
+}
+
+// NewBlockStore returns a new BlockStore with the given DB,
+// initialized to the last height that was committed to the DB.
+func NewDeltaStore(db dbm.DB) *DeltaStore {
+	return &DeltaStore{
+		db:     db,
+	}
+}
 
 // SaveDeltas persists the given deltas to the underlying db.
 // todo make new store(DeltasStore) and move Deltas from BlockStore.db to DeltasStore.db
-func (bs *BlockStore) SaveDeltas(deltas *types.Deltas, height int64) {
+func (bs *DeltaStore) SaveDeltas(deltas *types.Deltas, height int64) {
 	if deltas == nil {
 		return
 	}
@@ -349,7 +368,7 @@ func (bs *BlockStore) SaveDeltas(deltas *types.Deltas, height int64) {
 	bs.db.Set(calcDeltasKey(keyHeight), cdc.MustMarshalBinaryBare(deltas))
 }
 
-func (bs *BlockStore) LoadDeltas(height int64) *types.Deltas {
+func (bs *DeltaStore) LoadDeltas(height int64) *types.Deltas {
 	var deltas = new(types.Deltas)
 	bz, err := bs.db.Get(calcDeltasKey(height))
 	if err != nil {

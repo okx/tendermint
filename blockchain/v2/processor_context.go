@@ -17,13 +17,15 @@ type processorContext interface {
 
 type pContext struct {
 	store   blockStore
+	dstore	deltaStore
 	applier blockApplier
 	state   state.State
 }
 
-func newProcessorContext(st blockStore, ex blockApplier, s state.State) *pContext {
+func newProcessorContext(st blockStore, dst deltaStore, ex blockApplier, s state.State) *pContext {
 	return &pContext{
 		store:   st,
+		dstore: dst,
 		applier: ex,
 		state:   s,
 	}
@@ -48,7 +50,7 @@ func (pc *pContext) saveBlock(block *types.Block, blockParts *types.PartSet, see
 }
 
 func (pc *pContext) saveDeltas(deltas *types.Deltas, height int64) {
-	pc.store.SaveDeltas(deltas, height)
+	pc.dstore.SaveDeltas(deltas, height)
 }
 
 type mockPContext struct {

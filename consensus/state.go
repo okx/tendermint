@@ -86,6 +86,9 @@ type State struct {
 	// store blocks and commits
 	blockStore sm.BlockStore
 
+	// store deltas
+	deltaStore sm.DeltaStore
+
 	// create and execute blocks
 	blockExec *sm.BlockExecutor
 
@@ -152,6 +155,7 @@ func NewState(
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
+	deltaStore sm.DeltaStore,
 	txNotifier txNotifier,
 	evpool evidencePool,
 	options ...StateOption,
@@ -160,6 +164,7 @@ func NewState(
 		config:           config,
 		blockExec:        blockExec,
 		blockStore:       blockStore,
+		deltaStore:		  deltaStore,
 		txNotifier:       txNotifier,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
@@ -1530,7 +1535,7 @@ func (cs *State) finalizeCommit(height int64) {
 
 	if viper.GetInt32("enable-state-delta") != 0 && len(deltas.DeltasBytes) > 0 {
 		deltas.Height = block.Height
-		cs.blockStore.SaveDeltas(deltas, block.Height)
+		cs.deltaStore.SaveDeltas(deltas, block.Height)
 	}
 
 	fail.Fail() // XXX

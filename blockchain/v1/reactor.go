@@ -57,6 +57,7 @@ type BlockchainReactor struct {
 
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
+	dstore	  *store.DeltaStore
 
 	fastSync bool
 
@@ -78,7 +79,7 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
+func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore, dstore *store.DeltaStore,
 	fastSync bool) *BlockchainReactor {
 
 	if state.LastBlockHeight != store.Height() {
@@ -98,6 +99,7 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 		blockExec:        blockExec,
 		fastSync:         fastSync,
 		store:            store,
+		dstore:			  dstore,
 		messagesForFSMCh: messagesForFSMCh,
 		eventsFromFSMCh:  eventsFromFSMCh,
 		errorsForFSMCh:   errorsForFSMCh,
@@ -188,7 +190,7 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcBlockRequestMessage,
 	src p2p.Peer) (queued bool) {
 
 	block := bcR.store.LoadBlock(msg.Height)
-	deltas := bcR.store.LoadDeltas(msg.Height)
+	deltas := bcR.dstore.LoadDeltas(msg.Height)
 	if deltas == nil || deltas.Height != msg.Height {
 		deltas = &types.Deltas{}
 	}
@@ -455,7 +457,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 
 	if viper.GetInt32("enable-state-delta") != 0 && len(deltas.DeltasBytes) > 0 {
 		deltas.Height = first.Height
-		bcR.store.SaveDeltas(deltas, first.Height)
+		bcR.dstore.SaveDeltas(deltas, first.Height)
 	}
 
 	return nil
