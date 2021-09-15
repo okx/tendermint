@@ -7,10 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	db "github.com/tendermint/tm-db"
-	dbm "github.com/tendermint/tm-db"
-
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 /*
@@ -31,7 +29,7 @@ The store can be assumed to contain all contiguous blocks between base and heigh
 // deserializing loaded data, indicating probable corruption on disk.
 */
 type BlockStore struct {
-	db dbm.DB
+	db *BlockDB
 
 	mtx    sync.RWMutex
 	base   int64
@@ -45,7 +43,7 @@ func NewBlockStore(db dbm.DB) *BlockStore {
 	return &BlockStore{
 		base:   bsjson.Base,
 		height: bsjson.Height,
-		db:     db,
+		db:     NewBlockDB(db),
 	}
 }
 
@@ -213,7 +211,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	pruned := uint64(0)
 	batch := bs.db.NewBatch()
 	defer batch.Close()
-	flush := func(batch db.Batch, base int64) error {
+	flush := func(batch dbm.Batch, base int64) error {
 		// We can't trust batches to be atomic, so update base first to make sure noone
 		// tries to access missing blocks.
 		bs.mtx.Lock()
@@ -282,6 +280,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic(fmt.Sprintf("BlockStore can only save complete block part sets"))
 	}
 
+	bs.db.Split(height)
 	// Save block meta
 	blockMeta := types.NewBlockMeta(block, blockParts)
 	metaBytes := cdc.MustMarshalBinaryBare(blockMeta)
