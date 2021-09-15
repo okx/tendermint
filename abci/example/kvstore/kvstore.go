@@ -110,7 +110,7 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 }
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
-	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
+	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1, Data: req.Tx}
 }
 
 func (app *Application) Commit() types.ResponseCommit {
