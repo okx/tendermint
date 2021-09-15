@@ -57,14 +57,14 @@ func NewFSM(height int64, toBcR bcReactor) *BcReactorFSM {
 // bReactorEventData is part of the message sent by the reactor to the FSM and used by the state handlers.
 type bReactorEventData struct {
 	peerID         p2p.ID
-	err            error        // for peer error: timeout, slow; for processed block event if error occurred
-	base           int64        // for status response
-	height         int64        // for status response; for processed block event
-	block          *types.Block // for block response
-	deltas			*types.Deltas // for deltas response
-	stateName      string       // for state timeout events
-	length         int          // for block response event, length of received block, used to detect slow peers
-	maxNumRequests int          // for request needed event, maximum number of pending requests
+	err            error         // for peer error: timeout, slow; for processed block event if error occurred
+	base           int64         // for status response
+	height         int64         // for status response; for processed block event
+	block          *types.Block  // for block response
+	deltas         *types.Deltas // for deltas response
+	stateName      string        // for state timeout events
+	length         int           // for block response event, length of received block, used to detect slow peers
+	maxNumRequests int           // for request needed event, maximum number of pending requests
 }
 
 // Blockchain Reactor Events (the input to the state machine)
@@ -156,7 +156,7 @@ var (
 	errNoErrorFinished        = errors.New("fast sync is finished")
 	errInvalidEvent           = errors.New("invalid event in current state")
 	errMissingBlock           = errors.New("missing blocks")
-	errMissingDeltas		  = errors.New("missing deltas")
+	errMissingDeltas          = errors.New("missing deltas")
 	errNilPeerForBlockRequest = errors.New("peer for block request does not exist in the switch")
 	errSendQueueFull          = errors.New("block request not made, send-queue is full")
 	errPeerTooShort           = errors.New("peer height too low, old peer removed/ new peer not added")

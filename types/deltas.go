@@ -2,9 +2,9 @@ package types
 
 // Deltas defines the ABCIResponse and state delta
 type Deltas struct {
-	ABCIRsp	[]byte
-	DeltasBytes	[]byte
-	Height  int64
+	ABCIRsp     []byte
+	DeltasBytes []byte
+	Height      int64
 }
 
 // Size returns size of the deltas in bytes.

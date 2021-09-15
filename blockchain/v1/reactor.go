@@ -57,7 +57,7 @@ type BlockchainReactor struct {
 
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
-	dstore	  *store.DeltaStore
+	dstore    *store.DeltaStore
 
 	fastSync bool
 
@@ -99,7 +99,7 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 		blockExec:        blockExec,
 		fastSync:         fastSync,
 		store:            store,
-		dstore:			  dstore,
+		dstore:           dstore,
 		messagesForFSMCh: messagesForFSMCh,
 		eventsFromFSMCh:  eventsFromFSMCh,
 		errorsForFSMCh:   errorsForFSMCh,
@@ -258,18 +258,18 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		}
 
 	case *bcBlockResponseMessage:
-			msgForFSM := bcReactorMessage{
-				event: blockResponseEv,
-				data: bReactorEventData{
-					peerID: src.ID(),
-					height: msg.Block.Height,
-					block:  msg.Block,
-					deltas: msg.Deltas,
-					length: len(msgBytes),
-				},
-			}
-			bcR.Logger.Info("Received", "src", src, "height", msg.Block.Height)
-			bcR.messagesForFSMCh <- msgForFSM
+		msgForFSM := bcReactorMessage{
+			event: blockResponseEv,
+			data: bReactorEventData{
+				peerID: src.ID(),
+				height: msg.Block.Height,
+				block:  msg.Block,
+				deltas: msg.Deltas,
+				length: len(msgBytes),
+			},
+		}
+		bcR.Logger.Info("Received", "src", src, "height", msg.Block.Height)
+		bcR.messagesForFSMCh <- msgForFSM
 
 	case *bcStatusResponseMessage:
 		// Got a peer status. Unverified.
@@ -602,7 +602,7 @@ func (m *bcNoBlockResponseMessage) String() string {
 //-------------------------------------
 
 type bcBlockResponseMessage struct {
-	Block *types.Block
+	Block  *types.Block
 	Deltas *types.Deltas
 }
 

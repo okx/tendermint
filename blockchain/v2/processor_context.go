@@ -17,7 +17,7 @@ type processorContext interface {
 
 type pContext struct {
 	store   blockStore
-	dstore	deltaStore
+	dstore  deltaStore
 	applier blockApplier
 	state   state.State
 }
@@ -25,7 +25,7 @@ type pContext struct {
 func newProcessorContext(st blockStore, dst deltaStore, ex blockApplier, s state.State) *pContext {
 	return &pContext{
 		store:   st,
-		dstore: dst,
+		dstore:  dst,
 		applier: ex,
 		state:   s,
 	}

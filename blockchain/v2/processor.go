@@ -38,7 +38,7 @@ func (p pcFinished) Error() string {
 
 type queueItem struct {
 	block  *types.Block
-	deltas	*types.Deltas
+	deltas *types.Deltas
 	peerID p2p.ID
 }
 

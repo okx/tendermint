@@ -52,7 +52,7 @@ func (m *bcNoBlockResponseMessage) String() string {
 //-------------------------------------
 
 type bcBlockResponseMessage struct {
-	Block *types.Block
+	Block  *types.Block
 	Deltas *types.Deltas
 }
 
@@ -148,7 +148,7 @@ type BlockchainReactor struct {
 	reporter behaviour.Reporter
 	io       iIO
 	store    blockStore
-	dstore	 deltaStore
+	dstore   deltaStore
 }
 
 //nolint:unused,deadcode

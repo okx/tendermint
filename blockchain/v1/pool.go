@@ -261,9 +261,9 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, deltas *types
 
 // BlockData stores the peer responsible to deliver a block and the actual block if delivered.
 type BlockData struct {
-	block *types.Block
+	block  *types.Block
 	deltas *types.Deltas
-	peer  *BpPeer
+	peer   *BpPeer
 }
 
 // BlockAndPeerAtHeight retrieves the block and delivery peer at specified height.

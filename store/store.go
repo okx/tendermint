@@ -350,7 +350,7 @@ type DeltaStore struct {
 // initialized to the last height that was committed to the DB.
 func NewDeltaStore(db dbm.DB) *DeltaStore {
 	return &DeltaStore{
-		db:     db,
+		db: db,
 	}
 }
 

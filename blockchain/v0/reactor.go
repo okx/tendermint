@@ -63,7 +63,7 @@ type BlockchainReactor struct {
 
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
-	dstore	  *store.DeltaStore
+	dstore    *store.DeltaStore
 	pool      *BlockPool
 	fastSync  bool
 
@@ -95,7 +95,7 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 		initialState: state,
 		blockExec:    blockExec,
 		store:        store,
-		dstore:		  dstore,
+		dstore:       dstore,
 		pool:         pool,
 		fastSync:     fastSync,
 		requestsCh:   requestsCh,
@@ -201,7 +201,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	case *bcBlockRequestMessage:
 		bcR.respondToPeer(msg, src)
 	case *bcBlockResponseMessage:
-			bcR.pool.AddBlock(src.ID(), msg.Block, msg.Deltas, len(msgBytes))
+		bcR.pool.AddBlock(src.ID(), msg.Block, msg.Deltas, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
 		src.TrySend(BlockchainChannel, cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{
@@ -458,7 +458,7 @@ func (m *bcNoBlockResponseMessage) String() string {
 //-------------------------------------
 
 type bcBlockResponseMessage struct {
-	Block *types.Block
+	Block  *types.Block
 	Deltas *types.Deltas
 }
 

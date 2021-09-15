@@ -2,7 +2,7 @@ package types
 
 // DeltasMeta contains meta information.
 type DeltasMeta struct {
-	DeltasSize int     `json:"Deltas_size"`
+	DeltasSize int `json:"Deltas_size"`
 }
 
 // NewDeltasMeta returns a new DeltasMeta.

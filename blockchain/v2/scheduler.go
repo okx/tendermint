@@ -30,7 +30,7 @@ type scBlockReceived struct {
 	priorityNormal
 	peerID p2p.ID
 	block  *types.Block
-	deltas	*types.Deltas
+	deltas *types.Deltas
 }
 
 // scheduler detected a peer error

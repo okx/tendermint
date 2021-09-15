@@ -31,7 +31,7 @@ type BpPeer struct {
 	Height                  int64                  // the peer reported height
 	NumPendingBlockRequests int                    // number of requests still waiting for block responses
 	blocks                  map[int64]*types.Block // blocks received or expected to be received from this peer
-	deltas					map[int64]*types.Deltas
+	deltas                  map[int64]*types.Deltas
 	blockResponseTimer      *time.Timer
 	recvMonitor             *flow.Monitor
 	params                  *BpPeerParams // parameters for timer and monitor
