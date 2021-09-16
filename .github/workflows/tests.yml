@@ -21,6 +21,7 @@ jobs:
       - uses: actions/setup-go@v2-beta
       - name: Set GOBIN
         run: |
+          export ACTIONS_ALLOW_UNSECURE_COMMANDS=true
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/checkout@v2.3.4
       - name: install
@@ -38,6 +39,7 @@ jobs:
       - uses: actions/setup-go@v2-beta
       - name: Set GOBIN
         run: |
+          export ACTIONS_ALLOW_UNSECURE_COMMANDS=true
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/checkout@v2.3.4
       - uses: actions/cache@v1
@@ -55,6 +57,7 @@ jobs:
       - uses: actions/setup-go@v2-beta
       - name: Set GOBIN
         run: |
+          export ACTIONS_ALLOW_UNSECURE_COMMANDS=true
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/checkout@v2.3.4
       - uses: actions/cache@v1
@@ -71,6 +74,7 @@ jobs:
       - uses: actions/setup-go@v2-beta
       - name: Set GOBIN
         run: |
+          export ACTIONS_ALLOW_UNSECURE_COMMANDS=true
           echo "::add-path::$(go env GOPATH)/bin"
       - uses: actions/checkout@v2.3.4
       - uses: actions/cache@v1
