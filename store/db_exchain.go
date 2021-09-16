@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/syndtr/goleveldb/leveldb/util"
@@ -13,10 +14,12 @@ import (
 	dbm "github.com/tendermint/tm-db"
 )
 
+const Interval int64 = 5
+
 type BlockDB struct {
 	db       dbm.DB
-	history  []dbm.DB
-	interval uint64
+	history  map[int64]dbm.DB
+	interval int64
 
 	name    string
 	backend dbm.BackendType
@@ -31,7 +34,7 @@ var _ dbm.DB = (*BlockDB)(nil)
 func NewBlockDB(name string, backend dbm.BackendType, dir string) *BlockDB {
 	db := dbm.NewDB(name, backend, dir)
 
-	var history []dbm.DB
+	historyDBs := make(map[int64]dbm.DB)
 
 	hisDir := filepath.Join(dir, "block_history")
 	fs, err := ioutil.ReadDir(hisDir)
@@ -40,16 +43,19 @@ func NewBlockDB(name string, backend dbm.BackendType, dir string) *BlockDB {
 	}
 	for _, f := range fs {
 		if f.IsDir() {
-			fmt.Println(f.Name())
-			history = append(history, dbm.NewDB(f.Name(), backend, hisDir))
+			index, err := strconv.ParseInt(strings.Split(f.Name(), ".")[0], 10, 64)
+			if err != nil {
+				continue
+			}
+			historyDBs[index/Interval] = dbm.NewDB(strconv.FormatInt(index, 10), backend, hisDir)
 		}
 	}
 
 	return &BlockDB{
 		db:      db,
-		history: history,
+		history: historyDBs,
 
-		interval: 5,
+		interval: Interval,
 		name:     name,
 		backend:  backend,
 		dir:      dir,
@@ -61,7 +67,7 @@ func (bdb *BlockDB) Split(height int64) {
 	bdb.mtx.Lock()
 	defer bdb.mtx.Unlock()
 
-	if bdb.interval > 0 && height%int64(bdb.interval) == 0 {
+	if bdb.interval > 0 && height%bdb.interval == 0 {
 		err := bdb.db.Close()
 		if err != nil {
 			panic(err)
@@ -71,7 +77,7 @@ func (bdb *BlockDB) Split(height int64) {
 			panic(err)
 		}
 
-		hisDBName := strconv.FormatInt(height, 10)
+		hisDBName := strconv.FormatInt(height-1, 10)
 		hisPath := filepath.Join(bdb.hisDir, hisDBName+".db")
 		dbPath := filepath.Join(bdb.dir, bdb.name+".db")
 		err = os.Rename(dbPath, hisPath)
@@ -88,7 +94,7 @@ func (bdb *BlockDB) Split(height int64) {
 				}
 			}
 		}()
-		bdb.history = append(bdb.history, hisDB)
+		bdb.history[(height-1)/Interval] = hisDB
 		bdb.db = dbm.NewDB(bdb.name, bdb.backend, bdb.dir)
 	}
 }
@@ -101,6 +107,13 @@ func (bdb *BlockDB) Get(key []byte) ([]byte, error) {
 	b, err := bdb.db.Get(key)
 	if b != nil || err != nil {
 		return b, err
+	}
+
+	h := getHeightFromKey(key)
+	if h > 0 {
+		if db, ok := bdb.history[h/Interval]; ok {
+			return db.Get(key)
+		}
 	}
 	for _, db := range bdb.history {
 		b, err = db.Get(key)
@@ -119,6 +132,13 @@ func (bdb *BlockDB) Has(key []byte) (bool, error) {
 	has, err := bdb.db.Has(key)
 	if has || err != nil {
 		return has, err
+	}
+
+	h := getHeightFromKey(key)
+	if h > 0 {
+		if db, ok := bdb.history[h/Interval]; ok {
+			return db.Has(key)
+		}
 	}
 	for _, db := range bdb.history {
 		has, err = db.Has(key)
@@ -154,6 +174,13 @@ func (bdb *BlockDB) Delete(key []byte) error {
 	if err != nil {
 		return err
 	}
+
+	h := getHeightFromKey(key)
+	if h > 0 {
+		if db, ok := bdb.history[h/Interval]; ok {
+			return db.Delete(key)
+		}
+	}
 	for _, db := range bdb.history {
 		err = db.Delete(key)
 		if err != nil {
@@ -171,6 +198,13 @@ func (bdb *BlockDB) DeleteSync(key []byte) error {
 	err := bdb.db.DeleteSync(key)
 	if err != nil {
 		return err
+	}
+
+	h := getHeightFromKey(key)
+	if h > 0 {
+		if db, ok := bdb.history[h/Interval]; ok {
+			return db.DeleteSync(key)
+		}
 	}
 	for _, db := range bdb.history {
 		err = db.DeleteSync(key)
@@ -229,4 +263,22 @@ func (bdb *BlockDB) Iterator(start, end []byte) (dbm.Iterator, error) {
 // Not used in the BlockStore
 func (bdb *BlockDB) ReverseIterator(start, end []byte) (dbm.Iterator, error) {
 	return nil, nil
+}
+
+// getHeightFromKey
+// H:{height}
+// P:{height}:{partIndex}
+// C:{height}
+// SC:{height}
+// BH:{hash}
+func getHeightFromKey(key []byte) int64 {
+	s := strings.Split(string(key), ":")
+	if len(s) < 2 {
+		return 0
+	}
+	h, err := strconv.ParseInt(s[1], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return h
 }
