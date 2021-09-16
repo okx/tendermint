@@ -115,6 +115,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 	config := cfg.ResetTestRoot("node_app_version_test")
 	defer os.RemoveAll(config.RootDir)
 
+	config.Instrumentation.Prometheus = false
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
@@ -158,6 +159,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	}()
 	defer signerServer.Stop()
 
+	config.Instrumentation.Prometheus = false
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
@@ -202,6 +204,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	}()
 	defer pvsc.Stop()
 
+	config.Instrumentation.Prometheus = false
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
@@ -221,6 +224,7 @@ func testFreeAddr(t *testing.T) string {
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
+	config.Instrumentation.Prometheus = false
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
@@ -295,6 +299,7 @@ func TestCreateProposalBlock(t *testing.T) {
 func TestNodeNewNodeCustomReactors(t *testing.T) {
 	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
 	defer os.RemoveAll(config.RootDir)
+	config.Instrumentation.Prometheus = false
 
 	cr := p2pmock.NewReactor()
 	customBlockchainReactor := p2pmock.NewReactor()
