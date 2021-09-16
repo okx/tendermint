@@ -2,13 +2,10 @@ package client_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
-	"math/big"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	"github.com/tendermint/tendermint/mempool"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -16,14 +13,9 @@ import (
 
 func ExampleHTTP_simple() {
 	// Start a tendermint node (and kvstore) in the background to test against
-	//app := kvstore.NewApplication()
-	//node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
-	//defer rpctest.StopTendermint(node)
-	data, err := json.Marshal(mempool.ExTxInfo{GasPrice: big.NewInt(1)})
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(data)
+	app := kvstore.NewApplication()
+	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
+	defer rpctest.StopTendermint(node)
 	// Create our RPC client
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr, "/websocket")
@@ -73,9 +65,9 @@ func ExampleHTTP_simple() {
 
 func ExampleHTTP_batching() {
 	// Start a tendermint node (and kvstore) in the background to test against
-	app := kvstore.NewApplication()
-	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
-	defer rpctest.StopTendermint(node)
+	//app := kvstore.NewApplication()
+	//node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
+	//defer rpctest.StopTendermint(node)
 
 	// Create our RPC client
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress

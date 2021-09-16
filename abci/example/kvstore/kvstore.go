@@ -3,9 +3,9 @@ package kvstore
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -60,6 +60,13 @@ func prefixKey(key []byte) []byte {
 
 //---------------------------------------------------
 
+type MockExTxInfo struct {
+	Sender      string   `json:"sender"`
+	SenderNonce uint64   `json:"sender_nonce"`
+	GasPrice    *big.Int `json:"gas_price"`
+	Nonce       uint64   `json:"nonce"`
+}
+
 var _ types.Application = (*Application)(nil)
 
 type Application struct {
@@ -111,8 +118,7 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 }
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
-	// json.Marshal(mempool.ExTxInfo{GasPrice: big.NewInt(1)})
-	data, _ := hex.DecodeString("7b2273656e646572223a22222c2273656e6465725f6e6f6e6365223a302c226761735f7072696365223a312c226e6f6e6365223a307d")
+	data, _ := json.Marshal(&MockExTxInfo{Sender: fmt.Sprintf("%x", req.Tx),GasPrice: big.NewInt(1)})
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1, Data: data}
 }
 

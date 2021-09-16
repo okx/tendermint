@@ -97,6 +97,7 @@ func TestNodeDelayedStart(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	now := tmtime.Now()
 
+	config.Instrumentation.Prometheus = false
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
