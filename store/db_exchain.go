@@ -3,6 +3,8 @@ package store
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -41,6 +43,8 @@ func NewBlockDB(name string, backend dbm.BackendType, dir string) *BlockDB {
 	if err != nil && !os.IsNotExist(err) {
 		panic(err)
 	}
+
+	var min, max int64 = math.MaxInt64, 0
 	for _, f := range fs {
 		if f.IsDir() {
 			index, err := strconv.ParseInt(strings.Split(f.Name(), ".")[0], 10, 64)
@@ -48,7 +52,18 @@ func NewBlockDB(name string, backend dbm.BackendType, dir string) *BlockDB {
 				continue
 			}
 			historyDBs[index/Interval] = dbm.NewDB(strconv.FormatInt(index, 10), backend, hisDir)
+			if index < min {
+				min = index
+			}
+			if index > max {
+				max = index
+			}
 		}
+	}
+
+	// Check if blockdb is continuous
+	if len(historyDBs) != 0 && int64(len(historyDBs)) != (max-min)/Interval+1 {
+		log.Println("the block history db is discontinuous")
 	}
 
 	return &BlockDB{
