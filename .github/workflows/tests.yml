@@ -22,7 +22,7 @@ jobs:
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
       - name: install
         run: make install install_abci
       # Cache bin
@@ -39,7 +39,7 @@ jobs:
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
@@ -56,7 +56,7 @@ jobs:
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
@@ -72,7 +72,7 @@ jobs:
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
       - uses: actions/cache@v1
         with:
           path: ~/go/bin
