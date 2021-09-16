@@ -29,7 +29,7 @@ The store can be assumed to contain all contiguous blocks between base and heigh
 // deserializing loaded data, indicating probable corruption on disk.
 */
 type BlockStore struct {
-	db *BlockDB
+	db dbm.DB
 
 	mtx    sync.RWMutex
 	base   int64
@@ -43,7 +43,7 @@ func NewBlockStore(db dbm.DB) *BlockStore {
 	return &BlockStore{
 		base:   bsjson.Base,
 		height: bsjson.Height,
-		db:     NewBlockDB(db),
+		db:     db,
 	}
 }
 
@@ -280,7 +280,10 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic(fmt.Sprintf("BlockStore can only save complete block part sets"))
 	}
 
-	bs.db.Split(height)
+	if bdb, ok := bs.db.(*BlockDB); ok {
+		bdb.Split(height)
+		//bs.db = bdb
+	}
 	// Save block meta
 	blockMeta := types.NewBlockMeta(block, blockParts)
 	metaBytes := cdc.MustMarshalBinaryBare(blockMeta)

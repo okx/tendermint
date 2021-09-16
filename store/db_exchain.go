@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,19 +21,39 @@ type BlockDB struct {
 	name    string
 	backend dbm.BackendType
 	dir     string
+	hisDir  string
 
 	mtx sync.Mutex
 }
 
 var _ dbm.DB = (*BlockDB)(nil)
 
-func NewBlockDB(db dbm.DB) *BlockDB {
+func NewBlockDB(name string, backend dbm.BackendType, dir string) *BlockDB {
+	db := dbm.NewDB(name, backend, dir)
+
+	var history []dbm.DB
+
+	hisDir := filepath.Join(dir, "block_history")
+	fs, err := ioutil.ReadDir(hisDir)
+	if err != nil && !os.IsNotExist(err) {
+		panic(err)
+	}
+	for _, f := range fs {
+		if f.IsDir() {
+			fmt.Println(f.Name())
+			history = append(history, dbm.NewDB(f.Name(), backend, hisDir))
+		}
+	}
+
 	return &BlockDB{
-		db:       db,
+		db:      db,
+		history: history,
+
 		interval: 5,
-		name:     "blockstore",
-		backend:  dbm.GoLevelDBBackend,
-		dir:      "tools/_cache_evm/data",
+		name:     name,
+		backend:  backend,
+		dir:      dir,
+		hisDir:   hisDir,
 	}
 }
 
@@ -43,23 +64,31 @@ func (bdb *BlockDB) Split(height int64) {
 	if bdb.interval > 0 && height%int64(bdb.interval) == 0 {
 		err := bdb.db.Close()
 		if err != nil {
-			fmt.Println(err)
-		}
-		err = os.Rename(filepath.Join(bdb.dir, bdb.name+".db"), filepath.Join(bdb.dir, strconv.FormatInt(height, 10)+".db"))
-		if err != nil {
-			fmt.Println(err)
+			panic(err)
 		}
 
-		oldDB := dbm.NewDB(strconv.FormatInt(height, 10), bdb.backend, bdb.dir)
+		if err := os.Mkdir(bdb.hisDir, 0755); err != nil && !os.IsExist(err) {
+			panic(err)
+		}
+
+		hisDBName := strconv.FormatInt(height, 10)
+		hisPath := filepath.Join(bdb.hisDir, hisDBName+".db")
+		dbPath := filepath.Join(bdb.dir, bdb.name+".db")
+		err = os.Rename(dbPath, hisPath)
+		if err != nil {
+			panic(err)
+		}
+
+		hisDB := dbm.NewDB(hisDBName, bdb.backend, bdb.hisDir)
 		go func() {
-			if ldb, ok := oldDB.(*dbm.GoLevelDB); ok {
+			if ldb, ok := hisDB.(*dbm.GoLevelDB); ok {
 				err = ldb.DB().CompactRange(util.Range{})
 				if err != nil {
 					fmt.Println(err)
 				}
 			}
 		}()
-		bdb.history = append(bdb.history, oldDB)
+		bdb.history = append(bdb.history, hisDB)
 		bdb.db = dbm.NewDB(bdb.name, bdb.backend, bdb.dir)
 	}
 }
