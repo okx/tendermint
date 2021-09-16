@@ -157,7 +157,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		deltas = &types.Deltas{}
 	}
 	useDeltas := false
-	if viper.GetInt32("enable-state-delta") == 2 && len(deltas.ABCIRsp) != 0 {
+	if viper.GetString(types.FlagStateDelta) == types.ConsumeDelta && len(deltas.ABCIRsp) != 0 {
 		useDeltas = true
 	}
 	var abciResponses *ABCIResponses

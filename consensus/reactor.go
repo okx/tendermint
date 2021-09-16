@@ -588,7 +588,7 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 			return
 		}
 		var deltas *types.Deltas
-		if viper.GetInt32("enable-state-delta") != 0 {
+		if viper.GetString(types.FlagStateDelta) != types.NoDelta {
 			deltas = conR.conS.deltaStore.LoadDeltas(prs.Height)
 			if deltas == nil || deltas.Height != prs.Height {
 				deltas = &types.Deltas{}

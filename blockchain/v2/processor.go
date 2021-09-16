@@ -148,7 +148,8 @@ func (state *pcState) handle(event Event) (Event, error) {
 		if deltas == nil {
 			deltas = &types.Deltas{}
 		}
-		if viper.GetInt32("enable-state-delta") == 1 {
+		deltaMode := viper.GetString(types.FlagStateDelta)
+		if deltaMode != types.ConsumeDelta {
 			deltas = &types.Deltas{}
 		}
 
@@ -171,7 +172,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 			panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 		}
 
-		if viper.GetInt32("enable-state-delta") != 0 && len(deltas.DeltasBytes) > 0 {
+		if deltaMode != types.NoDelta && len(deltas.DeltasBytes) > 0 {
 			deltas.Height = first.Height
 			state.context.saveDeltas(deltas, first.Height)
 		}

@@ -1,5 +1,15 @@
 package types
 
+const (
+	// for getting flag of delta-mode
+	FlagStateDelta = "enable-state-delta"
+
+	// delta-mode
+	NoDelta      = "no"
+	ProductDelta = "producer"
+	ConsumeDelta = "consumer"
+)
+
 // Deltas defines the ABCIResponse and state delta
 type Deltas struct {
 	ABCIRsp     []byte

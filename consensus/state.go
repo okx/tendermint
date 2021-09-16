@@ -1510,7 +1510,8 @@ func (cs *State) finalizeCommit(height int64) {
 	var err error
 	var retainHeight int64
 	var deltas *types.Deltas
-	if viper.GetInt32("enable-state-delta") != 2 {
+	deltaMode := viper.GetString(types.FlagStateDelta)
+	if deltaMode != types.ConsumeDelta {
 		deltas = &types.Deltas{}
 	} else {
 		deltas = cs.Deltas
@@ -1533,7 +1534,7 @@ func (cs *State) finalizeCommit(height int64) {
 		return
 	}
 
-	if viper.GetInt32("enable-state-delta") != 0 && len(deltas.DeltasBytes) > 0 {
+	if deltaMode != types.NoDelta && len(deltas.DeltasBytes) > 0 {
 		deltas.Height = block.Height
 		cs.deltaStore.SaveDeltas(deltas, block.Height)
 	}
