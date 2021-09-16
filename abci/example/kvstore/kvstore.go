@@ -118,7 +118,7 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 }
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
-	data, _ := json.Marshal(&MockExTxInfo{Sender: fmt.Sprintf("%x", req.Tx),GasPrice: big.NewInt(1)})
+	data, _ := json.Marshal(&MockExTxInfo{Sender: fmt.Sprintf("%x", req.Tx), GasPrice: big.NewInt(1)})
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1, Data: data}
 }
 

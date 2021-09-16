@@ -868,7 +868,7 @@ func (mem *CListMempool) Update(
 
 			mem.removeTx(tx, ele, false)
 			mem.logger.Debug("Mempool update", "address", ele.Address, "nonce", ele.Nonce)
-		} else  if mem.txInfoparser!= nil {
+		} else if mem.txInfoparser != nil {
 			txInfo := mem.txInfoparser.GetRawTxInfo(tx)
 			addr = txInfo.Sender
 			nonce = txInfo.Nonce

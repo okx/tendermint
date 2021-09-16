@@ -13,7 +13,6 @@ func SetDynamicConfig(c IDynamicConfig) {
 }
 
 type MockDynamicConfig struct {
-
 }
 
 func (d MockDynamicConfig) GetMempoolRecheck() bool {

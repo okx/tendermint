@@ -87,7 +87,7 @@ func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 				Log:  fmt.Sprintf("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue)}
 		}
 	}
-	data, _ := json.Marshal(&MockExTxInfo{Sender: fmt.Sprintf("%+x",req.Tx), GasPrice: big.NewInt(1)})
+	data, _ := json.Marshal(&MockExTxInfo{Sender: fmt.Sprintf("%+x", req.Tx), GasPrice: big.NewInt(1)})
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, Data: data}
 }
 

@@ -151,6 +151,6 @@ func randomGenesisDoc() *GenesisDoc {
 		ChainID:         "abc",
 		Validators:      []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
 		ConsensusParams: DefaultConsensusParams(),
-		AppState: []byte("{\"appstate\": \"\"}"),
+		AppState:        []byte("{\"appstate\": \"\"}"),
 	}
 }
