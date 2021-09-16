@@ -1,5 +1,9 @@
 package types
 
+// state-delta mode
+// 0 same as no state-delta
+// 1 product delta and save into deltastore.db
+// 2 consume delta and save into deltastore.db; if get no delta, do as 1
 const (
 	// for getting flag of delta-mode
 	FlagStateDelta = "enable-state-delta"
