@@ -3,6 +3,7 @@ package kvstore
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -110,7 +111,9 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 }
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
-	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1, Data: req.Tx}
+	// json.Marshal(mempool.ExTxInfo{GasPrice: big.NewInt(1)})
+	data, _ := hex.DecodeString("7b2273656e646572223a22222c2273656e6465725f6e6f6e6365223a302c226761735f7072696365223a312c226e6f6e6365223a307d")
+	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1, Data: data}
 }
 
 func (app *Application) Commit() types.ResponseCommit {

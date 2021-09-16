@@ -3,10 +3,6 @@ package mempool
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/json"
-	"fmt"
-	"math/big"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -61,25 +57,20 @@ func TestCacheAfterUpdate(t *testing.T) {
 	}
 	for tcIndex, tc := range tests {
 		for i := 0; i < tc.numTxsToCreate; i++ {
-			tx, err := json.Marshal(ExTxInfo{Sender: strconv.Itoa(i), GasPrice: big.NewInt(int64(1))})
-			require.NoError(t, err)
-			fmt.Printf("%x\n", sha256.Sum256(tx))
-			err = mempool.CheckTx(tx, nil, TxInfo{})
+			tx := types.Tx{byte(i)}
+			err := mempool.CheckTx(tx, nil, TxInfo{})
 			require.NoError(t, err)
 		}
 
 		updateTxs := []types.Tx{}
 		for _, v := range tc.updateIndices {
-			tx, err := json.Marshal(ExTxInfo{Sender: strconv.Itoa(v), GasPrice: big.NewInt(int64(1))})
-			require.NoError(t, err)
+			tx := types.Tx{byte(v)}
 			updateTxs = append(updateTxs, tx)
 		}
 		mempool.Update(int64(tcIndex), updateTxs, abciResponses(len(updateTxs), abci.CodeTypeOK), nil, nil)
 
 		for _, v := range tc.reAddIndices {
-			tx, err := json.Marshal(ExTxInfo{Sender: strconv.Itoa(v), GasPrice: big.NewInt(int64(1))})
-			fmt.Printf("%x\n", sha256.Sum256(tx))
-			require.NoError(t, err)
+			tx := types.Tx{byte(v)}
 			_ = mempool.CheckTx(tx, nil, TxInfo{})
 		}
 
@@ -91,8 +82,7 @@ func TestCacheAfterUpdate(t *testing.T) {
 				"cache larger than expected on testcase %d", tcIndex)
 
 			nodeVal := node.Value.([sha256.Size]byte)
-			tx, _ := json.Marshal(ExTxInfo{Sender: strconv.Itoa(tc.txsInCache[len(tc.txsInCache)-counter-1]), GasPrice: big.NewInt(int64(1))})
-			expectedBz := sha256.Sum256(tx)
+			expectedBz := sha256.Sum256([]byte{byte(tc.txsInCache[len(tc.txsInCache)-counter-1])})
 			// Reference for reading the errors:
 			// >>> sha256('\x00').hexdigest()
 			// '6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d'
@@ -100,6 +90,7 @@ func TestCacheAfterUpdate(t *testing.T) {
 			// '4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a'
 			// >>> sha256('\x02').hexdigest()
 			// 'dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986'
+
 			require.Equal(t, expectedBz, nodeVal, "Equality failed on index %d, tc %d", counter, tcIndex)
 			counter++
 			node = node.Next()
