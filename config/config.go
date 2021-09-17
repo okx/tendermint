@@ -91,6 +91,7 @@ func DefaultConfig() *Config {
 
 // TestConfig returns a configuration that can be used for testing
 func TestConfig() *Config {
+	InitMockDynamicConfig()
 	return &Config{
 		BaseConfig:      TestBaseConfig(),
 		RPC:             TestRPCConfig(),

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
@@ -255,6 +256,7 @@ func testDialer(dialAddr NetAddress, errc chan error) {
 }
 
 func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
+	config.InitMockDynamicConfig()
 	mt := testSetupMultiplexTransport(t)
 
 	var (
