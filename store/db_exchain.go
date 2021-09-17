@@ -63,7 +63,7 @@ func NewBlockDB(name string, backend dbm.BackendType, dir string) *BlockDB {
 
 	// Check if blockdb is continuous
 	if len(historyDBs) != 0 && int64(len(historyDBs)) != (max-min)/Interval+1 {
-		log.Println("the block history db is discontinuous")
+		log.Println("The block history db is discontinuous")
 	}
 
 	return &BlockDB{
