@@ -1,7 +1,6 @@
 package store
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
@@ -105,7 +104,7 @@ func (bdb *BlockDB) Split(height int64) {
 			if ldb, ok := hisDB.(*dbm.GoLevelDB); ok {
 				err = ldb.DB().CompactRange(util.Range{})
 				if err != nil {
-					fmt.Println(err)
+					log.Println(err)
 				}
 			}
 		}()
