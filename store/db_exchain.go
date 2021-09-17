@@ -15,7 +15,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 )
 
-const Interval int64 = 1000000
+const Interval int64 = 100000
 
 type BlockDB struct {
 	db       dbm.DB
