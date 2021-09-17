@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/config"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -24,6 +25,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestProvider(t *testing.T) {
+	config.InitMockDynamicConfig()
 	assert, require := assert.New(t), require.New(t)
 
 	cfg := rpctest.GetConfig()

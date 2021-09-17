@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	cfg "github.com/tendermint/tendermint/config"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -27,6 +28,7 @@ func MakeTxKV() ([]byte, []byte, []byte) {
 }
 
 func TestHeaderEvents(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	for i, c := range GetClients() {
 		i, c := i, c // capture params
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
@@ -49,6 +51,7 @@ func TestHeaderEvents(t *testing.T) {
 }
 
 func TestBlockEvents(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	for i, c := range GetClients() {
 		i, c := i, c // capture params
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
@@ -86,6 +89,7 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) { testTxEventsSent(t, "a
 func TestTxEventsSentWithBroadcastTxSync(t *testing.T)  { testTxEventsSent(t, "sync") }
 
 func testTxEventsSent(t *testing.T, broadcastMethod string) {
+	cfg.InitMockDynamicConfig()
 	for i, c := range GetClients() {
 		i, c := i, c // capture params
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {

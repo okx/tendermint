@@ -6,13 +6,17 @@ type IDynamicConfig interface {
 	GetMempoolSize() int
 }
 
-var DynamicConfig IDynamicConfig = MockDynamicConfig{}
+var DynamicConfig IDynamicConfig
 
 func SetDynamicConfig(c IDynamicConfig) {
 	DynamicConfig = c
 }
 
 type MockDynamicConfig struct {
+}
+
+func InitMockDynamicConfig() {
+	DynamicConfig = MockDynamicConfig{}
 }
 
 func (d MockDynamicConfig) GetMempoolRecheck() bool {

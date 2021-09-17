@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	cfg "github.com/tendermint/tendermint/config"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -36,6 +37,7 @@ func TestCacheRemove(t *testing.T) {
 }
 
 func TestCacheAfterUpdate(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool, cleanup := newMempoolWithApp(cc)

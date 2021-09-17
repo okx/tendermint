@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	cfg "github.com/tendermint/tendermint/config"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -27,6 +28,7 @@ var (
 )
 
 func TestApplyBlock(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	app := kvstore.NewApplication()
 	app.RetainBlocks = 1
 	cc := proxy.NewLocalClientCreator(app)

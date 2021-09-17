@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/provider/http"
 	litehttp "github.com/tendermint/tendermint/lite2/provider/http"
@@ -43,6 +44,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestProvider(t *testing.T) {
+	config.InitMockDynamicConfig()
 	cfg := rpctest.GetConfig()
 	defer os.RemoveAll(cfg.RootDir)
 	rpcAddr := cfg.RPC.ListenAddress

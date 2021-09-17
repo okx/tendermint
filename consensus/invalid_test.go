@@ -3,6 +3,7 @@ package consensus
 import (
 	"testing"
 
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -16,6 +17,7 @@ import (
 // one byz val sends a precommit for a random block at each height
 // Ensure a testnet makes blocks
 func TestReactorInvalidPrecommit(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	N := 4
 	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	defer cleanup()

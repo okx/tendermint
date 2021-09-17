@@ -127,6 +127,7 @@ func newBlockchainReactor(
 }
 
 func TestNoBlockResponse(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)

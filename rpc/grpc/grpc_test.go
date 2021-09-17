@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	cfg "github.com/tendermint/tendermint/config"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
@@ -24,6 +25,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestBroadcastTx(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	res, err := rpctest.GetGRPCClient().BroadcastTx(
 		context.Background(),
 		&core_grpc.RequestBroadcastTx{Tx: []byte("this is a tx")},

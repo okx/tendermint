@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	cfg "github.com/tendermint/tendermint/config"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -20,6 +21,7 @@ import (
 
 // Automatically getting new headers and verifying them.
 func ExampleClient_Update() {
+	cfg.InitMockDynamicConfig()
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 

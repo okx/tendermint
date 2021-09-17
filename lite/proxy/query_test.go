@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	cfg "github.com/tendermint/tendermint/config"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -125,6 +126,7 @@ func _TestAppProofs(t *testing.T) {
 }
 
 func TestTxProofs(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	assert, require := assert.New(t), require.New(t)
 
 	cl := rpclocal.New(node)

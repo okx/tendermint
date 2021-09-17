@@ -32,6 +32,7 @@ import (
 )
 
 func TestNodeStartStop(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	config := cfg.ResetTestRoot("node_node_test")
 	defer os.RemoveAll(config.RootDir)
 
@@ -93,6 +94,7 @@ func TestSplitAndTrimEmpty(t *testing.T) {
 }
 
 func TestNodeDelayedStart(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	config := cfg.ResetTestRoot("node_delayed_start_test")
 	defer os.RemoveAll(config.RootDir)
 	now := tmtime.Now()
@@ -222,6 +224,7 @@ func testFreeAddr(t *testing.T) string {
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	config.Instrumentation.Prometheus = false

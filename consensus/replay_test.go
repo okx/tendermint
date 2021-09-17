@@ -9,13 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"sort"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -35,6 +34,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	cfg.InitMockDynamicConfig()
 	config = ResetConfig("consensus_reactor_test")
 	consensusReplayConfig = ResetConfig("consensus_replay_test")
 	configStateTest := ResetConfig("consensus_state_test")

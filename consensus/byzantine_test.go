@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -25,6 +26,7 @@ import (
 // Byzantine validator refuses to prevote.
 // Heal partition and ensure A sees the commit
 func TestByzantine(t *testing.T) {
+	cfg.InitMockDynamicConfig()
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
 	css, cleanup := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)

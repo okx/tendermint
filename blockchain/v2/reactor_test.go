@@ -343,7 +343,7 @@ func TestReactorHelperMode(t *testing.T) {
 	var (
 		channelID = byte(0x40)
 	)
-
+	cfg.InitMockDynamicConfig()
 	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
