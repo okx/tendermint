@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-go@v2
       - name: Set GOBIN
         run: |
-          echo "::add-path::$(go env GOPATH)/bin"
+          echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
       - uses: actions/checkout@v2.3.4
       - name: install
         run: make install install_abci
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/setup-go@v2
       - name: Set GOBIN
         run: |
-          echo "::add-path::$(go env GOPATH)/bin"
+          echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
       - uses: actions/checkout@v2.3.4
       - uses: actions/cache@v1
         with:
@@ -55,7 +55,7 @@ jobs:
       - uses: actions/setup-go@v2
       - name: Set GOBIN
         run: |
-          echo "::add-path::$(go env GOPATH)/bin"
+          echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
       - uses: actions/checkout@v2.3.4
       - uses: actions/cache@v1
         with:
@@ -71,7 +71,7 @@ jobs:
       - uses: actions/setup-go@v2
       - name: Set GOBIN
         run: |
-          echo "::add-path::$(go env GOPATH)/bin"
+          echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
       - uses: actions/checkout@v2.3.4
       - uses: actions/cache@v1
         with:
