@@ -6,10 +6,10 @@ package types
 // 2 consume delta and save into deltastore.db; if get no delta, do as 1
 const (
 	// for getting flag of delta-mode
-	FlagStateDelta = "enable-state-delta"
+	FlagStateDelta = "state-sync-mode"
 
 	// delta-mode
-	NoDelta      = "no"
+	NoDelta      = "na"
 	ProductDelta = "producer"
 	ConsumeDelta = "consumer"
 )
