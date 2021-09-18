@@ -3,6 +3,10 @@ name: Protobuf
 # This workflow is only run when a .proto file has been modified
 on:
   workflow_dispatch: # allow running workflow manually
+  push:
+    branches:
+      - main
+      - release/**
   pull_request:
     paths:
       - "**.proto"
