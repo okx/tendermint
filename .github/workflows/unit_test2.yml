@@ -8,7 +8,7 @@ on:
       - release/**
 
 jobs:
-  unit_test:
+  unit_test_consensus:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
