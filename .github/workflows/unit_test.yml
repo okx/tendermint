@@ -1,4 +1,4 @@
-name: coverage
+name: unit_test
 
 on:
   pull_request:
@@ -20,5 +20,8 @@ jobs:
         run: |
           echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-      - name: Go Test
-        run: go test -json ./...
+      - name: Go Test, except consensus
+        run: go test ./...
+
+      - name: Go Test consensus
+        run: go test $(go list ./... | grep tendermint/consensus)
