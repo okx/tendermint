@@ -20,4 +20,10 @@ jobs:
           echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
 
       - name: Go Test
-        run: go test -ldflags -s $(go list ./... | grep -v tendermint/consensus)
+        run: go test -count=1 $(go list ./... | grep -v -E "tendermint/consensus|tendermint/mempool|libs/async")
+
+      - name: Go Test libs/async
+        run: go test -count=1 -ldflags -s $(go list ./... | grep libs/async)
+
+      - name: Go Test
+        run: cd mempool && go test -count=1 ./...

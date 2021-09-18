@@ -20,4 +20,4 @@ jobs:
           echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
 
       - name: Go Test consensus
-        run: cd consensus && go test $(go list ./...)
+        run: cd consensus && go test -count=1 ./...
