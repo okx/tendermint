@@ -26,7 +26,7 @@
 -> code: 2
 -> log: Invalid nonce. Expected 2, got 4
 
-> info 
+> info
 -> code: OK
 -> data: {"hashes":0,"txs":2}
 -> data.hex: 0x7B22686173686573223A302C22747873223A327D
