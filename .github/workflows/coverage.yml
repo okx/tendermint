@@ -1,4 +1,4 @@
-name: CI
+name: coverage
 
 on:
   pull_request:
@@ -16,11 +16,13 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '1.16.2'
+      - name: Set GOBIN
+        run: |
+          echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: |
           go version
-          go get -u golang.org/x/lint/golint
       - name: Build
         run: go build .
 
