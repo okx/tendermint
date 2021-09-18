@@ -24,4 +24,4 @@ jobs:
           echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
 
       - name: Go Test
-        run: go test $(go list ./... | grep ${{ matrix.part }} tendermint/consensus)
+        run: go test -ldflags -s $(go list ./... | grep ${{ matrix.part }} tendermint/consensus)
