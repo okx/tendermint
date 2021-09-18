@@ -20,12 +20,6 @@ jobs:
         run: |
           echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-      - name: Install dependencies
-        run: |
-          go version
-      - name: Build
-        run: go build .
-
       - name: Test With Coverage
         run: go test -gcflags=-l -v  -coverprofile=coverage.txt -covermode=atomic ./...
 
