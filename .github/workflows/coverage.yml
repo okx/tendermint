@@ -8,7 +8,7 @@ on:
       - release/**
 
 jobs:
-  build:
+  unit_test:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,8 +20,5 @@ jobs:
         run: |
           echo "GOBIN=$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-      - name: Test With Coverage
-        run: go test -gcflags=-l -v  -coverprofile=coverage.txt -covermode=atomic ./...
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+      - name: Go Test
+        run: go test -json ./...
