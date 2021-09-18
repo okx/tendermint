@@ -74,11 +74,13 @@ proto-lint:
 .PHONY: proto-lint
 
 proto-check-breaking:
-	@$(DOCKER_BUF) breaking --against-input .git#branch=main
+
+	@$(DOCKER_BUF) breaking --against .git#branch=main
 .PHONY: proto-check-breaking
 
 proto-check-breaking-ci:
-	@$(DOCKER_BUF) breaking --against-input $(HTTPS_GIT)#branch=main
+	@$(DOCKER_BUF) breaking --against $(HTTPS_GIT)#branch=main
+
 .PHONY: proto-check-breaking-ci
 
 ###############################################################################
