@@ -26,6 +26,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.6.3
 	github.com/stretchr/testify v1.5.1
+	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
 	github.com/tendermint/go-amino v0.15.1
 	github.com/tendermint/tm-db v0.5.2
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
