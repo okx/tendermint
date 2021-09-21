@@ -77,7 +77,7 @@ func NewBlockDB(name string, backend dbm.BackendType, dir string) *BlockDB {
 	}
 }
 
-func (bdb *BlockDB) Split(height int64) {
+func (bdb *BlockDB) Split(height int64) bool {
 	bdb.mtx.Lock()
 	defer bdb.mtx.Unlock()
 
@@ -110,7 +110,9 @@ func (bdb *BlockDB) Split(height int64) {
 		}()
 		bdb.history[(height-1)/Interval] = hisDB
 		bdb.db = dbm.NewDB(bdb.name, bdb.backend, bdb.dir)
+		return true
 	}
+	return false
 }
 
 // Get implements DB.

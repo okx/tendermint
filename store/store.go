@@ -281,8 +281,9 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	if bdb, ok := bs.db.(*BlockDB); ok {
-		bdb.Split(height)
-		bs.base = 0
+		if bdb.Split(height) {
+			bs.base = 0
+		}
 	}
 	// Save block meta
 	blockMeta := types.NewBlockMeta(block, blockParts)
