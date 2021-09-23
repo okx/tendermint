@@ -67,9 +67,9 @@ func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
 }
 
-// DefaultBlockDBProvider returns a block database using the DBBackend and DBDir
+// DefaultSplitBlockDBProvider returns a block database using the DBBackend and DBDir
 // specified in the ctx.Config.
-func DefaultBlockDBProvider(ctx *DBContext) (dbm.DB, error) {
+func DefaultSplitBlockDBProvider(ctx *DBContext) (dbm.DB, error) {
 	dbType := dbm.BackendType(ctx.Config.DBBackend)
 	return store.NewBlockDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
 }
@@ -194,7 +194,11 @@ type Node struct {
 
 func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
-	blockStoreDB, err = DefaultBlockDBProvider(&DBContext{"blockstore", config})
+	if abci.SplitBlockDB() {
+		blockStoreDB, err = DefaultSplitBlockDBProvider(&DBContext{"blockstore", config})
+	} else {
+		blockStoreDB, err = dbProvider(&DBContext{"blockstore", config})
+	}
 	if err != nil {
 		return
 	}
