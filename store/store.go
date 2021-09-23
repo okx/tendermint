@@ -11,6 +11,8 @@ import (
 	dbm "github.com/tendermint/tm-db"
 )
 
+var curBase int64
+
 /*
 BlockStore is a simple low level store for blocks.
 
@@ -217,7 +219,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		bs.mtx.Lock()
 		bs.base = base
 		bs.mtx.Unlock()
-		bs.saveState()
+		bs.saveState(bs.base, bs.height)
 
 		err := batch.WriteSync()
 		if err != nil {
@@ -282,7 +284,8 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 	if bdb, ok := bs.db.(*BlockDB); ok {
 		if bdb.Split(height) {
-			bs.base = 0
+			// reset base
+			curBase = height
 		}
 	}
 	// Save block meta
@@ -311,11 +314,12 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	bs.height = height
 	if bs.base == 0 {
 		bs.base = height
+		curBase = height
 	}
 	bs.mtx.Unlock()
 
 	// Save new BlockStoreStateJSON descriptor
-	bs.saveState()
+	bs.saveState(curBase, bs.height)
 
 	// Flush
 	bs.db.SetSync(nil, nil)
@@ -326,11 +330,11 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
 }
 
-func (bs *BlockStore) saveState() {
+func (bs *BlockStore) saveState(base, height int64) {
 	bs.mtx.RLock()
 	bsJSON := BlockStoreStateJSON{
-		Base:   bs.base,
-		Height: bs.height,
+		Base:   base,
+		Height: height,
 	}
 	bs.mtx.RUnlock()
 	bsJSON.Save(bs.db)
@@ -380,6 +384,7 @@ func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 // LoadBlockStoreStateJSON returns the BlockStoreStateJSON as loaded from disk.
 // If no BlockStoreStateJSON was previously persisted, it returns the zero value.
 func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
+	// get state from blockstore.db
 	bytes, err := db.Get(blockStoreKey)
 	if err != nil {
 		panic(err)
@@ -398,6 +403,27 @@ func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	// Backwards compatibility with persisted data from before Base existed.
 	if bsj.Height > 0 && bsj.Base == 0 {
 		bsj.Base = 1
+	}
+
+	curBase = bsj.Base
+
+	// get base from block_history
+	if bdb, ok := db.(*BlockDB); ok {
+		vs := bdb.GetAllFromHistory(blockStoreKey)
+		for _, v := range vs {
+			if len(bytes) == 0 {
+				continue
+			}
+			bsjHistory := BlockStoreStateJSON{}
+			err = cdc.UnmarshalJSON(v, &bsjHistory)
+			if err != nil {
+				panic(fmt.Sprintf("Could not unmarshal bytes: %X", bytes))
+			}
+
+			if bsjHistory.Base > 0 && bsjHistory.Base < bsj.Base {
+				bsj.Base = bsjHistory.Base
+			}
+		}
 	}
 	return bsj
 }

@@ -140,6 +140,20 @@ func (bdb *BlockDB) Get(key []byte) ([]byte, error) {
 	return b, err
 }
 
+// GetAllFromHistory get the value by key from all history db.
+func (bdb *BlockDB) GetAllFromHistory(key []byte) [][]byte {
+	//bdb.mtx.Lock()
+	//defer bdb.mtx.Unlock()
+	var values [][]byte
+	for _, db := range bdb.history {
+		b, _ := db.Get(key)
+		if b != nil {
+			values = append(values, b)
+		}
+	}
+	return values
+}
+
 // Has implements DB.
 func (bdb *BlockDB) Has(key []byte) (bool, error) {
 	bdb.mtx.Lock()
