@@ -300,17 +300,32 @@ func (bdb *BlockDB) ReverseIterator(start, end []byte) (dbm.Iterator, error) {
 func (bdb *BlockDB) IsContinuous() bool {
 	var heights []int
 
+	// get BlockStoreStateJSON from history
 	vs := bdb.GetAllFromHistory(blockStoreKey)
 	for _, v := range vs {
 		if len(v) == 0 {
 			continue
 		}
-		bsjHistory := BlockStoreStateJSON{}
-		err := cdc.UnmarshalJSON(v, &bsjHistory)
+		bsj := BlockStoreStateJSON{}
+		err := cdc.UnmarshalJSON(v, &bsj)
 		if err != nil {
 			panic(fmt.Sprintf("Could not unmarshal bytes: %X", v))
 		}
-		heights = append(heights, int(bsjHistory.Base), int(bsjHistory.Height))
+		heights = append(heights, int(bsj.Base), int(bsj.Height))
+	}
+
+	// get BlockStoreStateJSON from blockstore.db
+	bytes, err := bdb.Get(blockStoreKey)
+	if err != nil {
+		panic(err)
+	}
+	if len(bytes) > 0 {
+		bsj := BlockStoreStateJSON{}
+		err = cdc.UnmarshalJSON(bytes, &bsj)
+		if err != nil {
+			panic(fmt.Sprintf("Could not unmarshal bytes: %X", bytes))
+		}
+		heights = append(heights, int(bsj.Base), int(bsj.Height))
 	}
 
 	if len(heights) < 4 {
