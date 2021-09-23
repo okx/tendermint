@@ -411,13 +411,13 @@ func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	if bdb, ok := db.(*BlockDB); ok {
 		vs := bdb.GetAllFromHistory(blockStoreKey)
 		for _, v := range vs {
-			if len(bytes) == 0 {
+			if len(v) == 0 {
 				continue
 			}
 			bsjHistory := BlockStoreStateJSON{}
 			err = cdc.UnmarshalJSON(v, &bsjHistory)
 			if err != nil {
-				panic(fmt.Sprintf("Could not unmarshal bytes: %X", bytes))
+				panic(fmt.Sprintf("Could not unmarshal bytes: %X", v))
 			}
 
 			if bsjHistory.Base > 0 && bsjHistory.Base < bsj.Base {

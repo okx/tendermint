@@ -1,11 +1,13 @@
 package store
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -60,12 +62,7 @@ func NewBlockDB(name string, backend dbm.BackendType, dir string) *BlockDB {
 		}
 	}
 
-	// Check if blockdb is continuous
-	if len(historyDBs) != 0 && int64(len(historyDBs)) != (max-min)/Interval+1 {
-		log.Println("The block history db is discontinuous")
-	}
-
-	return &BlockDB{
+	bdb := &BlockDB{
 		db:      db,
 		history: historyDBs,
 
@@ -75,6 +72,11 @@ func NewBlockDB(name string, backend dbm.BackendType, dir string) *BlockDB {
 		dir:      dir,
 		hisDir:   hisDir,
 	}
+
+	if !bdb.IsContinuous() {
+		log.Println("The block history db is discontinuous")
+	}
+	return bdb
 }
 
 func (bdb *BlockDB) Split(height int64) bool {
@@ -293,6 +295,35 @@ func (bdb *BlockDB) Iterator(start, end []byte) (dbm.Iterator, error) {
 // Not used in the BlockStore
 func (bdb *BlockDB) ReverseIterator(start, end []byte) (dbm.Iterator, error) {
 	return nil, nil
+}
+
+func (bdb *BlockDB) IsContinuous() bool {
+	var heights []int
+
+	vs := bdb.GetAllFromHistory(blockStoreKey)
+	for _, v := range vs {
+		if len(v) == 0 {
+			continue
+		}
+		bsjHistory := BlockStoreStateJSON{}
+		err := cdc.UnmarshalJSON(v, &bsjHistory)
+		if err != nil {
+			panic(fmt.Sprintf("Could not unmarshal bytes: %X", v))
+		}
+		heights = append(heights, int(bsjHistory.Base), int(bsjHistory.Height))
+	}
+
+	if len(heights) < 4 {
+		return true
+	}
+	sort.Ints(heights)
+	for i := 1; i < len(heights)-1; i++ {
+		if heights[i+1]-heights[i] != 1 {
+			return false
+		}
+		i++
+	}
+	return true
 }
 
 // getHeightFromKey
