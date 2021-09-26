@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -45,7 +44,6 @@ func NewBlockDB(name string, backend dbm.BackendType, dir string) *BlockDB {
 		panic(err)
 	}
 
-	var min, max int64 = math.MaxInt64, 0
 	for _, f := range fs {
 		if f.IsDir() {
 			index, err := strconv.ParseInt(strings.Split(f.Name(), ".")[0], 10, 64)
@@ -53,12 +51,6 @@ func NewBlockDB(name string, backend dbm.BackendType, dir string) *BlockDB {
 				continue
 			}
 			historyDBs[index/Interval] = dbm.NewDB(strconv.FormatInt(index, 10), backend, hisDir)
-			if index < min {
-				min = index
-			}
-			if index > max {
-				max = index
-			}
 		}
 	}
 
