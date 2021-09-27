@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -301,7 +300,6 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 			// TODO: consider punishing peer for dups,
 			// its non-trivial since invalid txs can become valid,
 			// but they can spam the same tx with little cost to them atm.
-
 		}
 
 		return ErrTxInCache
@@ -328,7 +326,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	}
 
 	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
-	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
+	reqRes.SetCallback(mem.reqResCb(tx, txInfo, cb))
 
 	return nil
 }
@@ -365,8 +363,7 @@ func (mem *CListMempool) globalCb(req *abci.Request, res *abci.Response) {
 // Used in CheckTx to record PeerID who sent us the tx.
 func (mem *CListMempool) reqResCb(
 	tx []byte,
-	peerID uint16,
-	peerP2PID p2p.ID,
+	txInfo TxInfo,
 	externalCb func(*abci.Response),
 ) func(res *abci.Response) {
 	return func(res *abci.Response) {
@@ -375,7 +372,7 @@ func (mem *CListMempool) reqResCb(
 			panic("recheck cursor is not nil in reqResCb")
 		}
 
-		mem.resCbFirstTime(tx, peerID, peerP2PID, res)
+		mem.resCbFirstTime(tx, txInfo, res)
 
 		// update metrics
 		mem.metrics.Size.Set(float64(mem.Size()))
@@ -552,8 +549,7 @@ func (mem *CListMempool) consumePendingTx(address string, nonce uint64) {
 // handled by the resCbRecheck callback.
 func (mem *CListMempool) resCbFirstTime(
 	tx []byte,
-	peerID uint16,
-	peerP2PID p2p.ID,
+	txInfo TxInfo,
 	res *abci.Response,
 ) {
 	switch r := res.Value.(type) {
@@ -573,10 +569,10 @@ func (mem *CListMempool) resCbFirstTime(
 			}
 			memTx := &mempoolTx{
 				height:    mem.height,
-				gasWanted: r.CheckTx.GasWanted,
+				gasWanted: int64(txInfo.EstimatedGasUse),
 				tx:        tx,
 			}
-			memTx.senders.Store(peerID, true)
+			memTx.senders.Store(txInfo.SenderID, true)
 
 			var exTxInfo ExTxInfo
 			if err := json.Unmarshal(r.CheckTx.Data, &exTxInfo); err != nil {
@@ -608,7 +604,7 @@ func (mem *CListMempool) resCbFirstTime(
 			} else {
 				// ignore bad transaction
 				mem.logger.Info("Fail to add transaction into mempool, rejected it",
-					"tx", txID(tx), "peerID", peerP2PID, "res", r, "err", postCheckErr)
+					"tx", txID(tx), "peerID", txInfo.SenderP2PID, "res", r, "err", postCheckErr)
 				mem.metrics.FailedTxs.Add(1)
 				// remove from cache (it might be good later)
 				mem.cache.Remove(tx)
@@ -619,7 +615,7 @@ func (mem *CListMempool) resCbFirstTime(
 		} else {
 			// ignore bad transaction
 			mem.logger.Info("Rejected bad transaction",
-				"tx", txID(tx), "peerID", peerP2PID, "res", r, "err", postCheckErr)
+				"tx", txID(tx), "peerID", txInfo.SenderP2PID, "res", r, "err", postCheckErr)
 			mem.metrics.FailedTxs.Add(1)
 			// remove from cache (it might be good later)
 			mem.cache.Remove(tx)
@@ -1147,10 +1143,10 @@ func txID(tx []byte) string {
 
 //--------------------------------------------------------------------------------
 type ExTxInfo struct {
-	Sender      string   `json:"sender"`
-	SenderNonce uint64   `json:"sender_nonce"`
-	GasPrice    *big.Int `json:"gas_price"`
-	Nonce       uint64   `json:"nonce"`
+	Sender         string   `json:"sender"`
+	SenderNonce    uint64   `json:"sender_nonce"`
+	GasPrice       *big.Int `json:"gas_price"`
+	Nonce          uint64   `json:"nonce"`
 }
 
 func (mem *CListMempool) SetAccountRetriever(retriever AccountRetriever) {
