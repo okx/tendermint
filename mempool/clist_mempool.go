@@ -837,6 +837,7 @@ func (mem *CListMempool) Update(
 		mem.postCheck = postCheck
 	}
 
+	var gasUsed uint64
 	toCleanAccMap := make(map[string]uint64)
 	addressNonce := make(map[string]uint64)
 	for i, tx := range txs {
@@ -882,7 +883,10 @@ func (mem *CListMempool) Update(
 		if mem.pendingPool != nil {
 			mem.pendingPool.removeTxByHash(txID(tx))
 		}
+
+		gasUsed += uint64(deliverTxResponses[1].GasUsed)
 	}
+	mem.metrics.GasUsed.Set(float64(gasUsed))
 
 	for accAddr, accMaxNonce := range toCleanAccMap {
 		if txsRecord, ok := mem.addressRecord[accAddr]; ok {
