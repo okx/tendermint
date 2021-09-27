@@ -573,7 +573,7 @@ func (mem *CListMempool) resCbFirstTime(
 			}
 			memTx := &mempoolTx{
 				height:    mem.height,
-				gasWanted: r.CheckTx.GasWanted,
+				gasWanted: r.CheckTx.GasUsed,
 				tx:        tx,
 			}
 			memTx.senders.Store(peerID, true)
@@ -719,7 +719,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		// Since newTotalGas < masGas, which
 		// must be non-negative, it follows that this won't overflow.
 		newTotalGas := totalGas + memTx.gasWanted
-		if maxGas > -1 && newTotalGas > maxGas {
+		if mem.config.MaxGasUsedPerBlock > -1 && newTotalGas > mem.config.MaxGasUsedPerBlock {
 			return txs
 		}
 		if totalTxNum >= mem.config.MaxTxNumPerBlock {
