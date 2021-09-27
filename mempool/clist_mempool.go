@@ -841,6 +841,9 @@ func (mem *CListMempool) Update(
 	toCleanAccMap := make(map[string]uint64)
 	addressNonce := make(map[string]uint64)
 	for i, tx := range txs {
+		// add gas used with every tx
+		gasUsed += uint64(deliverTxResponses[i].GasUsed)
+
 		txCode := deliverTxResponses[i].Code
 		if txCode == abci.CodeTypeOK || txCode > abci.CodeTypeNonceInc {
 			// Add valid committed tx to the cache (if missing).
@@ -883,8 +886,6 @@ func (mem *CListMempool) Update(
 		if mem.pendingPool != nil {
 			mem.pendingPool.removeTxByHash(txID(tx))
 		}
-
-		gasUsed += uint64(deliverTxResponses[1].GasUsed)
 	}
 	mem.metrics.GasUsed.Set(float64(gasUsed))
 
