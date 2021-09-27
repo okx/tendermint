@@ -93,6 +93,9 @@ type Mempool interface {
 	GetTxByHash(hash [sha256.Size]byte) (types.Tx, error)
 
 	GetAddressList() []string
+	SetAccountRetriever(retriever AccountRetriever)
+
+	SetTxInfoParser(parser TxInfoParser)
 }
 
 //--------------------------------------------------------------------------------
