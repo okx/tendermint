@@ -13,10 +13,9 @@ type ExecuteRes interface {
 	GetResponse() ResponseDeliverTx
 	Recheck(AsyncCacheInterface) bool
 	GetCounter() uint32
-	Commit() bool
+	Commit()
 	Error() error
 	Collect(AsyncCacheInterface)
-	NeedAnte() bool
 	GetEvmTxCounter() uint32
 }
 

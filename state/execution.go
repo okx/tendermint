@@ -140,10 +140,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 ) (State, int64, error) {
 	trc := &Tracer{}
 	defer func() {
-		trc.dump(
-			fmt.Sprintf("ApplyBlock<%d>, tx<%d>", block.Height, len(block.Data.Txs)),
-			blockExec.logger.With("module", "main"),
-		)
+		//trc.dump(
+		//	fmt.Sprintf("ApplyBlock<%d>, tx<%d>", block.Height, len(block.Data.Txs)),
+		//	blockExec.logger.With("module", "main"),
+		//)
 
 		now := time.Now().UnixNano()
 		blockExec.metrics.IntervalTime.Set(float64(now-blockExec.metrics.lastBlockTime) / 1e6)
@@ -361,10 +361,9 @@ func execBlockOnProxyApp(
 			abciResponses.DeliverTxs[i] = &tmp
 			if !res.Recheck(asCache) {
 				//we don't need to rerun the tx, just commit it and save dirty data into cache
-				if res.Error() == nil {
-					res.Collect(asCache)
-					res.Commit()
-				}
+				res.Collect(asCache)
+				res.Commit()
+
 				if tmp.Code == abci.CodeTypeOK {
 					validTxs++
 				} else {
@@ -374,7 +373,7 @@ func execBlockOnProxyApp(
 			} else {
 				rerunIdx++
 				//rerun current tx
-				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, res.NeedAnte(), res.GetEvmTxCounter())
+				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, true, res.GetEvmTxCounter())
 				if proxyAppConn.Error() != nil {
 					//break, stop execution and return an error
 					signal <- 0
