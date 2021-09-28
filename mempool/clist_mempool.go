@@ -266,6 +266,15 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 //
 // Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) error {
+	res, err := mem.proxyAppConn.QuerySync(abci.RequestQuery{
+		Path: "app/simulate",
+		Data: tx,
+	})
+	var simuRes SimulationResponse
+	if err == nil {
+		err = cdc.UnmarshalBinaryBare(res.Value, &simuRes)
+	}
+
 	mem.updateMtx.RLock()
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.updateMtx.RUnlock()
@@ -328,6 +337,9 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	}
 
 	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
+	if r, ok := reqRes.Response.Value.(*abci.Response_CheckTx); ok && err == nil {
+		r.CheckTx.GasWanted = int64(simuRes.GasUsed)
+	}
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
 
 	return nil
@@ -573,7 +585,7 @@ func (mem *CListMempool) resCbFirstTime(
 			}
 			memTx := &mempoolTx{
 				height:    mem.height,
-				gasWanted: r.CheckTx.GasUsed,
+				gasWanted: r.CheckTx.GasWanted,
 				tx:        tx,
 			}
 			memTx.senders.Store(peerID, true)
