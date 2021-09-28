@@ -266,13 +266,10 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 //
 // Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) error {
-	res, err := mem.proxyAppConn.QuerySync(abci.RequestQuery{
-		Path: "app/simulate",
-		Data: tx,
-	})
-	var simuRes SimulationResponse
-	if err == nil {
-		err = cdc.UnmarshalBinaryBare(res.Value, &simuRes)
+	var simuRes *SimulationResponse
+	var err error
+	if mem.config.CheckTxWithSimu {
+		simuRes, err = mem.simulateTx(tx)
 	}
 
 	mem.updateMtx.RLock()
@@ -337,8 +334,10 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	}
 
 	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
-	if r, ok := reqRes.Response.Value.(*abci.Response_CheckTx); ok && err == nil {
-		r.CheckTx.GasWanted = int64(simuRes.GasUsed)
+	if mem.config.CheckTxWithSimu {
+		if r, ok := reqRes.Response.Value.(*abci.Response_CheckTx); ok && err == nil {
+			r.CheckTx.GasWanted = int64(simuRes.GasUsed)
+		}
 	}
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
 
@@ -1192,4 +1191,17 @@ func (mem *CListMempool) pendingPoolJob() {
 			"poolSize", mem.pendingPool.Size(),
 			"addressNonceMap", addrNonceMap)
 	}
+}
+
+func (mem *CListMempool) simulateTx(tx types.Tx) (*SimulationResponse, error) {
+	var simuRes SimulationResponse
+	res, err := mem.proxyAppConn.QuerySync(abci.RequestQuery{
+		Path: "app/simulate",
+		Data: tx,
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = cdc.UnmarshalBinaryBare(res.Value, &simuRes)
+	return &simuRes, err
 }

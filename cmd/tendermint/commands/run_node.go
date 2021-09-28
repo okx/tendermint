@@ -114,6 +114,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"Maximum gas used of transactions in a block",
 	)
 	cmd.Flags().Bool(
+		"mempool.check_tx_with_simu",
+		config.Mempool.CheckTxWithSimu,
+		"Simulate tx before CheckTx",
+	)
+	cmd.Flags().Bool(
 		"mempool.sort_tx_by_gp",
 		config.Mempool.SortTxByGp,
 		"Sort tx by gas price in mempool",

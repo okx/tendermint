@@ -669,6 +669,7 @@ type MempoolConfig struct {
 	MaxTxBytes                 int    `mapstructure:"max_tx_bytes"`
 	MaxTxNumPerBlock           int64  `mapstructure:"max_tx_num_per_block"`
 	MaxGasUsedPerBlock         int64  `mapstructure:"max_gas_used_per_block"`
+	CheckTxWithSimu            bool   `mapstructure:"check_tx_with_simu"`
 	SortTxByGp                 bool   `mapstructure:"sort_tx_by_gp"`
 	ForceRecheckGap            int64  `mapstructure:"force_recheck_gap"`
 	TxPriceBump                uint64 `mapstructure:"tx_price_bump"`
@@ -692,6 +693,8 @@ func DefaultMempoolConfig() *MempoolConfig {
 		CacheSize:                  10000,
 		MaxTxBytes:                 1024 * 1024, // 1MB
 		MaxTxNumPerBlock:           300,
+		MaxGasUsedPerBlock:         -1,
+		CheckTxWithSimu:            false,
 		SortTxByGp:                 true,
 		ForceRecheckGap:            200,
 		TxPriceBump:                10,
