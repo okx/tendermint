@@ -330,7 +330,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 
 	startTime := time.Now()
 	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
-	mem.logger.Info(fmt.Sprintf("txhash<%s>, <%dms>", hex.EncodeToString(tx.Hash()), (time.Now().Sub(startTime))/1e6))
+	mem.logger.Info(fmt.Sprintf("txhash<%s>, mempoolCheckTx<%dms>", hex.EncodeToString(tx.Hash()), (time.Now().Sub(startTime))/1e6))
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
 
 	return nil
