@@ -686,7 +686,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:                       10000,               // exchain memory pool size(max tx num)
+		Size:                       10000,              // exchain memory pool size(max tx num)
 		MaxTxsBytes:                1024 * 1024 * 1024, // 1GB
 		CacheSize:                  10000,
 		MaxTxBytes:                 1024 * 1024, // 1MB
