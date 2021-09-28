@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"encoding/hex"
 
 	"github.com/pkg/errors"
 
@@ -327,7 +328,9 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		return err
 	}
 
+	startTime := time.Now()
 	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
+	mem.logger.Info(fmt.Sprintf("txhash<%s>, <%dms>", hex.EncodeToString(tx.Hash()), (time.Now().Sub(startTime))/1e6))
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
 
 	return nil
