@@ -148,6 +148,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		now := time.Now().UnixNano()
 		blockExec.metrics.IntervalTime.Set(float64(now-blockExec.metrics.lastBlockTime) / 1e6)
 		blockExec.metrics.lastBlockTime = now
+
+		if block.Height == 2350000 {
+			//panic("should panic")
+		}
 	}()
 
 	trc.pin("validateBlock")
@@ -308,6 +312,9 @@ func execBlockOnProxyApp(
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
+			if isAsync {
+				return
+			}
 			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
@@ -358,7 +365,7 @@ func execBlockOnProxyApp(
 			}
 			tmp := res.GetResponse()
 			abciResponses.DeliverTxs[i] = &tmp
-			if !res.Recheck(asCache) {
+			if !res.Recheck(asCache) && res.Error() == nil {
 				//we don't need to rerun the tx, just commit it and save dirty data into cache
 				res.Collect(asCache)
 				res.Commit()
@@ -370,9 +377,10 @@ func execBlockOnProxyApp(
 					invalidTxs++
 				}
 			} else {
+				fmt.Println("ReRun index", i)
 				rerunIdx++
 				//rerun current tx
-				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, true, res.GetEvmTxCounter())
+				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, false, res.GetEvmTxCounter())
 				if proxyAppConn.Error() != nil {
 					//break, stop execution and return an error
 					signal <- 0
@@ -382,6 +390,7 @@ func execBlockOnProxyApp(
 				ret.Collect(asCache)
 				ret.Commit()
 				tmp := ret.GetResponse()
+
 				abciResponses.DeliverTxs[i] = &tmp
 				if ret.Error() == nil {
 					validTxs++
@@ -391,6 +400,11 @@ func execBlockOnProxyApp(
 				}
 			}
 			txIndex++
+		}
+		proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[0]}, true, 0)
+		if proxyAppConn.Error() != nil {
+			signal <- 0
+			return
 		}
 		logger.Info(fmt.Sprintf("Paralle run %d, Conflected tx %d/n", len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
 		//keep running
@@ -426,7 +440,7 @@ func execBlockOnProxyApp(
 		return nil, err
 	}
 
-	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
+	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs, "isAsync", isAsync)
 
 	return abciResponses, nil
 }
@@ -545,6 +559,10 @@ func updateState(
 	// TODO: allow app to upgrade version
 	nextVersion := state.Version
 
+	//fmt.Println(" //update State")
+	//for index, v := range abciResponses.DeliverTxs {
+	//	fmt.Println("index", index, v.Code, hex.EncodeToString(v.Data))
+	//}
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
 	return State{
