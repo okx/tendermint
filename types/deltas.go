@@ -12,13 +12,23 @@ const (
 	NoDelta      = "na"
 	ProductDelta = "producer"
 	ConsumeDelta = "consumer"
+
+	// data-center
+	DataCenterUrl = "http://127.0.0.1:7002/"
+	DataCenterStr = "dataCenter"
 )
+
+type BlockDelta struct {
+	Block  *Block  `json:"block"`
+	Deltas *Deltas `json:"deltas"`
+	Height int64   `json:"height"`
+}
 
 // Deltas defines the ABCIResponse and state delta
 type Deltas struct {
-	ABCIRsp     []byte
-	DeltasBytes []byte
-	Height      int64
+	ABCIRsp     []byte `json:"abci_rsp"`
+	DeltasBytes []byte `json:"deltas_bytes"`
+	Height      int64  `json:"height"`
 }
 
 // Size returns size of the deltas in bytes.

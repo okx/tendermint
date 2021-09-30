@@ -547,7 +547,9 @@ func (bpr *bpRequester) setBlock(block *types.Block, deltas *types.Deltas, peerI
 		return false
 	}
 	bpr.block = block
-	bpr.deltas = deltas
+	if bpr.deltas == nil {
+		bpr.deltas = deltas
+	}
 	bpr.mtx.Unlock()
 
 	select {
@@ -555,6 +557,14 @@ func (bpr *bpRequester) setBlock(block *types.Block, deltas *types.Deltas, peerI
 	default:
 	}
 	return true
+}
+
+func (bpr *bpRequester) setDeltas(deltas *types.Deltas) {
+	bpr.mtx.Lock()
+	if bpr.deltas == nil {
+		bpr.deltas = deltas
+	}
+	bpr.mtx.Unlock()
 }
 
 func (bpr *bpRequester) getBlock() *types.Block {

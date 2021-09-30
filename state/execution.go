@@ -1,8 +1,8 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/json-iterator/go"
 	"github.com/spf13/viper"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -12,10 +12,9 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
+	"net/http"
 	"time"
 )
-
-var itjs = jsoniter.ConfigCompatibleWithStandardLibrary
 
 //-----------------------------------------------------------------------------
 // BlockExecutor handles block execution and state updates.
@@ -165,13 +164,13 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if useDeltas {
 		execBlockOnProxyAppWithDeltas(blockExec.proxyApp, block, blockExec.db)
 
-		err = itjs.Unmarshal(deltas.ABCIRsp, &abciResponses)
+		err = types.Json.Unmarshal(deltas.ABCIRsp, &abciResponses)
 		if err != nil {
 			panic(err)
 		}
 	} else {
 		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
-		bytes, err := itjs.Marshal(abciResponses)
+		bytes, err := types.Json.Marshal(abciResponses)
 		if err != nil {
 			panic(err)
 		}
@@ -245,7 +244,25 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
 
+	go sendToDatacenter(blockExec.logger, block, deltas)
+
 	return state, retainHeight, nil
+}
+
+// sendToDatacenter send bcBlockResponseMessage to DataCenter
+func sendToDatacenter(logger log.Logger, block *types.Block, deltas *types.Deltas) {
+	msg := types.BlockDelta{Block: block, Deltas: deltas, Height: block.Height}
+	msgBody, err := types.Json.Marshal(&msg)
+	if  err != nil {
+		return
+	}
+
+	response, err := http.Post(types.DataCenterUrl + "save", "application/json", bytes.NewBuffer(msgBody))
+	if err != nil {
+		logger.Error("sendToDatacenter err ,", err)
+		return
+	}
+	defer response.Body.Close()
 }
 
 // Commit locks the mempool, runs the ABCI Commit message, and updates the

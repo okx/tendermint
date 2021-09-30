@@ -1,10 +1,14 @@
 package v0
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/spf13/viper"
+	"io/ioutil"
+	"net/http"
 	"reflect"
+	"strconv"
 	"time"
 
 	amino "github.com/tendermint/go-amino"
@@ -244,6 +248,13 @@ func (bcR *BlockchainReactor) poolRoutine() {
 			case <-bcR.pool.Quit():
 				return
 			case request := <-bcR.requestsCh:
+				if bd, err := getDataFromDatacenter(bcR.Logger, request.Height); err == nil {
+					requester := bcR.pool.requesters[request.Height]
+					if requester != nil {
+						requester.setDeltas(bd.Deltas)
+					}
+				}
+
 				peer := bcR.Switch.Peers().Get(request.PeerID)
 				if peer == nil {
 					continue
@@ -394,6 +405,28 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 	})
 	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
 	return nil
+}
+
+// getDataFromDatacenter send bcBlockResponseMessage to DataCenter
+func getDataFromDatacenter(logger log.Logger, height int64) (*types.BlockDelta, error) {
+	fmt.Println("******fsc:test:getDataFromDatacenter******")
+	msgBody := strconv.Itoa(int(height))
+	response, err := http.Post(types.DataCenterUrl + "load", "application/json", bytes.NewBuffer([]byte(msgBody)))
+	if err != nil {
+		logger.Error("sendToDatacenter err ,", err)
+		return nil, err
+	}
+	defer response.Body.Close()
+	rlt, _ := ioutil.ReadAll(response.Body)
+
+
+	fmt.Println("******fsc:test******rspLen:   ", len(rlt))
+
+	msg := types.BlockDelta{}
+	if err = types.Json.Unmarshal(rlt, &msg); err != nil {
+		return nil, err
+	}
+	return &msg, nil
 }
 
 //-----------------------------------------------------------------------------
