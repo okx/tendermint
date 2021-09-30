@@ -1199,7 +1199,7 @@ func (mem *CListMempool) pendingPoolJob() {
 func (mem *CListMempool) simulateTx(tx types.Tx) (*SimulationResponse, error) {
 	var simuRes SimulationResponse
 	res, err := mem.proxyAppConn.QuerySync(abci.RequestQuery{
-		Path: "app/simulate",
+		Path: "app/simulate/mempool",
 		Data: tx,
 	})
 	if err != nil {
