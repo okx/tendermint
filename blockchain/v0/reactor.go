@@ -249,10 +249,8 @@ func (bcR *BlockchainReactor) poolRoutine() {
 				return
 			case request := <-bcR.requestsCh:
 				if bd, err := getDataFromDatacenter(bcR.Logger, request.Height); err == nil {
-					requester := bcR.pool.requesters[request.Height]
-					if requester != nil {
-						requester.setDeltas(bd.Deltas)
-					}
+					bcR.pool.AddBlock(request.PeerID, bd.Block, bd.Deltas, 0)
+					continue
 				}
 
 				peer := bcR.Switch.Peers().Get(request.PeerID)
@@ -409,7 +407,6 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 
 // getDataFromDatacenter send bcBlockResponseMessage to DataCenter
 func getDataFromDatacenter(logger log.Logger, height int64) (*types.BlockDelta, error) {
-	fmt.Println("******fsc:test:getDataFromDatacenter******")
 	msgBody := strconv.Itoa(int(height))
 	response, err := http.Post(types.DataCenterUrl + "load", "application/json", bytes.NewBuffer([]byte(msgBody)))
 	if err != nil {
@@ -418,9 +415,6 @@ func getDataFromDatacenter(logger log.Logger, height int64) (*types.BlockDelta, 
 	}
 	defer response.Body.Close()
 	rlt, _ := ioutil.ReadAll(response.Body)
-
-
-	fmt.Println("******fsc:test******rspLen:   ", len(rlt))
 
 	msg := types.BlockDelta{}
 	if err = types.Json.Unmarshal(rlt, &msg); err != nil {
