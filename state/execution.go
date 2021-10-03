@@ -1,7 +1,11 @@
 package state
 
 import (
+	"bytes"
+	"encoding/hex"
 	"fmt"
+	"github.com/syndtr/goleveldb/leveldb"
+	"math/big"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -148,10 +152,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		now := time.Now().UnixNano()
 		blockExec.metrics.IntervalTime.Set(float64(now-blockExec.metrics.lastBlockTime) / 1e6)
 		blockExec.metrics.lastBlockTime = now
-
-		if block.Height == 2350000 {
-			//panic("should panic")
-		}
 	}()
 
 	trc.pin("validateBlock")
@@ -266,6 +266,9 @@ func (blockExec *BlockExecutor) Commit(
 	}
 	// ResponseCommit has no error code - just data
 
+	shouldPanic(block.Height, res.Data)
+	//fmt.Println("sdasdsadsad", hex.EncodeToString(res.Data))
+	//fmt.Println("sdasdsadsad", hex.EncodeToString(res.Data))
 	blockExec.logger.Info(
 		"Committed state",
 		"height", block.Height,
@@ -304,6 +307,12 @@ func execBlockOnProxyApp(
 	stateDB dbm.DB,
 	isAsync bool,
 ) (*ABCIResponses, error) {
+	fmt.Println("execBlock", block.Height)
+	defer func() {
+		if block.Height == 2346644 {
+			//panic("should panic")
+		}
+	}()
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
@@ -365,7 +374,7 @@ func execBlockOnProxyApp(
 			}
 			tmp := res.GetResponse()
 			abciResponses.DeliverTxs[i] = &tmp
-			if !res.Recheck(asCache) && res.Error() == nil {
+			if !res.Recheck(asCache) && res.Error() == nil { //TODO ? one block，one failed tx
 				//we don't need to rerun the tx, just commit it and save dirty data into cache
 				res.Collect(asCache)
 				res.Commit()
@@ -386,6 +395,7 @@ func execBlockOnProxyApp(
 					signal <- 0
 					return
 				}
+				fmt.Println("??????")
 				//collect the cache from current serial executing tx
 				ret.Collect(asCache)
 				ret.Commit()
@@ -406,7 +416,7 @@ func execBlockOnProxyApp(
 			signal <- 0
 			return
 		}
-		logger.Info(fmt.Sprintf("Paralle run %d, Conflected tx %d/n", len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
+		logger.Info(fmt.Sprintf("BlockHeight %d : Paralle run %d, Conflected tx %d", block.Height, len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
 		//keep running
 		signal <- 0
 		return
@@ -419,6 +429,7 @@ func execBlockOnProxyApp(
 
 	// Run txs of block.
 	for _, tx := range block.Txs {
+		fmt.Println("delivx", tx.String())
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
@@ -513,6 +524,32 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 		}
 	}
 	return nil
+}
+
+var (
+	AppHashdb *leveldb.DB
+)
+
+func init() {
+	fmt.Println("iiiiiiinit AppHash")
+	var err error
+	AppHashdb, err = leveldb.OpenFile("/tmp/appHash", nil)
+	if err != nil {
+		panic(err)
+	}
+	latest, err := AppHashdb.Get([]byte("latest"), nil)
+	fmt.Println("Latest", new(big.Int).SetBytes(latest).Uint64(), err)
+}
+
+func shouldPanic(height int64, apphash []byte) {
+	value, err := AppHashdb.Get(new(big.Int).SetUint64(uint64(height+1)).Bytes(), nil)
+	if err != nil {
+		panic(err)
+	}
+	if !bytes.Equal(value, apphash) {
+		fmt.Println("height", height, "apphashFromDb", hex.EncodeToString(value), "now", hex.EncodeToString(apphash))
+		panic("sb")
+	}
 }
 
 // updateState returns a new State updated according to the header and responses.
