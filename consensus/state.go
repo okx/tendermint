@@ -848,7 +848,7 @@ func (cs *State) enterNewRound(height int64, round int) {
 	}
 
 
-	cs.trc.Pin("NewRound[%d]", round)
+	cs.trc.Pin("NewRound-%d", round)
 
 	track.setTrace(height, cstypes.RoundStepNewRound, true)
 	if now := tmtime.Now(); cs.StartTime.After(now) {
@@ -930,7 +930,7 @@ func (cs *State) enterPropose(height int64, round int) {
 			cs.Step))
 		return
 	}
-	cs.trc.Pin("Propose[%d]", round)
+	cs.trc.Pin("Propose-%d", round)
 
 	logger.Info(fmt.Sprintf("enterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
@@ -1103,7 +1103,7 @@ func (cs *State) enterPrevote(height int64, round int) {
 			cs.Step))
 		return
 	}
-	cs.trc.Pin("Prevote[%d]", round)
+	cs.trc.Pin("Prevote-%d", round)
 
 	track.setTrace(height, cstypes.RoundStepPropose, false)
 	cs.calcProcessingTime(height, cstypes.RoundStepPropose)
@@ -1171,7 +1171,7 @@ func (cs *State) enterPrevoteWait(height int64, round int) {
 			cs.Step))
 		return
 	}
-	cs.trc.Pin("PrevoteWait[%d]", round)
+	cs.trc.Pin("PrevoteWait-%d", round)
 
 	track.setTrace(height, cstypes.RoundStepPrevoteWait, true)
 	if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
@@ -1209,7 +1209,7 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		return
 	}
 
-	cs.trc.Pin("Precommit[%d]", round)
+	cs.trc.Pin("Precommit-%d", round)
 
 	logger.Info(fmt.Sprintf("enterPrecommit(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
@@ -1314,7 +1314,7 @@ func (cs *State) enterPrecommitWait(height int64, round int) {
 				height, round, cs.Height, cs.Round, cs.TriggeredTimeoutPrecommit))
 		return
 	}
-	cs.trc.Pin("PrecommitWait[%d]", round)
+	cs.trc.Pin("PrecommitWait-%d", round)
 
 	track.setTrace(height, cstypes.RoundStepPrecommitWait, true)
 	if !cs.Votes.Precommits(round).HasTwoThirdsAny() {
@@ -1347,7 +1347,7 @@ func (cs *State) enterCommit(height int64, commitRound int) {
 			cs.Step))
 		return
 	}
-	cs.trc.Pin("%s[%d][%d]", trace.RunTx, cs.Round, commitRound)
+	cs.trc.Pin("%s-%d-%d", trace.RunTx, cs.Round, commitRound)
 
 	logger.Info(fmt.Sprintf("enterCommit(%v/%v). Current: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
 
@@ -1544,6 +1544,9 @@ func (cs *State) finalizeCommit(height int64) {
 
 	// must be called before we update state
 	cs.recordMetrics(height, block)
+
+	trace.GetElapsedInfo().AddInfo(trace.CommitRound, fmt.Sprintf("%d", cs.CommitRound))
+	trace.GetElapsedInfo().AddInfo(trace.Round, fmt.Sprintf("%d", cs.Round))
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)

@@ -11,9 +11,13 @@ const (
 	GasUsed      = "GasUsed"
 	Produce      = "Produce"
 	RunTx        = "RunTx"
-	Height       = "Block"
+	Height       = "Height"
 	Tx           = "Tx"
 	Elapsed      = "Elapsed"
+	CommitRound  = "CommitRound"
+	Round        = "Round"
+
+
 )
 
 type IElapsedTimeInfos interface {
@@ -34,7 +38,6 @@ func GetElapsedInfo() IElapsedTimeInfos {
 }
 
 
-var SleepDuration time.Duration = 0
 
 func NewTracer() *Tracer {
 	t := &Tracer{
