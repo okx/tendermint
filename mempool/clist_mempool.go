@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/tendermint/tendermint/trace"
 	"math/big"
 	"sort"
 	"sync"
@@ -890,6 +891,7 @@ func (mem *CListMempool) Update(
 	}
 	mem.metrics.GasUsed.Set(float64(gasUsed))
 	mem.lastBlockGasConsumed = gasUsed
+	trace.GetElapsedInfo().AddInfo(trace.GasUsed, fmt.Sprintf("%d", gasUsed))
 
 	for accAddr, accMaxNonce := range toCleanAccMap {
 		if txsRecord, ok := mem.addressRecord[accAddr]; ok {
