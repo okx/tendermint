@@ -50,9 +50,9 @@ func NewTracer() *Tracer {
 type Tracer struct {
 	startTime int64
 	lastPin  string
-	lastTime int64
+	lastPinStartTime int64
 	pins  []string
-	times []int64
+	intervals []int64
 }
 
 
@@ -66,13 +66,18 @@ func (t *Tracer) pinByFormat(tag string) {
 		return
 	}
 
+	if len(t.pins) > 100 {
+		// 100 pins limitation
+		return
+	}
+
 	now := time.Now().UnixNano()
 
 	if len(t.lastPin) > 0 {
 		t.pins = append(t.pins, t.lastPin)
-		t.times = append(t.times, (now-t.lastTime)/1e6)
+		t.intervals = append(t.intervals, (now-t.lastPinStartTime)/1e6)
 	}
-	t.lastTime = now
+	t.lastPinStartTime = now
 	t.lastPin = tag
 }
 
@@ -90,7 +95,7 @@ func (t *Tracer) Format() string {
 		(now-t.startTime)/1e6,
 	)
 	for i := range t.pins {
-		info += fmt.Sprintf(", %s<%dms>", t.pins[i], t.times[i])
+		info += fmt.Sprintf(", %s<%dms>", t.pins[i], t.intervals[i])
 	}
 	return info
 }
@@ -99,9 +104,9 @@ func (t *Tracer) Format() string {
 func (t *Tracer) Reset() {
 	t.startTime = time.Now().UnixNano()
 	t.lastPin = ""
-	t.lastTime = 0
+	t.lastPinStartTime = 0
 	t.pins = nil
-	t.times = nil
+	t.intervals = nil
 }
 
 
