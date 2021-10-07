@@ -6,12 +6,13 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/tendermint/tendermint/trace"
 	"math/big"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/tendermint/tendermint/trace"
 
 	"github.com/pkg/errors"
 
@@ -88,7 +89,7 @@ type CListMempool struct {
 	accountRetriever  AccountRetriever
 	pendingPoolNotify chan map[string]uint64
 
-	txInfoparser TxInfoParser
+	txInfoparser         TxInfoParser
 	lastBlockGasConsumed uint64
 }
 

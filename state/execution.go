@@ -2,8 +2,9 @@ package state
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/trace"
 	"time"
+
+	"github.com/tendermint/tendermint/trace"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"

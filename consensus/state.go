@@ -3,11 +3,12 @@ package consensus
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/trace"
 	"reflect"
 	"runtime/debug"
 	"sync"
 	"time"
+
+	"github.com/tendermint/tendermint/trace"
 
 	"github.com/pkg/errors"
 
@@ -142,7 +143,7 @@ type State struct {
 	// for reporting metrics
 	metrics *Metrics
 
-	trc     *trace.Tracer
+	trc *trace.Tracer
 }
 
 // StateOption sets an optional parameter on the State.
@@ -173,7 +174,7 @@ func NewState(
 		evpool:           evpool,
 		evsw:             tmevents.NewEventSwitch(),
 		metrics:          NopMetrics(),
-		trc:			  trace.NewTracer(),
+		trc:              trace.NewTracer(),
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -847,7 +848,6 @@ func (cs *State) enterNewRound(height int64, round int) {
 		return
 	}
 
-
 	cs.trc.Pin("NewRound-%d", round)
 
 	track.setTrace(height, cstypes.RoundStepNewRound, true)
@@ -1509,7 +1509,6 @@ func (cs *State) finalizeCommit(height int64) {
 
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
-
 
 	var err error
 	var retainHeight int64
