@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/trace"
-
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -147,15 +145,6 @@ func newBlockchainReactor(
 	return bcReactor
 }
 
-type TestTimeInfo struct {
-}
-
-func (e *TestTimeInfo) AddInfo(key string, info string) {
-}
-
-func (e *TestTimeInfo) Dump(logger log.Logger) {
-}
-
 func newBlockchainReactorPair(
 	t *testing.T,
 	logger log.Logger,
@@ -163,7 +152,6 @@ func newBlockchainReactorPair(
 	privVals []types.PrivValidator,
 	maxBlockHeight int64) BlockchainReactorPair {
 
-	trace.SetInfoObject(&TestTimeInfo{})
 	consensusReactor := &consensusReactorTest{}
 	consensusReactor.BaseReactor = *p2p.NewBaseReactor("Consensus reactor", consensusReactor)
 

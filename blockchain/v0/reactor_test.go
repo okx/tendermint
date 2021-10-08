@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/trace"
-
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
@@ -52,15 +50,6 @@ type BlockchainReactorPair struct {
 	app     proxy.AppConns
 }
 
-type TestTimeInfo struct {
-}
-
-func (e *TestTimeInfo) AddInfo(key string, info string) {
-}
-
-func (e *TestTimeInfo) Dump(logger log.Logger) {
-}
-
 func newBlockchainReactor(
 	logger log.Logger,
 	genDoc *types.GenesisDoc,
@@ -69,8 +58,6 @@ func newBlockchainReactor(
 	if len(privVals) != 1 {
 		panic("only support one validator")
 	}
-
-	trace.SetInfoObject(&TestTimeInfo{})
 
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)

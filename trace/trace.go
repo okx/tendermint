@@ -3,6 +3,7 @@ package trace
 import (
 	"fmt"
 	"time"
+
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -31,7 +32,7 @@ func SetInfoObject(e IElapsedTimeInfos)  {
 	}
 }
 
-var elapsedInfo IElapsedTimeInfos
+var elapsedInfo IElapsedTimeInfos = &EmptyTimeInfo{}
 
 func GetElapsedInfo() IElapsedTimeInfos {
 	return elapsedInfo
@@ -110,3 +111,11 @@ func (t *Tracer) Reset() {
 }
 
 
+type EmptyTimeInfo struct {
+}
+
+func (e *EmptyTimeInfo) AddInfo(key string, info string) {
+}
+
+func (e *EmptyTimeInfo) Dump(logger log.Logger) {
+}

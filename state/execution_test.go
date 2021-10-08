@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/trace"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -28,17 +26,7 @@ var (
 	nTxsPerBlock = 10
 )
 
-type TestTimeInfo struct {
-}
-
-func (e *TestTimeInfo) AddInfo(key string, info string) {
-}
-
-func (e *TestTimeInfo) Dump(logger log.Logger) {
-}
-
 func TestApplyBlock(t *testing.T) {
-	trace.SetInfoObject(&TestTimeInfo{})
 	app := kvstore.NewApplication()
 	app.RetainBlocks = 1
 	cc := proxy.NewLocalClientCreator(app)
@@ -64,7 +52,6 @@ func TestApplyBlock(t *testing.T) {
 
 // TestBeginBlockValidators ensures we send absent validators list.
 func TestBeginBlockValidators(t *testing.T) {
-	trace.SetInfoObject(&TestTimeInfo{})
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
@@ -127,7 +114,6 @@ func TestBeginBlockValidators(t *testing.T) {
 
 // TestBeginBlockByzantineValidators ensures we send byzantine validators list.
 func TestBeginBlockByzantineValidators(t *testing.T) {
-	trace.SetInfoObject(&TestTimeInfo{})
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
@@ -186,7 +172,6 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 }
 
 func TestValidateValidatorUpdates(t *testing.T) {
-	trace.SetInfoObject(&TestTimeInfo{})
 	pubkey1 := ed25519.GenPrivKey().PubKey()
 	pubkey2 := ed25519.GenPrivKey().PubKey()
 
@@ -258,7 +243,6 @@ func TestValidateValidatorUpdates(t *testing.T) {
 }
 
 func TestUpdateValidators(t *testing.T) {
-	trace.SetInfoObject(&TestTimeInfo{})
 	pubkey1 := ed25519.GenPrivKey().PubKey()
 	val1 := types.NewValidator(pubkey1, 10)
 	pubkey2 := ed25519.GenPrivKey().PubKey()
@@ -336,7 +320,6 @@ func TestUpdateValidators(t *testing.T) {
 
 // TestEndBlockValidatorUpdates ensures we update validator set and send an event.
 func TestEndBlockValidatorUpdates(t *testing.T) {
-	trace.SetInfoObject(&TestTimeInfo{})
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
@@ -405,7 +388,6 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 // TestEndBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
 // would result in empty set causes no panic, an error is raised and NextValidators is not updated
 func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
-	trace.SetInfoObject(&TestTimeInfo{})
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)

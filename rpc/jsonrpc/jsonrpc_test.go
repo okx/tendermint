@@ -12,8 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/trace"
-
 	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,15 +53,6 @@ type ResultEchoBytes struct {
 
 type ResultEchoDataBytes struct {
 	Value tmbytes.HexBytes `json:"value"`
-}
-
-type TestTimeInfo struct {
-}
-
-func (e *TestTimeInfo) AddInfo(key string, info string) {
-}
-
-func (e *TestTimeInfo) Dump(logger log.Logger) {
 }
 
 // Define some routes
@@ -284,7 +273,6 @@ func testWithWSClient(t *testing.T, cl *client.WSClient) {
 //-------------
 
 func TestServersAndClientsBasic(t *testing.T) {
-	trace.SetInfoObject(&TestTimeInfo{})
 	serverAddrs := [...]string{tcpAddr, unixAddr}
 	for _, addr := range serverAddrs {
 		cl1, err := client.NewURI(addr)

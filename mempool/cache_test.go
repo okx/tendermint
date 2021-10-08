@@ -5,9 +5,6 @@ import (
 	"crypto/sha256"
 	"testing"
 
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/trace"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -38,22 +35,11 @@ func TestCacheRemove(t *testing.T) {
 	}
 }
 
-type TestTimeInfo struct {
-}
-
-func (e *TestTimeInfo) AddInfo(key string, info string) {
-}
-
-func (e *TestTimeInfo) Dump(logger log.Logger) {
-}
-
 func TestCacheAfterUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
-
-	trace.SetInfoObject(&TestTimeInfo{})
 
 	// reAddIndices & txsInCache can have elements > numTxsToCreate
 	// also assumes max index is 255 for convenience
