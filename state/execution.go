@@ -160,6 +160,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	deltaMode := viper.GetString(types.FlagStateDelta)
 	if len(deltas.ABCIRsp) == 0 && viper.GetBool(types.FlagDataCenter) && deltaMode == types.ConsumeDelta {
 		if bd, err := getDataFromDatacenter(blockExec.logger, block.Height); err == nil {
+			blockExec.logger.Info("GetDataFromDatacenter", "height", block.Height)
 			deltas = bd.Deltas
 		}
 	}
