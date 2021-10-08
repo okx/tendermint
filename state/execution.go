@@ -279,7 +279,7 @@ func getDataFromDatacenter(logger log.Logger, height int64) (*types.BlockDelta, 
 	msgBody := strconv.Itoa(int(height))
 	response, err := http.Post(viper.GetString(types.DataCenterUrl) + "load", "application/json", bytes.NewBuffer([]byte(msgBody)))
 	if err != nil {
-		logger.Error("sendToDatacenter err ,", err)
+		logger.Error("getDataFromDatacenter err ,", err)
 		return nil, err
 	}
 	defer response.Body.Close()
