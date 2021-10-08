@@ -12,7 +12,9 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
+	"io/ioutil"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -155,6 +157,11 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if deltas == nil {
 		deltas = &types.Deltas{}
 	}
+	if len(deltas.ABCIRsp) == 0 && viper.GetBool(types.FlagDataCenter) {
+		if bd, err := getDataFromDatacenter(blockExec.logger, block.Height); err == nil {
+			deltas = bd.Deltas
+		}
+	}
 	useDeltas := false
 	if viper.GetString(types.FlagStateDelta) == types.ConsumeDelta && len(deltas.ABCIRsp) != 0 {
 		useDeltas = true
@@ -265,6 +272,24 @@ func sendToDatacenter(logger log.Logger, block *types.Block, deltas *types.Delta
 		return
 	}
 	defer response.Body.Close()
+}
+
+// getDataFromDatacenter send bcBlockResponseMessage to DataCenter
+func getDataFromDatacenter(logger log.Logger, height int64) (*types.BlockDelta, error) {
+	msgBody := strconv.Itoa(int(height))
+	response, err := http.Post(viper.GetString(types.DataCenterUrl) + "load", "application/json", bytes.NewBuffer([]byte(msgBody)))
+	if err != nil {
+		logger.Error("sendToDatacenter err ,", err)
+		return nil, err
+	}
+	defer response.Body.Close()
+	rlt, _ := ioutil.ReadAll(response.Body)
+
+	msg := types.BlockDelta{}
+	if err = types.Json.Unmarshal(rlt, &msg); err != nil {
+		return nil, err
+	}
+	return &msg, nil
 }
 
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
