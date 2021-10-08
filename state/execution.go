@@ -157,13 +157,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if deltas == nil {
 		deltas = &types.Deltas{}
 	}
-	if len(deltas.ABCIRsp) == 0 && viper.GetBool(types.FlagDataCenter) {
+	deltaMode := viper.GetString(types.FlagStateDelta)
+	if len(deltas.ABCIRsp) == 0 && viper.GetBool(types.FlagDataCenter) && deltaMode == types.ConsumeDelta {
 		if bd, err := getDataFromDatacenter(blockExec.logger, block.Height); err == nil {
 			deltas = bd.Deltas
 		}
 	}
 	useDeltas := false
-	if viper.GetString(types.FlagStateDelta) == types.ConsumeDelta && len(deltas.ABCIRsp) != 0 {
+	if deltaMode == types.ConsumeDelta && len(deltas.ABCIRsp) != 0 {
 		useDeltas = true
 	}
 	var abciResponses *ABCIResponses
