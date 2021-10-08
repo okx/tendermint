@@ -255,15 +255,15 @@ func (bcR *BlockchainReactor) poolRoutine() {
 					}
 				}
 
-				peer := bcR.Switch.Peers().Get(request.PeerID)
-				if peer == nil {
-					continue
-				}
-				msgBytes := cdc.MustMarshalBinaryBare(&bcBlockRequestMessage{request.Height})
-				queued := peer.TrySend(BlockchainChannel, msgBytes)
-				if !queued {
-					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
-				}
+				//peer := bcR.Switch.Peers().Get(request.PeerID)
+				//if peer == nil {
+				//	continue
+				//}
+				//msgBytes := cdc.MustMarshalBinaryBare(&bcBlockRequestMessage{request.Height})
+				//queued := peer.TrySend(BlockchainChannel, msgBytes)
+				//if !queued {
+				//	bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
+				//}
 			case err := <-bcR.errorsCh:
 				peer := bcR.Switch.Peers().Get(err.peerID)
 				if peer != nil {
