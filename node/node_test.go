@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/trace"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -31,7 +33,17 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
+type TestTimeInfo struct {
+}
+
+func (e *TestTimeInfo) AddInfo(key string, info string) {
+}
+
+func (e *TestTimeInfo) Dump(logger log.Logger) {
+}
+
 func TestNodeStartStop(t *testing.T) {
+	trace.SetInfoObject(&TestTimeInfo{})
 	config := cfg.ResetTestRoot("node_node_test")
 	defer os.RemoveAll(config.RootDir)
 
@@ -93,6 +105,7 @@ func TestSplitAndTrimEmpty(t *testing.T) {
 }
 
 func TestNodeDelayedStart(t *testing.T) {
+	trace.SetInfoObject(&TestTimeInfo{})
 	config := cfg.ResetTestRoot("node_delayed_start_test")
 	defer os.RemoveAll(config.RootDir)
 	now := tmtime.Now()
@@ -297,6 +310,7 @@ func TestCreateProposalBlock(t *testing.T) {
 }
 
 func TestNodeNewNodeCustomReactors(t *testing.T) {
+	trace.SetInfoObject(&TestTimeInfo{})
 	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
 	defer os.RemoveAll(config.RootDir)
 	config.Instrumentation.Prometheus = false
