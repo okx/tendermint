@@ -227,8 +227,8 @@ var track = newConsensusTrack(true)
 //------------end of
 func (cs *State) calcProcessingTime(height int64, stepType cstypes.RoundStepType) {
 
-	if v := track.GetKey(height) ; v == nil{
-		track.coreTrack[height] =  &coreData{}
+	if v := track.GetKey(height); v == nil{
+		track.coreTrack[height] = &coreData{}
 	}
 	core := track.GetKey(height)
 	if core == nil {
