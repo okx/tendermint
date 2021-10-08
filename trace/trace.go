@@ -17,9 +17,6 @@ const (
 	CommitRound = "CommitRound"
 	Round       = "Round"
 	Evm         = "Evm"
-	EvmRead     = "read"
-	EvmWrite    = "write"
-	EvmExecute  = "execute"
 )
 
 type IElapsedTimeInfos interface {
