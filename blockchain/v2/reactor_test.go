@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/trace"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	dbm "github.com/tendermint/tm-db"
@@ -134,11 +136,19 @@ type testReactorParams struct {
 	bufferSize  int
 	mockA       bool
 }
+type TestTimeInfo struct {
+}
+
+func (e *TestTimeInfo) AddInfo(key string, info string) {
+}
+
+func (e *TestTimeInfo) Dump(logger log.Logger) {
+}
 
 func newTestReactor(p testReactorParams) *BlockchainReactor {
+	trace.SetInfoObject(&TestTimeInfo{})
 	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
 	reporter := behaviour.NewMockReporter()
-
 	var appl blockApplier
 
 	if p.mockA {
