@@ -14,7 +14,8 @@ const (
 	ConsumeDelta = "consumer"
 
 	// data-center
-	DataCenterUrl = "http://127.0.0.1:7002/"
+	FlagDataCenter = "data-center-mode"
+	DataCenterUrl = "data-center-url"
 	DataCenterStr = "dataCenter"
 )
 

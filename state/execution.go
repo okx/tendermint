@@ -244,7 +244,9 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
 
-	go sendToDatacenter(blockExec.logger, block, deltas)
+	if viper.GetBool(types.FlagDataCenter) {
+		go sendToDatacenter(blockExec.logger, block, deltas)
+	}
 
 	return state, retainHeight, nil
 }
@@ -257,7 +259,7 @@ func sendToDatacenter(logger log.Logger, block *types.Block, deltas *types.Delta
 		return
 	}
 
-	response, err := http.Post(types.DataCenterUrl + "save", "application/json", bytes.NewBuffer(msgBody))
+	response, err := http.Post(viper.GetString(types.DataCenterUrl) + "save", "application/json", bytes.NewBuffer(msgBody))
 	if err != nil {
 		logger.Error("sendToDatacenter err ,", err)
 		return

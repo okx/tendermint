@@ -248,9 +248,11 @@ func (bcR *BlockchainReactor) poolRoutine() {
 			case <-bcR.pool.Quit():
 				return
 			case request := <-bcR.requestsCh:
-				if bd, err := getDataFromDatacenter(bcR.Logger, request.Height); err == nil {
-					bcR.pool.AddBlock(request.PeerID, bd.Block, bd.Deltas, 0)
-					continue
+				if viper.GetBool(types.FlagDataCenter) {
+					if bd, err := getDataFromDatacenter(bcR.Logger, request.Height); err == nil {
+						bcR.pool.AddBlock(request.PeerID, bd.Block, bd.Deltas, 0)
+						continue
+					}
 				}
 
 				peer := bcR.Switch.Peers().Get(request.PeerID)
@@ -408,7 +410,7 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 // getDataFromDatacenter send bcBlockResponseMessage to DataCenter
 func getDataFromDatacenter(logger log.Logger, height int64) (*types.BlockDelta, error) {
 	msgBody := strconv.Itoa(int(height))
-	response, err := http.Post(types.DataCenterUrl + "load", "application/json", bytes.NewBuffer([]byte(msgBody)))
+	response, err := http.Post(viper.GetString(types.DataCenterUrl) + "load", "application/json", bytes.NewBuffer([]byte(msgBody)))
 	if err != nil {
 		logger.Error("sendToDatacenter err ,", err)
 		return nil, err
