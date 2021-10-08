@@ -235,6 +235,7 @@ func (cs *State) calcProcessingTime(height int64, stepType cstypes.RoundStepType
 		core = &coreData{}
 		track.SetKey(height, core)
 	}
+
 	switch stepType {
 	case cstypes.RoundStepNewRound:
 		cs.metrics.NewRoundProcessingTime.Set(float64(track.calcPeriod(core.newRoundStepTime, core.newRoundStepTimeEnd)) / 1e6)
