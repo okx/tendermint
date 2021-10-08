@@ -88,8 +88,7 @@ type CListMempool struct {
 	accountRetriever  AccountRetriever
 	pendingPoolNotify chan map[string]uint64
 
-	txInfoparser         TxInfoParser
-	lastBlockGasConsumed uint64
+	txInfoparser TxInfoParser
 }
 
 var _ Mempool = &CListMempool{}
@@ -890,7 +889,6 @@ func (mem *CListMempool) Update(
 		}
 	}
 	mem.metrics.GasUsed.Set(float64(gasUsed))
-	mem.lastBlockGasConsumed = gasUsed
 	trace.GetElapsedInfo().AddInfo(trace.GasUsed, fmt.Sprintf("%d", gasUsed))
 
 	for accAddr, accMaxNonce := range toCleanAccMap {
@@ -1169,9 +1167,7 @@ func (mem *CListMempool) SetAccountRetriever(retriever AccountRetriever) {
 func (mem *CListMempool) SetTxInfoParser(parser TxInfoParser) {
 	mem.txInfoparser = parser
 }
-func (mem *CListMempool) LastBlockGasUsed() uint64 {
-	return mem.lastBlockGasConsumed
-}
+
 func (mem *CListMempool) pendingPoolJob() {
 	for addressNonce := range mem.pendingPoolNotify {
 		timeStart := time.Now()
