@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/types"
@@ -35,13 +36,16 @@ type consensusTrack struct {
 	coreTrack   map[int64]*coreData
 	trackSwitch bool
 	l           log.Logger
+	lock sync.RWMutex
 }
 
 func newConsensusTrack(trackSwitch bool) *consensusTrack {
-	return &consensusTrack{make(map[int64]*coreData), trackSwitch, nil}
+	return &consensusTrack{make(map[int64]*coreData), trackSwitch, nil, sync.RWMutex{}}
 }
 
 func (c *consensusTrack) increaseCount(height int64, opt types.SignedMsgType, addr string) {
+	c.lock.RLock()
+	defer c.lock.Unlock()
 	core := c.coreTrack[height]
 	if core != nil {
 		switch opt {
@@ -56,6 +60,8 @@ func (c *consensusTrack) increaseCount(height int64, opt types.SignedMsgType, ad
 }
 
 func (c *consensusTrack) setBlockProposer(height int64, peer string) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	core := c.coreTrack[height]
 	if core != nil {
 		core.proposeNode = peer
@@ -63,6 +69,8 @@ func (c *consensusTrack) setBlockProposer(height int64, peer string) {
 }
 
 func (c *consensusTrack) setIsProposer(height int64, bTurn bool) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	core := c.coreTrack[height]
 	if core != nil {
 		core.isProposer = bTurn
@@ -74,6 +82,8 @@ func (c *consensusTrack) setTrace(height int64, r cstypes.RoundStepType, begin b
 	if !c.trackSwitch {
 		return
 	}
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	core := c.coreTrack[height]
 	if core == nil {
 		core = &coreData{}
@@ -128,7 +138,8 @@ func (c *consensusTrack) display(height int64) {
 	if !c.trackSwitch || c.l == nil {
 		return
 	}
-
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	core := c.coreTrack[height]
 	if core == nil {
 		return
