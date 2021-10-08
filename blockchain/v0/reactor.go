@@ -248,12 +248,12 @@ func (bcR *BlockchainReactor) poolRoutine() {
 			case <-bcR.pool.Quit():
 				return
 			case request := <-bcR.requestsCh:
-				if viper.GetBool(types.FlagDataCenter) {
-					if bd, err := getDataFromDatacenter(bcR.Logger, request.Height); err == nil {
-						bcR.pool.AddBlock(request.PeerID, bd.Block, bd.Deltas, 0)
-						continue
-					}
-				}
+				//if viper.GetBool(types.FlagDataCenter) {
+				//	if bd, err := getDataFromDatacenter(bcR.Logger, request.Height); err == nil {
+				//		bcR.pool.AddBlock(request.PeerID, bd.Block, bd.Deltas, 0)
+				//		continue
+				//	}
+				//}
 
 				peer := bcR.Switch.Peers().Get(request.PeerID)
 				if peer == nil {
