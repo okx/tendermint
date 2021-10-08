@@ -45,7 +45,7 @@ func newConsensusTrack(trackSwitch bool) *consensusTrack {
 
 func (c *consensusTrack) increaseCount(height int64, opt types.SignedMsgType, addr string) {
 	c.lock.RLock()
-	defer c.lock.Unlock()
+	defer c.lock.RUnlock()
 	core := c.coreTrack[height]
 	if core != nil {
 		switch opt {
