@@ -2,8 +2,8 @@ package trace
 
 import (
 	"fmt"
-	"time"
 	"github.com/tendermint/tendermint/libs/log"
+	"time"
 )
 
 
@@ -17,7 +17,7 @@ const (
 	CommitRound  = "CommitRound"
 	Round        = "Round"
 
-
+	Evm 		= "Evm"
 )
 
 type IElapsedTimeInfos interface {
