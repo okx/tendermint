@@ -207,17 +207,33 @@ func (c *consensusTrack) display(height int64) {
 	}
 }
 
+func (c *consensusTrack) GetKey(height int64) *coreData{
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if core , ok  := track.coreTrack[height]; ok {
+		return core
+	}
+	return nil
+}
+
+func (c *consensusTrack) SetKey(height int64 , val *coreData) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.coreTrack[height] = val
+}
+
 var track = newConsensusTrack(true)
 
 //------------end of
 func (cs *State) calcProcessingTime(height int64, stepType cstypes.RoundStepType) {
 
-	track.lock.Lock()
-	defer track.lock.Unlock()
-	core := track.coreTrack[height]
+	if v := track.GetKey(height) ; v == nil{
+		track.coreTrack[height] =  &coreData{}
+	}
+	core := track.GetKey(height)
 	if core == nil {
 		core = &coreData{}
-		track.coreTrack[height] = core
+		track.SetKey(height, core)
 	}
 	switch stepType {
 	case cstypes.RoundStepNewRound:
