@@ -31,7 +31,16 @@ func SetInfoObject(e IElapsedTimeInfos)  {
 	}
 }
 
-var elapsedInfo IElapsedTimeInfos
+var elapsedInfo IElapsedTimeInfos = &EmptyTimeInfo{}
+
+type EmptyTimeInfo struct {
+}
+
+func (e *EmptyTimeInfo) AddInfo(key string, info string) {
+}
+
+func (e *EmptyTimeInfo) Dump(logger log.Logger) {
+}
 
 func GetElapsedInfo() IElapsedTimeInfos {
 	return elapsedInfo
