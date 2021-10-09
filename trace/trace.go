@@ -17,7 +17,7 @@ const (
 	Elapsed      = "Elapsed"
 	CommitRound  = "CommitRound"
 	Round        = "Round"
-
+	Evm          = "Evm"
 
 )
 
