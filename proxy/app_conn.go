@@ -11,7 +11,8 @@ import (
 type AppConnConsensus interface {
 	SetResponseCallback(abcicli.Callback)
 	SetAsyncCallBack(types.AsyncCallBack)
-	SetAsyncConfig(bool, int)
+	//SetAsyncConfig(bool, int)
+	SetAsyncConfig(bool, [][]byte)
 	Error() error
 
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
@@ -20,6 +21,7 @@ type AppConnConsensus interface {
 	DeliverTxAsync(types.RequestDeliverTx) *abcicli.ReqRes
 	// DeliverTxWithCache TODO remove needAnte
 	DeliverTxWithCache(types.RequestDeliverTx, bool, uint32) types.ExecuteRes
+	FinalTx() [][]byte
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	CommitSync() (*types.ResponseCommit, error)
 	SetOptionAsync(req types.RequestSetOption) *abcicli.ReqRes
@@ -54,12 +56,15 @@ type appConnConsensus struct {
 	appConn abcicli.Client
 }
 
+func (app *appConnConsensus) FinalTx() [][]byte {
+	return app.appConn.FinalTx()
+}
 func (app *appConnConsensus) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool, u uint32) types.ExecuteRes {
 	return app.appConn.DeliverTxWithCache(tx, needAnte, u)
 }
 
-func (app *appConnConsensus) SetAsyncConfig(sw bool, l int) {
-	app.appConn.SetAsyncConfig(sw, l)
+func (app *appConnConsensus) SetAsyncConfig(sw bool, txs [][]byte) {
+	app.appConn.SetAsyncConfig(sw, txs)
 }
 
 func (app *appConnConsensus) SetAsyncCallBack(back types.AsyncCallBack) {

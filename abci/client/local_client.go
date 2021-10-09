@@ -3,7 +3,7 @@ package abcicli
 import (
 	"sync"
 
-	types "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -21,6 +21,11 @@ type localClient struct {
 	Callback
 }
 
+func (app *localClient) FinalTx() [][]byte {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+	return app.Application.FinalTx()
+}
 func (app *localClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool, evmIdx uint32) types.ExecuteRes {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
@@ -51,8 +56,8 @@ func (app *localClient) SetAsyncCallBack(cb types.AsyncCallBack) {
 	app.mtx.Unlock()
 }
 
-func (app *localClient) SetAsyncConfig(sw bool, l int) {
-	app.Application.SetAsyncConfig(sw, l)
+func (app *localClient) SetAsyncConfig(sw bool, txs [][]byte) {
+	app.Application.SetAsyncConfig(sw, txs)
 }
 
 // TODO: change types.Application to include Error()?

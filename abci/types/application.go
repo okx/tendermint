@@ -1,7 +1,7 @@
 package types // nolint: goimports
 
 import (
-	context "golang.org/x/net/context"
+	"golang.org/x/net/context"
 )
 
 type AsyncCacheInterface interface {
@@ -39,10 +39,11 @@ type Application interface {
 	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
 	DeliverTxWithCache(RequestDeliverTx, bool, uint32) ExecuteRes
+	FinalTx() [][]byte
 	EndBlock(RequestEndBlock) ResponseEndBlock // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                    // Commit the state and return the application Merkle root hash
 	SetAsyncDeliverTxCb(cb AsyncCallBack)
-	SetAsyncConfig(sw bool, l int)
+	SetAsyncConfig(sw bool, txs [][]byte)
 }
 
 //-------------------------------------------------------
@@ -57,7 +58,11 @@ func (a BaseApplication) DeliverTxWithCache(_ RequestDeliverTx, _ bool, _ uint32
 	return nil
 }
 
-func (a BaseApplication) SetAsyncConfig(_ bool, _ int) {
+func (a BaseApplication) FinalTx() [][]byte {
+	return nil
+}
+
+func (a BaseApplication) SetAsyncConfig(_ bool, _ [][]byte) {
 }
 
 func (a BaseApplication) SetAsyncDeliverTxCb(cb AsyncCallBack) {

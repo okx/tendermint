@@ -35,11 +35,15 @@ type PersistentKVStoreApplication struct {
 	logger log.Logger
 }
 
+func (app *PersistentKVStoreApplication) FinalTx() [][]byte {
+	return nil
+}
+
 func (app *PersistentKVStoreApplication) DeliverTxWithCache(tx types.RequestDeliverTx, b bool, u uint32) types.ExecuteRes {
 	return nil
 }
 
-func (app *PersistentKVStoreApplication) SetAsyncConfig(sw bool, l int) {
+func (app *PersistentKVStoreApplication) SetAsyncConfig(sw bool, txs [][]byte) {
 }
 
 func (app *PersistentKVStoreApplication) SetAsyncDeliverTxCb(cb types.AsyncCallBack) {

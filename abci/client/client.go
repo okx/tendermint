@@ -48,8 +48,9 @@ type Client interface {
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
-	SetAsyncConfig(bool, int)
+	SetAsyncConfig(bool, [][]byte)
 	DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool, u uint32) types.ExecuteRes
+	FinalTx() [][]byte
 }
 
 //----------------------------------------

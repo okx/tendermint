@@ -1,11 +1,8 @@
 package state
 
 import (
-	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/syndtr/goleveldb/leveldb"
-	"math/big"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -154,6 +151,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		blockExec.metrics.lastBlockTime = now
 	}()
 
+	//fmt.Println("ValidatorBlock", block.Height, state.LastBlockHeight, hex.EncodeToString(state.AppHash))
 	trc.pin("validateBlock")
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
@@ -266,13 +264,10 @@ func (blockExec *BlockExecutor) Commit(
 	}
 	// ResponseCommit has no error code - just data
 
-	shouldPanic(block.Height, res.Data)
-	//fmt.Println("sdasdsadsad", hex.EncodeToString(res.Data))
-	//fmt.Println("sdasdsadsad", hex.EncodeToString(res.Data))
 	blockExec.logger.Info(
 		"Committed state",
 		"height", block.Height,
-		"txs", len(block.Txs),
+		"txs-1009", len(block.Txs),
 		"appHash", fmt.Sprintf("%X", res.Data),
 	)
 
@@ -295,6 +290,14 @@ func (blockExec *BlockExecutor) Commit(
 	return res.Data, res.RetainHeight, err
 }
 
+func transTxsToBytes(txs types.Txs) [][]byte {
+	ret := make([][]byte, 0, 0)
+	for _, v := range txs {
+		ret = append(ret, v)
+	}
+	return ret
+}
+
 //---------------------------------------------------------
 // Helper functions for executing blocks and updating state
 
@@ -307,12 +310,6 @@ func execBlockOnProxyApp(
 	stateDB dbm.DB,
 	isAsync bool,
 ) (*ABCIResponses, error) {
-	fmt.Println("execBlock", block.Height)
-	defer func() {
-		if block.Height == 2346644 {
-			//panic("should panic")
-		}
-	}()
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
@@ -320,6 +317,9 @@ func execBlockOnProxyApp(
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
+		if isAsync {
+			return
+		}
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
 			if isAsync {
 				return
@@ -338,6 +338,7 @@ func execBlockOnProxyApp(
 			txIndex++
 		}
 	}
+	//fmt.Println("replcext", reflect.TypeOf(proxyAppConn), block.Height)
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
@@ -359,9 +360,6 @@ func execBlockOnProxyApp(
 	AsyncCb := func(execRes map[int]abci.ExecuteRes) {
 		//after all async tx has been finished, we need to reset the aysnc mode to false
 		//then, we can rerun the dirty tx in serially
-		validTxs = 0
-		invalidTxs = 0
-		txIndex = 0
 		rerunIdx := 0
 
 		logger.Info(fmt.Sprintf("Deliver tx for %d txs\n", len(abciResponses.DeliverTxs)))
@@ -374,7 +372,7 @@ func execBlockOnProxyApp(
 			}
 			tmp := res.GetResponse()
 			abciResponses.DeliverTxs[i] = &tmp
-			if !res.Recheck(asCache) && res.Error() == nil { //TODO ? one block，one failed tx
+			if !res.Recheck(asCache) {
 				//we don't need to rerun the tx, just commit it and save dirty data into cache
 				res.Collect(asCache)
 				res.Commit()
@@ -395,13 +393,13 @@ func execBlockOnProxyApp(
 					signal <- 0
 					return
 				}
-				fmt.Println("??????")
 				//collect the cache from current serial executing tx
 				ret.Collect(asCache)
 				ret.Commit()
 				tmp := ret.GetResponse()
 
 				abciResponses.DeliverTxs[i] = &tmp
+				//fmt.Println("3955555", i, tmp.Data)
 				if ret.Error() == nil {
 					validTxs++
 				} else {
@@ -409,13 +407,12 @@ func execBlockOnProxyApp(
 					invalidTxs++
 				}
 			}
-			txIndex++
 		}
-		proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[0]}, true, 0)
-		if proxyAppConn.Error() != nil {
-			signal <- 0
-			return
-		}
+		//proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[0]}, true, 0)
+		//if proxyAppConn.Error() != nil {
+		//	signal <- 0
+		//	return
+		//}
 		logger.Info(fmt.Sprintf("BlockHeight %d : Paralle run %d, Conflected tx %d", block.Height, len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
 		//keep running
 		signal <- 0
@@ -423,13 +420,12 @@ func execBlockOnProxyApp(
 	}
 
 	if isAsync {
-		proxyAppConn.SetAsyncConfig(isAsync, len(block.Txs))
+		proxyAppConn.SetAsyncConfig(isAsync, transTxsToBytes(block.Txs))
 		proxyAppConn.SetAsyncCallBack(AsyncCb)
 	}
 
 	// Run txs of block.
 	for _, tx := range block.Txs {
-		fmt.Println("delivx", tx.String())
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
@@ -442,6 +438,14 @@ func execBlockOnProxyApp(
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
 		}
+		receiptsLogs := proxyAppConn.FinalTx()
+		for index, v := range receiptsLogs {
+			//fmt.Println("before", index, hex.EncodeToString(abciResponses.DeliverTxs[index].Data))
+			if len(v) != 0 {
+				abciResponses.DeliverTxs[index].Data = v
+			}
+			//fmt.Println("before", index, hex.EncodeToString(abciResponses.DeliverTxs[index].Data))
+		}
 	}
 
 	// End block.
@@ -451,7 +455,7 @@ func execBlockOnProxyApp(
 		return nil, err
 	}
 
-	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs, "isAsync", isAsync)
+	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs, "isAsync", isAsync, "haveTx", (validTxs+invalidTxs) != 0)
 
 	return abciResponses, nil
 }
@@ -526,32 +530,6 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 	return nil
 }
 
-var (
-	AppHashdb *leveldb.DB
-)
-
-func init() {
-	fmt.Println("iiiiiiinit AppHash")
-	var err error
-	AppHashdb, err = leveldb.OpenFile("/tmp/appHash", nil)
-	if err != nil {
-		panic(err)
-	}
-	latest, err := AppHashdb.Get([]byte("latest"), nil)
-	fmt.Println("Latest", new(big.Int).SetBytes(latest).Uint64(), err)
-}
-
-func shouldPanic(height int64, apphash []byte) {
-	value, err := AppHashdb.Get(new(big.Int).SetUint64(uint64(height+1)).Bytes(), nil)
-	if err != nil {
-		panic(err)
-	}
-	if !bytes.Equal(value, apphash) {
-		fmt.Println("height", height, "apphashFromDb", hex.EncodeToString(value), "now", hex.EncodeToString(apphash))
-		panic("sb")
-	}
-}
-
 // updateState returns a new State updated according to the header and responses.
 func updateState(
 	state State,
@@ -596,12 +574,13 @@ func updateState(
 	// TODO: allow app to upgrade version
 	nextVersion := state.Version
 
-	//fmt.Println(" //update State")
 	//for index, v := range abciResponses.DeliverTxs {
-	//	fmt.Println("index", index, v.Code, hex.EncodeToString(v.Data))
+	//	fmt.Println("abciResponse....index", index, "code", v.Code, "len(v.Daata)", len(v.Data), "data:", hex.EncodeToString(v.Data))
 	//}
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
+	lastHash := abciResponses.ResultsHash()
+	fmt.Println(" //update State", "block.Number", header.Height, "len(txs)", len(abciResponses.DeliverTxs), "lastHash", hex.EncodeToString(lastHash))
 	return State{
 		Version:                          nextVersion,
 		ChainID:                          state.ChainID,
@@ -614,7 +593,7 @@ func updateState(
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
-		LastResultsHash:                  abciResponses.ResultsHash(),
+		LastResultsHash:                  lastHash,
 		AppHash:                          nil,
 	}, nil
 }
