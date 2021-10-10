@@ -267,7 +267,7 @@ func (blockExec *BlockExecutor) Commit(
 	blockExec.logger.Info(
 		"Committed state",
 		"height", block.Height,
-		"txs-1009", len(block.Txs),
+		"txs-1009:0914", len(block.Txs),
 		"appHash", fmt.Sprintf("%X", res.Data),
 	)
 
@@ -310,6 +310,8 @@ func execBlockOnProxyApp(
 	stateDB dbm.DB,
 	isAsync bool,
 ) (*ABCIResponses, error) {
+	//block.Txs = block.Txs[:9]
+	fmt.Println("execBlockOnProxyApp", block.Height, len(block.Txs))
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
