@@ -94,11 +94,6 @@ func (app *localClient) DeliverTxAsync(params types.RequestDeliverTx) *ReqRes {
 }
 
 func (app *localClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
-	if !types.GetCloseMutex() {
-		app.mtx.Lock()
-		defer app.mtx.Unlock()
-	}
-
 	res := app.Application.CheckTx(req)
 	return app.callback(
 		types.ToRequestCheckTx(req),
@@ -198,11 +193,6 @@ func (app *localClient) DeliverTxSync(req types.RequestDeliverTx) (*types.Respon
 }
 
 func (app *localClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	if !types.GetCloseMutex() {
-		app.mtx.Lock()
-		defer app.mtx.Unlock()
-	}
-
 	res := app.Application.CheckTx(req)
 	return &res, nil
 }

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"container/list"
 	"crypto/sha256"
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"sort"
@@ -269,7 +269,7 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) error {
 	var simuRes *SimulationResponse
 	var err error
-	if mem.config.CheckTxWithSimu {
+	if mem.config.MaxGasUsedPerBlock > 0 {
 		simuRes, err = mem.simulateTx(tx)
 	}
 
@@ -335,7 +335,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	}
 
 	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
-	if mem.config.CheckTxWithSimu {
+	if mem.config.MaxGasUsedPerBlock > 0 {
 		if r, ok := reqRes.Response.Value.(*abci.Response_CheckTx); ok && err == nil {
 			mem.logger.Info(fmt.Sprintf("mempool.SimulateTx: txhash<%s>, gasLimit<%d>, gasUsed<%d>",
 				hex.EncodeToString(tx.Hash()), r.CheckTx.GasWanted, simuRes.GasUsed))
