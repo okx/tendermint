@@ -734,7 +734,7 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		// Since newTotalGas < masGas, which
 		// must be non-negative, it follows that this won't overflow.
 		newTotalGas := totalGas + memTx.gasWanted
-		if mem.config.MaxGasUsedPerBlock > -1 && newTotalGas > mem.config.MaxGasUsedPerBlock {
+		if maxGas > -1 && newTotalGas > maxGas {
 			return txs
 		}
 		if totalTxNum >= mem.config.MaxTxNumPerBlock {
