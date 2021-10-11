@@ -43,9 +43,11 @@ func (Mempool) Update(
 	_ mempl.PreCheckFunc,
 	_ mempl.PostCheckFunc,
 ) error {
+	var gasUsed uint64
 	for i := range txs {
-		trace.GetElapsedInfo().AddInfo(trace.GasUsed, fmt.Sprintf("%d", uint64(deliverTxResponses[i].GasUsed)))
+		gasUsed += uint64(deliverTxResponses[i].GasUsed)
 	}
+	trace.GetElapsedInfo().AddInfo(trace.GasUsed, fmt.Sprintf("%d", gasUsed))
 	return nil
 }
 func (Mempool) Flush()                        {}
