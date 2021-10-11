@@ -34,6 +34,9 @@ type Deltas struct {
 
 // Size returns size of the deltas in bytes.
 func (d *Deltas) Size() int {
+	if d == nil {
+		return 0
+	}
 	bz, err := cdc.MarshalBinaryBare(d)
 	if err != nil {
 		return 0
