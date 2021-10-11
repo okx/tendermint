@@ -157,15 +157,17 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if deltas == nil {
 		deltas = &types.Deltas{}
 	}
+	deltaLen := deltas.Size()
+	blockExec.logger.Debug("Begin abci", "len(deltas)", deltaLen)
 	deltaMode := viper.GetString(types.FlagStateDelta)
-	if len(deltas.ABCIRsp) == 0 && viper.GetBool(types.FlagDataCenter) && deltaMode == types.ConsumeDelta {
+	if deltaLen == 0 && viper.GetBool(types.FlagDataCenter) && deltaMode == types.ConsumeDelta {
 		if bd, err := getDataFromDatacenter(blockExec.logger, block.Height); err == nil {
 			blockExec.logger.Info("GetDataFromDatacenter", "height", block.Height)
 			deltas = bd.Deltas
 		}
 	}
 	useDeltas := false
-	if deltaMode == types.ConsumeDelta && len(deltas.ABCIRsp) != 0 {
+	if deltaMode == types.ConsumeDelta && deltaLen != 0 {
 		useDeltas = true
 	}
 	var abciResponses *ABCIResponses
@@ -312,6 +314,8 @@ func (blockExec *BlockExecutor) Commit(
 	if deltas == nil {
 		deltas = &types.Deltas{}
 	}
+
+	blockExec.logger.Debug("begin exeCommit", "len(deltas)", deltas.Size())
 
 	// while mempool is Locked, flush to ensure all async requests have completed
 	// in the ABCI app before Commit.

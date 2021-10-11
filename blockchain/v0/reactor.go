@@ -205,6 +205,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	case *bcBlockRequestMessage:
 		bcR.respondToPeer(msg, src)
 	case *bcBlockResponseMessage:
+		bcR.Logger.Debug("bcBlockResponseMessage", "len(msg.Deltas)", msg.Deltas.Size())
 		bcR.pool.AddBlock(src.ID(), msg.Block, msg.Deltas, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
@@ -318,6 +319,7 @@ FOR_LOOP:
 
 			// See if there are any blocks to sync.
 			first, second, deltas := bcR.pool.PeekTwoBlocks()
+			bcR.Logger.Debug("Delta from requster", "len(deltas)", deltas.Size())
 			//bcR.Logger.Info("TrySync peeked", "first", first, "second", second)
 			if first == nil || second == nil {
 				// We need both to sync the first block.
