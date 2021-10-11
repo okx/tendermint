@@ -2,11 +2,13 @@ package mock
 
 import (
 	"crypto/sha256"
+	"fmt"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/trace"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -36,11 +38,14 @@ func (Mempool) GetUserPendingTxsCnt(address string) int       { return 0 }
 func (Mempool) ReapUserTxs(address string, max int) types.Txs { return types.Txs{} }
 func (Mempool) Update(
 	_ int64,
-	_ types.Txs,
-	_ []*abci.ResponseDeliverTx,
+	txs types.Txs,
+	deliverTxResponses []*abci.ResponseDeliverTx,
 	_ mempl.PreCheckFunc,
 	_ mempl.PostCheckFunc,
 ) error {
+	for i := range txs {
+		trace.GetElapsedInfo().AddInfo(trace.GasUsed, fmt.Sprintf("%d", uint64(deliverTxResponses[i].GasUsed)))
+	}
 	return nil
 }
 func (Mempool) Flush()                        {}
