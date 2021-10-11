@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/trace"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/fail"
@@ -131,24 +133,24 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
-	trc := &Tracer{}
+
+	trc := trace.NewTracer()
+
 	defer func() {
-		trc.dump(
-			fmt.Sprintf("ApplyBlock<%d>, tx<%d>", block.Height, len(block.Data.Txs)),
-			blockExec.logger.With("module", "main"),
-		)
+		trace.GetElapsedInfo().AddInfo(trace.Height, fmt.Sprintf("%d", block.Height))
+		trace.GetElapsedInfo().AddInfo(trace.Tx, fmt.Sprintf("%d", len(block.Data.Txs)))
+		trace.GetElapsedInfo().AddInfo(trace.RunTx, trc.Format())
 
 		now := time.Now().UnixNano()
 		blockExec.metrics.IntervalTime.Set(float64(now-blockExec.metrics.lastBlockTime) / 1e6)
 		blockExec.metrics.lastBlockTime = now
 	}()
 
-	trc.pin("validateBlock")
+	trc.Pin("abci")
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
 
-	trc.pin("abci")
 	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	if err != nil {
@@ -165,8 +167,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1e6)
 	blockExec.metrics.AbciTime.Set(float64(endTime-startTime) / 1e6)
 
-	trc.pin("validate")
-
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
@@ -181,15 +181,13 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		blockExec.logger.Info("Updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 	}
 
-	trc.pin("updateState")
-
 	// Update the state with the block and responses.
 	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
 
-	trc.pin("commit")
+	trc.Pin("persist")
 	startTime = time.Now().UnixNano()
 
 	// Lock mempool, commit app state, update mempoool.
@@ -200,14 +198,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
 
-	trc.pin("evpool")
-
 	// Update evpool with the block and state.
 	blockExec.evpool.Update(block, state)
 
 	fail.Fail() // XXX
 
-	trc.pin("saveState")
+	trc.Pin("saveState")
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash

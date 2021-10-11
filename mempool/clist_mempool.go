@@ -24,6 +24,7 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/trace"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -902,6 +903,7 @@ func (mem *CListMempool) Update(
 		}
 	}
 	mem.metrics.GasUsed.Set(float64(gasUsed))
+	trace.GetElapsedInfo().AddInfo(trace.GasUsed, fmt.Sprintf("%d", gasUsed))
 
 	for accAddr, accMaxNonce := range toCleanAccMap {
 		if txsRecord, ok := mem.addressRecord[accAddr]; ok {
