@@ -270,7 +270,7 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) error {
 	var simuRes *SimulationResponse
 	var err error
-	if mem.config.MaxGasUsedPerBlock > 0 {
+	if mem.config.MaxGasUsedPerBlock > -1 {
 		simuRes, err = mem.simulateTx(tx)
 	}
 
@@ -336,7 +336,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	}
 
 	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
-	if mem.config.MaxGasUsedPerBlock > 0 {
+	if mem.config.MaxGasUsedPerBlock > -1 {
 		if r, ok := reqRes.Response.Value.(*abci.Response_CheckTx); ok && err == nil {
 			mem.logger.Info(fmt.Sprintf("mempool.SimulateTx: txhash<%s>, gasLimit<%d>, gasUsed<%d>",
 				hex.EncodeToString(tx.Hash()), r.CheckTx.GasWanted, simuRes.GasUsed))
