@@ -319,7 +319,6 @@ FOR_LOOP:
 
 			// See if there are any blocks to sync.
 			first, second, deltas := bcR.pool.PeekTwoBlocks()
-			bcR.Logger.Debug("Delta from requster", "len(deltas)", deltas.Size(), "height", first.Height)
 			//bcR.Logger.Info("TrySync peeked", "first", first, "second", second)
 			if first == nil || second == nil {
 				// We need both to sync the first block.
@@ -328,6 +327,7 @@ FOR_LOOP:
 				// Try again quickly next loop.
 				didProcessCh <- struct{}{}
 			}
+			bcR.Logger.Debug("Delta from requster", "len(deltas)", deltas.Size(), "height", first.Height)
 			if deltas == nil {
 				deltas = &types.Deltas{}
 			}
