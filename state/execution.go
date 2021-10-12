@@ -154,7 +154,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
-	trc.Pin("abci-execBlockOnProxyApp")
+
 	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db, trc)
 	if err != nil {

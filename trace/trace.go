@@ -39,6 +39,7 @@ func GetElapsedInfo() IElapsedTimeInfos {
 }
 
 
+
 func NewTracer() *Tracer {
 	t := &Tracer{
 		startTime: time.Now().UnixNano(),
