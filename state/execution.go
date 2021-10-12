@@ -1,7 +1,6 @@
 package state
 
 import (
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -151,7 +150,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		blockExec.metrics.lastBlockTime = now
 	}()
 
-	//fmt.Println("ValidatorBlock", block.Height, state.LastBlockHeight, hex.EncodeToString(state.AppHash))
 	trc.pin("validateBlock")
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
@@ -310,8 +308,6 @@ func execBlockOnProxyApp(
 	stateDB dbm.DB,
 	isAsync bool,
 ) (*ABCIResponses, error) {
-	//block.Txs = block.Txs[:9]
-	fmt.Println("execBlockOnProxyApp", block.Height, len(block.Txs))
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
@@ -340,7 +336,6 @@ func execBlockOnProxyApp(
 			txIndex++
 		}
 	}
-	//fmt.Println("replcext", reflect.TypeOf(proxyAppConn), block.Height)
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
@@ -386,7 +381,6 @@ func execBlockOnProxyApp(
 					invalidTxs++
 				}
 			} else {
-				fmt.Println("ReRun index", i)
 				rerunIdx++
 				//rerun current tx
 				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, false, res.GetEvmTxCounter())
@@ -401,7 +395,6 @@ func execBlockOnProxyApp(
 				tmp := ret.GetResponse()
 
 				abciResponses.DeliverTxs[i] = &tmp
-				//fmt.Println("3955555", i, tmp.Data)
 				if ret.Error() == nil {
 					validTxs++
 				} else {
@@ -442,11 +435,9 @@ func execBlockOnProxyApp(
 		}
 		receiptsLogs := proxyAppConn.FinalTx()
 		for index, v := range receiptsLogs {
-			//fmt.Println("before", index, hex.EncodeToString(abciResponses.DeliverTxs[index].Data))
 			if len(v) != 0 {
 				abciResponses.DeliverTxs[index].Data = v
 			}
-			//fmt.Println("before", index, hex.EncodeToString(abciResponses.DeliverTxs[index].Data))
 		}
 	}
 
@@ -576,13 +567,9 @@ func updateState(
 	// TODO: allow app to upgrade version
 	nextVersion := state.Version
 
-	//for index, v := range abciResponses.DeliverTxs {
-	//	fmt.Println("abciResponse....index", index, "code", v.Code, "len(v.Daata)", len(v.Data), "data:", hex.EncodeToString(v.Data))
-	//}
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
 	lastHash := abciResponses.ResultsHash()
-	fmt.Println(" //update State", "block.Number", header.Height, "len(txs)", len(abciResponses.DeliverTxs), "lastHash", hex.EncodeToString(lastHash))
 	return State{
 		Version:                          nextVersion,
 		ChainID:                          state.ChainID,

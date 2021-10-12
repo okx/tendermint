@@ -11,7 +11,6 @@ import (
 type AppConnConsensus interface {
 	SetResponseCallback(abcicli.Callback)
 	SetAsyncCallBack(types.AsyncCallBack)
-	//SetAsyncConfig(bool, int)
 	SetAsyncConfig(bool, [][]byte)
 	Error() error
 
@@ -19,7 +18,6 @@ type AppConnConsensus interface {
 
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(types.RequestDeliverTx) *abcicli.ReqRes
-	// DeliverTxWithCache TODO remove needAnte
 	DeliverTxWithCache(types.RequestDeliverTx, bool, uint32) types.ExecuteRes
 	FinalTx() [][]byte
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
