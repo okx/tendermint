@@ -149,13 +149,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		blockExec.metrics.lastBlockTime = now
 	}()
 
-	trc.Pin("abci")
 	trc.Pin("abci-ValidateBlock")
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
 
 	startTime := time.Now().UnixNano()
+
+	trc.Pin("abci-execBlock")
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db, trc)
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)
@@ -294,9 +295,6 @@ func execBlockOnProxyApp(
 	stateDB dbm.DB,
 	tcr *trace.Tracer,
 ) (*ABCIResponses, error) {
-	if tcr != nil {
-		tcr.Pin("abci-BeforeBeginBlock")
-	}
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
