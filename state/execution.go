@@ -150,21 +150,22 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}()
 
 	trc.Pin("abci")
+	trc.Pin("abci-ValidateBlock")
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
-	trc.Pin("abci-ValidateBlock")
+	trc.Pin("abci-execBlockOnProxyApp")
 	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)
 	}
-	trc.Pin("abci-execBlockOnProxyApp")
 	fail.Fail() // XXX
 
+	trc.Pin("abci-SaveABCIResponses")
 	// Save the results before we commit.
 	SaveABCIResponses(blockExec.db, block.Height, abciResponses)
-	trc.Pin("abci-SaveABCIResponses")
+
 
 	fail.Fail() // XXX
 	endTime := time.Now().UnixNano()
@@ -208,7 +209,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	fail.Fail() // XXX
 
 	trc.Pin("saveState")
-
 	// Update the app hash and save the state.
 	state.AppHash = appHash
 	SaveState(blockExec.db, state)
