@@ -293,6 +293,7 @@ func execBlockOnProxyApp(
 	block *types.Block,
 	stateDB dbm.DB,
 ) (*ABCIResponses, error) {
+	trace.GlobalPin("abci-BeforeBeginBlock")
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
@@ -318,7 +319,8 @@ func execBlockOnProxyApp(
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
-	trace.GlobalPin("abci-BeforeBeginBlock")
+
+	trace.GlobalPin("abci-BeginBlock")
 	// Begin block
 	var err error
 	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
@@ -331,7 +333,8 @@ func execBlockOnProxyApp(
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
 		return nil, err
 	}
-	trace.GlobalPin("abci-BeginBlock")
+
+	trace.GlobalPin("abci-RunTxs")
 	// Run txs of block.
 	for _, tx := range block.Txs {
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
@@ -339,14 +342,15 @@ func execBlockOnProxyApp(
 			return nil, err
 		}
 	}
-	trace.GlobalPin("abci-RunTxs")
+
+	trace.GlobalPin("abci-EndBlock")
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
 	}
-	trace.GlobalPin("abci-EndBlock")
+
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 
 	return abciResponses, nil
