@@ -339,7 +339,7 @@ func execBlockOnProxyApp(
 	}
 
 	if tcr != nil {
-		tcr.Pin("abci-RunTxs")
+		tcr.Pin("abci-DeliverTxs")
 	}
 	// Run txs of block.
 	for _, tx := range block.Txs {
