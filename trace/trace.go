@@ -38,19 +38,12 @@ func GetElapsedInfo() IElapsedTimeInfos {
 	return elapsedInfo
 }
 
-var tracerObj *Tracer
-
-func GlobalPin(format string, args ...interface{}){
-	if tracerObj != nil {
-		tracerObj.Pin(format, args)
-	}
-}
 
 func NewTracer() *Tracer {
-	tracerObj = &Tracer{
+	t := &Tracer{
 		startTime: time.Now().UnixNano(),
 	}
-	return tracerObj
+	return t
 }
 
 

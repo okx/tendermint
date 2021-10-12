@@ -156,7 +156,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 	trc.Pin("abci-execBlockOnProxyApp")
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db, trc)
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)
 	}
@@ -292,8 +292,11 @@ func execBlockOnProxyApp(
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
 	stateDB dbm.DB,
+	tcr *trace.Tracer,
 ) (*ABCIResponses, error) {
-	trace.GlobalPin("abci-BeforeBeginBlock")
+	if tcr != nil {
+		tcr.Pin("abci-BeforeBeginBlock")
+	}
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
@@ -319,8 +322,9 @@ func execBlockOnProxyApp(
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB)
-
-	trace.GlobalPin("abci-BeginBlock")
+	if tcr != nil {
+		tcr.Pin("abci-BeginBlock")
+	}
 	// Begin block
 	var err error
 	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
@@ -334,7 +338,9 @@ func execBlockOnProxyApp(
 		return nil, err
 	}
 
-	trace.GlobalPin("abci-RunTxs")
+	if tcr != nil {
+		tcr.Pin("abci-RunTxs")
+	}
 	// Run txs of block.
 	for _, tx := range block.Txs {
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
@@ -343,7 +349,9 @@ func execBlockOnProxyApp(
 		}
 	}
 
-	trace.GlobalPin("abci-EndBlock")
+	if tcr != nil {
+		tcr.Pin("abci-EndBlock")
+	}
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
@@ -537,7 +545,7 @@ func ExecCommitBlock(
 	logger log.Logger,
 	stateDB dbm.DB,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB)
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB, nil)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err
