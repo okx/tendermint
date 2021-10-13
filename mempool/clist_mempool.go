@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"container/list"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -23,6 +24,7 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/trace"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -266,6 +268,12 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 //
 // Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) error {
+	var simuRes *SimulationResponse
+	var err error
+	if mem.config.MaxGasUsedPerBlock > -1 {
+		simuRes, err = mem.simulateTx(tx)
+	}
+
 	mem.updateMtx.RLock()
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.updateMtx.RUnlock()
@@ -328,6 +336,13 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	}
 
 	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
+	if mem.config.MaxGasUsedPerBlock > -1 {
+		if r, ok := reqRes.Response.Value.(*abci.Response_CheckTx); ok && err == nil {
+			mem.logger.Info(fmt.Sprintf("mempool.SimulateTx: txhash<%s>, gasLimit<%d>, gasUsed<%d>",
+				hex.EncodeToString(tx.Hash()), r.CheckTx.GasWanted, simuRes.GasUsed))
+			r.CheckTx.GasWanted = int64(simuRes.GasUsed)
+		}
+	}
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
 
 	return nil
@@ -837,9 +852,13 @@ func (mem *CListMempool) Update(
 		mem.postCheck = postCheck
 	}
 
+	var gasUsed uint64
 	toCleanAccMap := make(map[string]uint64)
 	addressNonce := make(map[string]uint64)
 	for i, tx := range txs {
+		// add gas used with every tx
+		gasUsed += uint64(deliverTxResponses[i].GasUsed)
+
 		txCode := deliverTxResponses[i].Code
 		if txCode == abci.CodeTypeOK || txCode > abci.CodeTypeNonceInc {
 			// Add valid committed tx to the cache (if missing).
@@ -883,6 +902,8 @@ func (mem *CListMempool) Update(
 			mem.pendingPool.removeTxByHash(txID(tx))
 		}
 	}
+	mem.metrics.GasUsed.Set(float64(gasUsed))
+	trace.GetElapsedInfo().AddInfo(trace.GasUsed, fmt.Sprintf("%d", gasUsed))
 
 	for accAddr, accMaxNonce := range toCleanAccMap {
 		if txsRecord, ok := mem.addressRecord[accAddr]; ok {
@@ -1175,4 +1196,17 @@ func (mem *CListMempool) pendingPoolJob() {
 			"poolSize", mem.pendingPool.Size(),
 			"addressNonceMap", addrNonceMap)
 	}
+}
+
+func (mem *CListMempool) simulateTx(tx types.Tx) (*SimulationResponse, error) {
+	var simuRes SimulationResponse
+	res, err := mem.proxyAppConn.QuerySync(abci.RequestQuery{
+		Path: "app/simulate/mempool",
+		Data: tx,
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = cdc.UnmarshalBinaryBare(res.Value, &simuRes)
+	return &simuRes, err
 }
