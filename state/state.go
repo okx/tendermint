@@ -17,6 +17,10 @@ var (
 )
 
 //-----------------------------------------------------------------------------
+// function for exchain get watchDB batch
+var GetBatch func(int64) bool
+
+//-----------------------------------------------------------------------------
 
 // Version is for versioning the State.
 // It holds the Block and App version needed for making blocks,
