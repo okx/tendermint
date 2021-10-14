@@ -1,14 +1,10 @@
 package v0
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/spf13/viper"
-	"io/ioutil"
-	"net/http"
 	"reflect"
-	"strconv"
 	"time"
 
 	amino "github.com/tendermint/go-amino"
@@ -408,24 +404,6 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 	})
 	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
 	return nil
-}
-
-// getDataFromDatacenter send bcBlockResponseMessage to DataCenter
-func getDataFromDatacenter(logger log.Logger, height int64) (*types.BlockDelta, error) {
-	msgBody := strconv.Itoa(int(height))
-	response, err := http.Post(viper.GetString(types.DataCenterUrl) + "load", "application/json", bytes.NewBuffer([]byte(msgBody)))
-	if err != nil {
-		logger.Error("getDataFromDatacenter err ,", err)
-		return nil, err
-	}
-	defer response.Body.Close()
-	rlt, _ := ioutil.ReadAll(response.Body)
-
-	msg := types.BlockDelta{}
-	if err = types.Json.Unmarshal(rlt, &msg); err != nil {
-		return nil, err
-	}
-	return &msg, nil
 }
 
 //-----------------------------------------------------------------------------

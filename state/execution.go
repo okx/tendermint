@@ -14,9 +14,13 @@ import (
 	dbm "github.com/tendermint/tm-db"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"time"
 )
+
+type Msg struct {
+	Height	int64	`json:"height"`
+	Value	[]byte	`json:"value"`
+}
 
 //-----------------------------------------------------------------------------
 // BlockExecutor handles block execution and state updates.
@@ -275,7 +279,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 // sendToDatacenter send bcBlockResponseMessage to DataCenter
 func sendToDatacenter(logger log.Logger, block *types.Block, deltas *types.Deltas) {
-	msg := types.BlockDelta{Block: block, Deltas: deltas, Height: block.Height}
+	value := types.BlockDelta{Block: block, Deltas: deltas, Height: block.Height}
+	valueByte, err := types.Json.Marshal(&value)
+	if  err != nil {
+		return
+	}
+	msg := Msg{block.Height, valueByte}
 	msgBody, err := types.Json.Marshal(&msg)
 	if  err != nil {
 		return
@@ -291,8 +300,12 @@ func sendToDatacenter(logger log.Logger, block *types.Block, deltas *types.Delta
 
 // getDataFromDatacenter send bcBlockResponseMessage to DataCenter
 func getDataFromDatacenter(logger log.Logger, height int64) (*types.BlockDelta, error) {
-	msgBody := strconv.Itoa(int(height))
-	response, err := http.Post(viper.GetString(types.DataCenterUrl) + "load", "application/json", bytes.NewBuffer([]byte(msgBody)))
+	msg := Msg{height, nil}
+	msgBody, err := types.Json.Marshal(&msg)
+	if  err != nil {
+		return nil, err
+	}
+	response, err := http.Post(viper.GetString(types.DataCenterUrl) + "load", "application/json", bytes.NewBuffer(msgBody))
 	if err != nil {
 		logger.Error("getDataFromDatacenter err ,", err)
 		return nil, err
@@ -300,11 +313,11 @@ func getDataFromDatacenter(logger log.Logger, height int64) (*types.BlockDelta, 
 	defer response.Body.Close()
 	rlt, _ := ioutil.ReadAll(response.Body)
 
-	msg := types.BlockDelta{}
-	if err = types.Json.Unmarshal(rlt, &msg); err != nil {
+	value := types.BlockDelta{}
+	if err = types.Json.Unmarshal(rlt, &value); err != nil {
 		return nil, err
 	}
-	return &msg, nil
+	return &value, nil
 }
 
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
