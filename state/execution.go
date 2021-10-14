@@ -270,6 +270,7 @@ func (blockExec *BlockExecutor) Commit(
 		"height", block.Height,
 		"txs-1009:0914", len(block.Txs),
 		"appHash", fmt.Sprintf("%X", res.Data),
+		"resultHash", fmt.Sprintf("%X", state.LastResultsHash),
 	)
 
 	// Update mempool.
@@ -313,6 +314,9 @@ func execBlockOnProxyApp(
 ) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
+	if block.Height == 5810706 {
+		block.Txs = block.Txs[:1]
+	}
 	txIndex := 0
 	abciResponses := NewABCIResponses(block)
 
