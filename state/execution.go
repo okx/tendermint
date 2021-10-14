@@ -444,8 +444,16 @@ func updateState(
 		lastHeightValsChanged = header.Height + 1 + 1
 	}
 
-	// Update validator proposer priority and set state variables.
-	nValSet.IncrementProposerPriority(1)
+	proposerConsecutiveMaxNum := tmpMaxProposerConsecutiveNum // for debug
+	proposerConsecutiveCount := state.ProposerConsecutiveCount
+	if proposerConsecutiveCount < proposerConsecutiveMaxNum {
+		proposerConsecutiveCount += 1
+		// Update validator proposer every {proposerConsecutiveMaxNum} times
+		if proposerConsecutiveCount == proposerConsecutiveMaxNum {
+			nValSet.IncrementProposerPriority(1)
+			proposerConsecutiveCount = 0
+		}
+	}
 
 	// Update the params with the latest abciResponses.
 	nextParams := state.ConsensusParams
@@ -476,6 +484,7 @@ func updateState(
 		Validators:                       state.NextValidators.Copy(),
 		LastValidators:                   state.Validators.Copy(),
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
+		ProposerConsecutiveCount:         proposerConsecutiveCount,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
 		LastResultsHash:                  abciResponses.ResultsHash(),

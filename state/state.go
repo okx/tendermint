@@ -16,6 +16,10 @@ var (
 	stateKey = []byte("stateKey")
 )
 
+const (
+	tmpMaxProposerConsecutiveNum int32 = 10 // how to config MaxConsecutiveNumber?
+)
+
 //-----------------------------------------------------------------------------
 
 // Version is for versioning the State.
@@ -69,7 +73,8 @@ type State struct {
 	Validators                  *types.ValidatorSet
 	LastValidators              *types.ValidatorSet
 	LastHeightValidatorsChanged int64
-
+	// Proposer can continue to propose up to {ProposerConsecutiveCount} times.
+	ProposerConsecutiveCount int32
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
 	ConsensusParams                  types.ConsensusParams
@@ -96,6 +101,7 @@ func (state State) Copy() State {
 		Validators:                  state.Validators.Copy(),
 		LastValidators:              state.LastValidators.Copy(),
 		LastHeightValidatorsChanged: state.LastHeightValidatorsChanged,
+		ProposerConsecutiveCount:    state.ProposerConsecutiveCount,
 
 		ConsensusParams:                  state.ConsensusParams,
 		LastHeightConsensusParamsChanged: state.LastHeightConsensusParamsChanged,
@@ -242,6 +248,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		Validators:                  validatorSet,
 		LastValidators:              types.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: types.GetStartBlockHeight() + 1,
+		ProposerConsecutiveCount:    1,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: types.GetStartBlockHeight() + 1,

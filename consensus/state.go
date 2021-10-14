@@ -1428,6 +1428,10 @@ func (cs *State) tryFinalizeCommit(height int64) {
 		return
 	}
 
+	if cs.CommitRound != 0 {
+		cs.state.ProposerConsecutiveCount = 0
+	}
+
 	//	go
 	cs.finalizeCommit(height)
 }
