@@ -35,7 +35,7 @@ func (cli *grpcClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bo
 	return nil
 }
 
-func (cli *grpcClient) FinalTx() [][]byte {
+func (cli *grpcClient) EndAsync() [][]byte {
 	return nil
 }
 

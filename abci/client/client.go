@@ -50,7 +50,7 @@ type Client interface {
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	SetAsyncConfig(bool, [][]byte)
 	DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool, u uint32) types.ExecuteRes
-	FinalTx() [][]byte
+	EndAsync() [][]byte
 }
 
 //----------------------------------------

@@ -43,7 +43,7 @@ type socketClient struct {
 
 }
 
-func (cli *socketClient) FinalTx() [][]byte {
+func (cli *socketClient) EndAsync() [][]byte {
 	return nil
 }
 func (cli *socketClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool, u uint32) types.ExecuteRes {

@@ -21,7 +21,7 @@ type localClient struct {
 	Callback
 }
 
-func (app *localClient) FinalTx() [][]byte {
+func (app *localClient) EndAsync() [][]byte {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 	return app.Application.FinalTx()

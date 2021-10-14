@@ -147,10 +147,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	trc := trace.NewTracer()
 
 	defer func() {
-		//trc.dump(
-		//	fmt.Sprintf("ApplyBlock<%d>, tx<%d>", block.Height, len(block.Data.Txs)),
-		//	blockExec.logger.With("module", "main"),
-		//)
 		trace.GetElapsedInfo().AddInfo(trace.Height, fmt.Sprintf("%d", block.Height))
 		trace.GetElapsedInfo().AddInfo(trace.Tx, fmt.Sprintf("%d", len(block.Data.Txs)))
 		trace.GetElapsedInfo().AddInfo(trace.RunTx, trc.Format())
@@ -268,7 +264,7 @@ func (blockExec *BlockExecutor) Commit(
 	blockExec.logger.Info(
 		"Committed state",
 		"height", block.Height,
-		"txs-1009:0914", len(block.Txs),
+		"txs", len(block.Txs),
 		"appHash", fmt.Sprintf("%X", res.Data),
 		"resultHash", fmt.Sprintf("%X", state.LastResultsHash),
 	)
@@ -314,9 +310,6 @@ func execBlockOnProxyApp(
 ) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
-	if block.Height == 5810706 {
-		block.Txs = block.Txs[:1]
-	}
 	txIndex := 0
 	abciResponses := NewABCIResponses(block)
 
@@ -326,9 +319,6 @@ func execBlockOnProxyApp(
 			return
 		}
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
-			if isAsync {
-				return
-			}
 			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
@@ -410,11 +400,6 @@ func execBlockOnProxyApp(
 				}
 			}
 		}
-		//proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[0]}, true, 0)
-		//if proxyAppConn.Error() != nil {
-		//	signal <- 0
-		//	return
-		//}
 		logger.Info(fmt.Sprintf("BlockHeight %d : Paralle run %d, Conflected tx %d", block.Height, len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
 		//keep running
 		signal <- 0
@@ -440,7 +425,7 @@ func execBlockOnProxyApp(
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
 		}
-		receiptsLogs := proxyAppConn.FinalTx()
+		receiptsLogs := proxyAppConn.EndAsync()
 		for index, v := range receiptsLogs {
 			if len(v) != 0 {
 				abciResponses.DeliverTxs[index].Data = v
@@ -576,7 +561,6 @@ func updateState(
 
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
-	lastHash := abciResponses.ResultsHash()
 	return State{
 		Version:                          nextVersion,
 		ChainID:                          state.ChainID,
@@ -589,7 +573,7 @@ func updateState(
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
-		LastResultsHash:                  lastHash,
+		LastResultsHash:                  abciResponses.ResultsHash(),
 		AppHash:                          nil,
 	}, nil
 }
