@@ -118,6 +118,7 @@ func (e *EmptyTimeInfo) AddInfo(key string, info string) {
 
 func (e *EmptyTimeInfo) Dump(logger log.Logger) {
 }
+
 func (e *EmptyTimeInfo) SetElapsedTime(elapsedTime int64) {
 }
 
