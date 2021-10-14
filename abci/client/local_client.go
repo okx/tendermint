@@ -3,9 +3,9 @@ package abcicli
 import (
 	"sync"
 
+	"github.com/okex/exchain/x/analyzer"
 	types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/okex/exchain/x/analyzer"
 )
 
 var _ Client = (*localClient)(nil)
@@ -88,12 +88,12 @@ func (app *localClient) DeliverTxAsync(params types.RequestDeliverTx) *ReqRes {
 	defer app.mtx.Unlock()
 
 	res := app.Application.DeliverTx(params)
-	analyzer.StartTxLog("app.callback")
+	analyzer.StartTxLog("app-callback")
 	tmp := app.callback(
 		types.ToRequestDeliverTx(params),
 		types.ToResponseDeliverTx(res),
 	)
-	analyzer.StopTxLog("app.callback")
+	analyzer.StopTxLog("app-callback")
 	return tmp
 }
 
