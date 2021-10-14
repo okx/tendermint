@@ -162,6 +162,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	fail.Fail() // XXX
 
+	trc.Pin("saveResp")
+
 	// Save the results before we commit.
 	SaveABCIResponses(blockExec.db, block.Height, abciResponses)
 
