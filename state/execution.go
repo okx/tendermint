@@ -17,7 +17,8 @@ import (
 	"time"
 )
 
-type Msg struct {
+// DataCenterMsg is the format of Data send to DataCenter
+type DataCenterMsg struct {
 	Height	int64	`json:"height"`
 	Value	[]byte	`json:"value"`
 }
@@ -284,7 +285,7 @@ func sendToDatacenter(logger log.Logger, block *types.Block, deltas *types.Delta
 	if  err != nil {
 		return
 	}
-	msg := Msg{block.Height, valueByte}
+	msg := DataCenterMsg{block.Height, valueByte}
 	msgBody, err := types.Json.Marshal(&msg)
 	if  err != nil {
 		return
@@ -300,7 +301,7 @@ func sendToDatacenter(logger log.Logger, block *types.Block, deltas *types.Delta
 
 // getDataFromDatacenter send bcBlockResponseMessage to DataCenter
 func getDataFromDatacenter(logger log.Logger, height int64) (*types.BlockDelta, error) {
-	msg := Msg{height, nil}
+	msg := DataCenterMsg{Height: height}
 	msgBody, err := types.Json.Marshal(&msg)
 	if  err != nil {
 		return nil, err
