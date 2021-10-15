@@ -11,15 +11,14 @@ type AsyncCacheInterface interface {
 
 type ExecuteRes interface {
 	GetResponse() ResponseDeliverTx
-	Recheck(AsyncCacheInterface) bool
+	Conflict(AsyncCacheInterface) bool
 	GetCounter() uint32
 	Commit()
-	Error() error
 	Collect(AsyncCacheInterface)
 	GetEvmTxCounter() uint32
 }
 
-type AsyncCallBack func(map[int]ExecuteRes)
+type AsyncCallBack func(ExecuteRes)
 
 // Application is an interface that enables any finite, deterministic state machine
 // to be driven by a blockchain-based replication engine via the ABCI.

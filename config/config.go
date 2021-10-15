@@ -1050,11 +1050,3 @@ func getDefaultMoniker() string {
 	}
 	return moniker
 }
-
-//Asynchronize config
-
-var asyncConfig = true
-
-func IsAsyncDeliverTx() bool {
-	return asyncConfig
-}

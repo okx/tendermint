@@ -318,6 +318,8 @@ func execBlockOnProxyApp(
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
+
+	txReps := make([]abci.ExecuteRes, len(block.Txs), len(block.Txs))
 	abciResponses := NewABCIResponses(block)
 
 	// Execute transactions and get hash.
@@ -358,62 +360,43 @@ func execBlockOnProxyApp(
 	}
 	asCache := NewAsyncCache()
 	signal := make(chan int, 1)
-	AsyncCb := func(execRes map[int]abci.ExecuteRes) {
-		//after all async tx has been finished, we need to reset the aysnc mode to false
-		//then, we can rerun the dirty tx in serially
-		rerunIdx := 0
-
-		logger.Info(fmt.Sprintf("Deliver tx for %d txs\n", len(abciResponses.DeliverTxs)))
-		for i := 0; i < len(abciResponses.DeliverTxs); i++ {
-			res, ok := execRes[i]
-			if !ok {
-				//wtf, maybe need to panic program
-				logger.Info(fmt.Sprintf("No such tx in map,idx : %d\n", i))
-				continue
+	rerunIdx := 0
+	AsyncCb := func(execRes abci.ExecuteRes) {
+		txReps[execRes.GetCounter()] = execRes
+		for true {
+			if txReps[txIndex] == nil {
+				return
 			}
-			tmp := res.GetResponse()
-			abciResponses.DeliverTxs[i] = &tmp
-			if !res.Recheck(asCache) {
-				//we don't need to rerun the tx, just commit it and save dirty data into cache
-				res.Collect(asCache)
-				res.Commit()
 
-				if tmp.Code == abci.CodeTypeOK {
-					validTxs++
-				} else {
-					logger.Debug("Invalid tx", "code", tmp.Code, "log", tmp.Log)
-					invalidTxs++
-				}
-			} else {
+			res := txReps[txIndex]
+			if res.Conflict(asCache) {
 				rerunIdx++
-				//rerun current tx
-				ret := proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, false, res.GetEvmTxCounter())
+				res = proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, false, res.GetEvmTxCounter())
 				if proxyAppConn.Error() != nil {
-					//break, stop execution and return an error
+					panic(proxyAppConn.Error())
 					signal <- 0
 					return
 				}
-				//collect the cache from current serial executing tx
-				ret.Collect(asCache)
-				ret.Commit()
-				tmp := ret.GetResponse()
-
-				abciResponses.DeliverTxs[i] = &tmp
-				if ret.Error() == nil {
-					validTxs++
-				} else {
-					logger.Debug("Invalid tx", "code", tmp.Code, "log", tmp.Log)
-					invalidTxs++
-				}
+			}
+			txRs := res.GetResponse()
+			abciResponses.DeliverTxs[txIndex] = &txRs
+			res.Collect(asCache)
+			res.Commit()
+			if abciResponses.DeliverTxs[txIndex].Code == abci.CodeTypeOK {
+				validTxs++
+			} else {
+				logger.Debug("Invalid tx", "code", abciResponses.DeliverTxs[txIndex].Code, "log", abciResponses.DeliverTxs[txIndex].Log)
+				invalidTxs++
+			}
+			txIndex++
+			if txIndex == len(block.Txs) {
+				AllTxs += len(block.Txs)
+				PallTxs += len(abciResponses.DeliverTxs) - rerunIdx
+				logger.Info(fmt.Sprintf("BlockHeight %d With Tx %d : Paralle run %d, Conflected tx %d", block.Height, len(block.Txs), len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
+				signal <- 0
+				return
 			}
 		}
-		AllTxs += validTxs
-		AllTxs += invalidTxs
-		PallTxs += len(abciResponses.DeliverTxs) - rerunIdx
-		logger.Info(fmt.Sprintf("BlockHeight %d : Paralle run %d, Conflected tx %d", block.Height, len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
-		//keep running
-		signal <- 0
-		return
 	}
 
 	if isAsync {
