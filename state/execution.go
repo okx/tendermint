@@ -157,32 +157,29 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, ErrInvalidBlock(err)
 	}
 
-	trc.pin("postDataCenter")
+	trc.pin("getCenterDelta")
 	if deltas == nil {
 		deltas = &types.Deltas{}
 	}
 	deltaLen := deltas.Size()
 	deltaMode := viper.GetString(types.FlagStateDelta)
 	fastQuery := viper.GetBool("fast-query")
+	centerMode := viper.GetBool(types.FlagDataCenter)
 	batchOK := true
 	useDeltas := false
-	if fastQuery {
+	if fastQuery && deltaMode == types.ConsumeDelta {
 		batchOK = GetBatch(block.Height)
 	}
 	if batchOK {
-		if deltaLen == 0 && viper.GetBool(types.FlagDataCenter) && deltaMode == types.ConsumeDelta {
+		if deltaLen == 0 && centerMode && deltaMode == types.ConsumeDelta {
 			if bd, err := getDataFromDatacenter(blockExec.logger, block.Height); err == nil {
-				blockExec.logger.Info("GetDataFromDatacenter", "height", block.Height)
 				deltas = bd.Deltas
 			}
-		}
-		if deltaMode == types.ConsumeDelta && deltaLen != 0 {
-			useDeltas = true
 		}
 	}
 
 	blockExec.logger.Info("Begin abci", "len(deltas)", deltaLen,
-		"getFlagDelta", deltaMode, "ConsumeDelta", types.ConsumeDelta, "getFlagDataCenter", viper.GetBool(types.FlagDataCenter))
+		"FlagDelta", deltaMode, "FlagCenter", centerMode, "FlagFastQuery", centerMode)
 
 	trc.pin("abci")
 	startTime := time.Now().UnixNano()
@@ -311,8 +308,10 @@ func getDataFromDatacenter(logger log.Logger, height int64) (*types.BlockDelta, 
 		logger.Error("getDataFromDatacenter err ,", err)
 		return nil, err
 	}
+
 	defer response.Body.Close()
 	rlt, _ := ioutil.ReadAll(response.Body)
+	logger.Info("GetDataFromDatacenter", "height", height, "len", len(rlt))
 
 	value := types.BlockDelta{}
 	if err = types.Json.Unmarshal(rlt, &value); err != nil {
