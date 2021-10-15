@@ -476,6 +476,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, mock.Mempool{}, sm.MockEvidencePool{})
 	blockExec.SetEventBus(h.eventBus)
 
+	state.FixValidatorBeforeNewBlockOrHeight(block.LastCommit.Round)
 	var err error
 	state, _, err = blockExec.ApplyBlock(state, meta.BlockID, block)
 	if err != nil {

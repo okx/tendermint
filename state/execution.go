@@ -420,6 +420,13 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 	return nil
 }
 
+func (state *State) FixValidatorBeforeNewBlockOrHeight(lastCommitRound int) {
+	if lastCommitRound > 0 {
+		state.NextValidators.IncrementProposerPriority(lastCommitRound)
+		state.ProposerConsecutiveCount = 1
+	}
+}
+
 // updateState returns a new State updated according to the header and responses.
 func updateState(
 	state State,

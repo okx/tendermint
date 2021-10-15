@@ -760,6 +760,14 @@ func (cs *State) handleMsg(mi msgInfo) {
 	}
 }
 
+func (cs *State) fixValidatorBeforeNewHeight() {
+	lastCommitRound := cs.LastCommit.GetRound()
+	if lastCommitRound > 0 {
+		cs.Validators.IncrementProposerPriority(lastCommitRound)
+		cs.state.FixValidatorBeforeNewBlockOrHeight(lastCommitRound)
+	}
+}
+
 func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 	cs.Logger.Debug("Received tock", "timeout", ti.Duration, "height", ti.Height, "round", ti.Round, "step", ti.Step)
 
@@ -781,6 +789,7 @@ func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 		trace.GetElapsedInfo().Dump(cs.Logger.With("module", "main"))
 
 		cs.trc.Reset()
+		cs.fixValidatorBeforeNewHeight()
 		cs.enterNewRound(ti.Height, 0)
 	case cstypes.RoundStepNewRound:
 		cs.enterPropose(ti.Height, 0)
