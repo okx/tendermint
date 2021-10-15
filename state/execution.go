@@ -296,6 +296,11 @@ func transTxsToBytes(txs types.Txs) [][]byte {
 	return ret
 }
 
+var (
+	AllTxs  int
+	PallTxs int
+)
+
 //---------------------------------------------------------
 // Helper functions for executing blocks and updating state
 
@@ -400,6 +405,9 @@ func execBlockOnProxyApp(
 				}
 			}
 		}
+		AllTxs += validTxs
+		AllTxs += invalidTxs
+		PallTxs += len(abciResponses.DeliverTxs) - rerunIdx
 		logger.Info(fmt.Sprintf("BlockHeight %d : Paralle run %d, Conflected tx %d", block.Height, len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
 		//keep running
 		signal <- 0

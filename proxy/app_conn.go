@@ -57,7 +57,7 @@ type appConnConsensus struct {
 }
 
 func (app *appConnConsensus) EndAsync() [][]byte {
-	return app.appConn.FinalTx()
+	return app.appConn.EndAsync()
 }
 func (app *appConnConsensus) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool, u uint32) types.ExecuteRes {
 	return app.appConn.DeliverTxWithCache(tx, needAnte, u)
