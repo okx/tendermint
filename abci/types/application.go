@@ -39,8 +39,8 @@ type Application interface {
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
 
-	DeliverTxWithCache(RequestDeliverTx) ExecuteRes
 	PrepareParallelTxs(cb AsyncCallBack, txs [][]byte)
+	DeliverTxWithCache(RequestDeliverTx) ExecuteRes
 	EndParallelTxs() [][]byte
 }
 
@@ -92,11 +92,11 @@ func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
 	return ResponseEndBlock{}
 }
 
-func (a BaseApplication) DeliverTxWithCache(_ RequestDeliverTx) ExecuteRes {
-	return nil
+func (a BaseApplication) PrepareParallelTxs(_ AsyncCallBack, _ [][]byte) {
 }
 
-func (a BaseApplication) PrepareParallelTxs(_ AsyncCallBack, _ [][]byte) {
+func (a BaseApplication) DeliverTxWithCache(_ RequestDeliverTx) ExecuteRes {
+	return nil
 }
 
 func (a BaseApplication) EndParallelTxs() [][]byte {

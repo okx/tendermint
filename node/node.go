@@ -636,7 +636,7 @@ func NewNode(config *cfg.Config,
 	)
 
 	//blockExec.SetIsAsyncDeliverTx()
-	panic("scf")
+	panic("need fix") // TODO need to fix here
 
 	// Make BlockchainReactor
 	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync, logger)
