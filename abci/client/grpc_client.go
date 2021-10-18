@@ -39,7 +39,7 @@ func (cli *grpcClient) EndParallelTxs() [][]byte {
 	return nil
 }
 
-func (cli *grpcClient) PrepareForParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
+func (cli *grpcClient) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
 }
 
 func NewGRPCClient(addr string, mustConnect bool) Client {

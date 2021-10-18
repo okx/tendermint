@@ -50,8 +50,8 @@ func (app *localClient) SetResponseCallback(cb Callback) {
 	app.mtx.Unlock()
 }
 
-func (app *localClient) PrepareForParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
-	app.Application.PrepareForParallelTxs(cb, txs)
+func (app *localClient) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
+	app.Application.PrepareParallelTxs(cb, txs)
 }
 
 // TODO: change types.Application to include Error()?

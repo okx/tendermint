@@ -50,7 +50,7 @@ func (cli *socketClient) DeliverTxWithCache(tx types.RequestDeliverTx) types.Exe
 	return nil
 }
 
-func (cli *socketClient) PrepareForParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
+func (cli *socketClient) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
 }
 
 func NewSocketClient(addr string, mustConnect bool) Client {

@@ -400,7 +400,7 @@ func execBlockOnProxyApp(
 	}
 
 	if isAsync {
-		proxyAppConn.PrepareForParallelTxs(AsyncCb, transTxsToBytes(block.Txs))
+		proxyAppConn.PrepareParallelTxs(AsyncCb, transTxsToBytes(block.Txs))
 	}
 
 	// Run txs of block.

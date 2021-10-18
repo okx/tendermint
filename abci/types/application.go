@@ -36,11 +36,12 @@ type Application interface {
 	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain w validators/other info from TendermintCore
 	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
+	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
+	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+
 	DeliverTxWithCache(RequestDeliverTx) ExecuteRes
-	PrepareForParallelTxs(cb AsyncCallBack, txs [][]byte)
+	PrepareParallelTxs(cb AsyncCallBack, txs [][]byte)
 	EndParallelTxs() [][]byte
-	EndBlock(RequestEndBlock) ResponseEndBlock // Signals the end of a block, returns changes to the validator set
-	Commit() ResponseCommit                    // Commit the state and return the application Merkle root hash
 }
 
 //-------------------------------------------------------
@@ -59,7 +60,7 @@ func (a BaseApplication) EndParallelTxs() [][]byte {
 	return nil
 }
 
-func (a BaseApplication) PrepareForParallelTxs(_ AsyncCallBack, _ [][]byte) {
+func (a BaseApplication) PrepareParallelTxs(_ AsyncCallBack, _ [][]byte) {
 }
 
 func NewBaseApplication() *BaseApplication {

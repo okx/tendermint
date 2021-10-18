@@ -43,7 +43,7 @@ func (app *PersistentKVStoreApplication) DeliverTxWithCache(tx types.RequestDeli
 	return nil
 }
 
-func (app *PersistentKVStoreApplication) PrepareForParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
+func (app *PersistentKVStoreApplication) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
 }
 
 func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication {
