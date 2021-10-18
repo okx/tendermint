@@ -400,8 +400,7 @@ func execBlockOnProxyApp(
 	}
 
 	if isAsync {
-		proxyAppConn.SetAsyncConfig(isAsync, transTxsToBytes(block.Txs))
-		proxyAppConn.SetAsyncCallBack(AsyncCb)
+		proxyAppConn.PrepareForParallelTxs(AsyncCb, transTxsToBytes(block.Txs))
 	}
 
 	// Run txs of block.
@@ -418,7 +417,7 @@ func execBlockOnProxyApp(
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
 		}
-		receiptsLogs := proxyAppConn.EndAsync()
+		receiptsLogs := proxyAppConn.EndParallelTxs()
 		for index, v := range receiptsLogs {
 			if len(v) != 0 {
 				abciResponses.DeliverTxs[index].Data = v

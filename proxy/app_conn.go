@@ -10,8 +10,7 @@ import (
 
 type AppConnConsensus interface {
 	SetResponseCallback(abcicli.Callback)
-	SetAsyncCallBack(types.AsyncCallBack)
-	SetAsyncConfig(bool, [][]byte)
+	PrepareForParallelTxs(types.AsyncCallBack, [][]byte)
 	Error() error
 
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
@@ -19,7 +18,7 @@ type AppConnConsensus interface {
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(types.RequestDeliverTx) *abcicli.ReqRes
 	DeliverTxWithCache(types.RequestDeliverTx) types.ExecuteRes
-	EndAsync() [][]byte
+	EndParallelTxs() [][]byte
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	CommitSync() (*types.ResponseCommit, error)
 	SetOptionAsync(req types.RequestSetOption) *abcicli.ReqRes
@@ -54,21 +53,6 @@ type AppConnQuery interface {
 
 type appConnConsensus struct {
 	appConn abcicli.Client
-}
-
-func (app *appConnConsensus) EndAsync() [][]byte {
-	return app.appConn.EndAsync()
-}
-func (app *appConnConsensus) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
-	return app.appConn.DeliverTxWithCache(tx)
-}
-
-func (app *appConnConsensus) SetAsyncConfig(sw bool, txs [][]byte) {
-	app.appConn.SetAsyncConfig(sw, txs)
-}
-
-func (app *appConnConsensus) SetAsyncCallBack(back types.AsyncCallBack) {
-	app.appConn.SetAsyncCallBack(back)
 }
 
 func NewAppConnConsensus(appConn abcicli.Client) AppConnConsensus {
@@ -148,6 +132,17 @@ func (app *appConnMempool) SetOptionAsync(req types.RequestSetOption) *abcicli.R
 
 func (app *appConnMempool) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
 	return app.appConn.QuerySync(req)
+}
+
+func (app *appConnConsensus) EndParallelTxs() [][]byte {
+	return app.appConn.EndParallelTxs()
+}
+func (app *appConnConsensus) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
+	return app.appConn.DeliverTxWithCache(tx)
+}
+
+func (app *appConnConsensus) PrepareForParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
+	app.appConn.PrepareForParallelTxs(cb, txs)
 }
 
 //------------------------------------------------

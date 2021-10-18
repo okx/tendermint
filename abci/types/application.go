@@ -15,7 +15,6 @@ type ExecuteRes interface {
 	GetCounter() uint32
 	Commit()
 	Collect(AsyncCacheInterface)
-	GetEvmTxCounter() uint32
 }
 
 type AsyncCallBack func(ExecuteRes)
@@ -38,11 +37,10 @@ type Application interface {
 	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
 	DeliverTxWithCache(RequestDeliverTx) ExecuteRes
-	FinalTx() [][]byte
+	PrepareForParallelTxs(cb AsyncCallBack, txs [][]byte)
+	EndParallelTxs() [][]byte
 	EndBlock(RequestEndBlock) ResponseEndBlock // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                    // Commit the state and return the application Merkle root hash
-	SetAsyncDeliverTxCb(cb AsyncCallBack)
-	SetAsyncConfig(sw bool, txs [][]byte)
 }
 
 //-------------------------------------------------------
@@ -57,14 +55,11 @@ func (a BaseApplication) DeliverTxWithCache(_ RequestDeliverTx) ExecuteRes {
 	return nil
 }
 
-func (a BaseApplication) FinalTx() [][]byte {
+func (a BaseApplication) EndParallelTxs() [][]byte {
 	return nil
 }
 
-func (a BaseApplication) SetAsyncConfig(_ bool, _ [][]byte) {
-}
-
-func (a BaseApplication) SetAsyncDeliverTxCb(cb AsyncCallBack) {
+func (a BaseApplication) PrepareForParallelTxs(_ AsyncCallBack, _ [][]byte) {
 }
 
 func NewBaseApplication() *BaseApplication {

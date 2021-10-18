@@ -22,7 +22,6 @@ type Client interface {
 	service.Service
 
 	SetResponseCallback(Callback)
-	SetAsyncCallBack(types.AsyncCallBack)
 	Error() error
 
 	FlushAsync() *ReqRes
@@ -48,9 +47,9 @@ type Client interface {
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
-	SetAsyncConfig(bool, [][]byte)
+	PrepareForParallelTxs(types.AsyncCallBack, [][]byte)
 	DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes
-	EndAsync() [][]byte
+	EndParallelTxs() [][]byte
 }
 
 //----------------------------------------

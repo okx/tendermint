@@ -35,7 +35,7 @@ type PersistentKVStoreApplication struct {
 	logger log.Logger
 }
 
-func (app *PersistentKVStoreApplication) FinalTx() [][]byte {
+func (app *PersistentKVStoreApplication) EndParallelTxs() [][]byte {
 	return nil
 }
 
@@ -43,11 +43,7 @@ func (app *PersistentKVStoreApplication) DeliverTxWithCache(tx types.RequestDeli
 	return nil
 }
 
-func (app *PersistentKVStoreApplication) SetAsyncConfig(sw bool, txs [][]byte) {
-}
-
-func (app *PersistentKVStoreApplication) SetAsyncDeliverTxCb(cb types.AsyncCallBack) {
-
+func (app *PersistentKVStoreApplication) PrepareForParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
 }
 
 func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication {

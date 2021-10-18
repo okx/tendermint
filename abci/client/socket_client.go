@@ -43,17 +43,14 @@ type socketClient struct {
 
 }
 
-func (cli *socketClient) EndAsync() [][]byte {
+func (cli *socketClient) EndParallelTxs() [][]byte {
 	return nil
 }
 func (cli *socketClient) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
 	return nil
 }
 
-func (cli *socketClient) SetAsyncCallBack(back types.AsyncCallBack) {
-}
-
-func (cli *socketClient) SetAsyncConfig(b bool, txs [][]byte) {
+func (cli *socketClient) PrepareForParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
 }
 
 func NewSocketClient(addr string, mustConnect bool) Client {
