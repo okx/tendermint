@@ -5,7 +5,7 @@ type AsyncCache struct {
 }
 
 func NewAsyncCache() *AsyncCache {
-	return &AsyncCache{mem: make(map[string][]byte, 0)}
+	return &AsyncCache{mem: make(map[string][]byte)}
 }
 
 func (a *AsyncCache) Push(key, value []byte) {

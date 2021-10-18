@@ -41,7 +41,7 @@ type BlockExecutor struct {
 
 	metrics *Metrics
 
-	isAsyncDeliverTx bool
+	isAsync bool
 }
 
 type BlockExecutorOption func(executor *BlockExecutor)
@@ -63,14 +63,14 @@ func NewBlockExecutor(
 	options ...BlockExecutorOption,
 ) *BlockExecutor {
 	res := &BlockExecutor{
-		db:               db,
-		proxyApp:         proxyApp,
-		eventBus:         types.NopEventBus{},
-		mempool:          mempool,
-		evpool:           evpool,
-		logger:           logger,
-		metrics:          NopMetrics(),
-		isAsyncDeliverTx: false,
+		db:       db,
+		proxyApp: proxyApp,
+		eventBus: types.NopEventBus{},
+		mempool:  mempool,
+		evpool:   evpool,
+		logger:   logger,
+		metrics:  NopMetrics(),
+		isAsync:  false,
 	}
 
 	for _, option := range options {
@@ -81,7 +81,7 @@ func NewBlockExecutor(
 }
 
 func (blockExec *BlockExecutor) SetIsAsyncDeliverTx(sw bool) {
-	blockExec.isAsyncDeliverTx = sw
+	blockExec.isAsync = sw
 
 }
 func (blockExec *BlockExecutor) DB() dbm.DB {
@@ -163,7 +163,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db, blockExec.isAsyncDeliverTx)
+	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db, blockExec.isAsync)
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)
 	}
@@ -291,7 +291,7 @@ func (blockExec *BlockExecutor) Commit(
 }
 
 func transTxsToBytes(txs types.Txs) [][]byte {
-	ret := make([][]byte, 0, 0)
+	ret := make([][]byte, 0)
 	for _, v := range txs {
 		ret = append(ret, v)
 	}
@@ -319,7 +319,7 @@ func execBlockOnProxyApp(
 
 	txIndex := 0
 
-	txReps := make([]abci.ExecuteRes, len(block.Txs), len(block.Txs))
+	txReps := make([]abci.ExecuteRes, len(block.Txs))
 	abciResponses := NewABCIResponses(block)
 
 	// Execute transactions and get hash.
@@ -363,19 +363,14 @@ func execBlockOnProxyApp(
 	rerunIdx := 0
 	AsyncCb := func(execRes abci.ExecuteRes) {
 		txReps[execRes.GetCounter()] = execRes
-		for true {
-			if txReps[txIndex] == nil {
-				return
-			}
-
+		for txReps[txIndex] != nil {
 			res := txReps[txIndex]
 			if res.Conflict(asCache) {
 				rerunIdx++
 				res = proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]})
 				if proxyAppConn.Error() != nil {
-					panic(proxyAppConn.Error())
 					signal <- 0
-					return
+					panic(proxyAppConn.Error())
 				}
 			}
 			txRs := res.GetResponse()
@@ -385,7 +380,6 @@ func execBlockOnProxyApp(
 			if abciResponses.DeliverTxs[txIndex].Code == abci.CodeTypeOK {
 				validTxs++
 			} else {
-				logger.Debug("Invalid tx", "code", abciResponses.DeliverTxs[txIndex].Code, "log", abciResponses.DeliverTxs[txIndex].Log)
 				invalidTxs++
 			}
 
@@ -393,7 +387,8 @@ func execBlockOnProxyApp(
 			if txIndex == len(block.Txs) {
 				AllTxs += len(block.Txs)
 				PallTxs += len(abciResponses.DeliverTxs) - rerunIdx
-				logger.Info(fmt.Sprintf("BlockHeight %d With Tx %d : Paralle run %d, Conflected tx %d", block.Height, len(block.Txs), len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
+				logger.Info(fmt.Sprintf("BlockHeight %d With Tx %d : Paralle run %d, Conflected tx %d",
+					block.Height, len(block.Txs), len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
 				signal <- 0
 				return
 			}
