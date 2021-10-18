@@ -4,6 +4,21 @@ import (
 	context "golang.org/x/net/context"
 )
 
+type AsyncCacheInterface interface {
+	Push(key, value []byte)
+	Has(key []byte) bool
+}
+
+type ExecuteRes interface {
+	GetResponse() ResponseDeliverTx
+	Conflict(AsyncCacheInterface) bool
+	GetCounter() uint32
+	Commit()
+	Collect(AsyncCacheInterface)
+}
+
+type AsyncCallBack func(ExecuteRes)
+
 // Application is an interface that enables any finite, deterministic state machine
 // to be driven by a blockchain-based replication engine via the ABCI.
 // All methods take a RequestXxx argument and return a ResponseXxx argument,
@@ -23,6 +38,10 @@ type Application interface {
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+
+	PrepareParallelTxs(cb AsyncCallBack, txs [][]byte)
+	DeliverTxWithCache(RequestDeliverTx) ExecuteRes
+	EndParallelTxs() [][]byte
 }
 
 //-------------------------------------------------------
@@ -71,6 +90,17 @@ func (BaseApplication) BeginBlock(req RequestBeginBlock) ResponseBeginBlock {
 
 func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
 	return ResponseEndBlock{}
+}
+
+func (a BaseApplication) PrepareParallelTxs(_ AsyncCallBack, _ [][]byte) {
+}
+
+func (a BaseApplication) DeliverTxWithCache(_ RequestDeliverTx) ExecuteRes {
+	return nil
+}
+
+func (a BaseApplication) EndParallelTxs() [][]byte {
+	return nil
 }
 
 //-------------------------------------------------------
