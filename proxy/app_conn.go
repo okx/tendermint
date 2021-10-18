@@ -10,18 +10,18 @@ import (
 
 type AppConnConsensus interface {
 	SetResponseCallback(abcicli.Callback)
-	PrepareParallelTxs(types.AsyncCallBack, [][]byte)
 	Error() error
 
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(types.RequestDeliverTx) *abcicli.ReqRes
+	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	CommitSync() (*types.ResponseCommit, error)
 	SetOptionAsync(req types.RequestSetOption) *abcicli.ReqRes
+	PrepareParallelTxs(types.AsyncCallBack, [][]byte)
 	DeliverTxWithCache(types.RequestDeliverTx) types.ExecuteRes
 	EndParallelTxs() [][]byte
-	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 }
 
 type AppConnMempool interface {
@@ -134,15 +134,16 @@ func (app *appConnMempool) QuerySync(req types.RequestQuery) (*types.ResponseQue
 	return app.appConn.QuerySync(req)
 }
 
-func (app *appConnConsensus) EndParallelTxs() [][]byte {
-	return app.appConn.EndParallelTxs()
+func (app *appConnConsensus) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
+	app.appConn.PrepareParallelTxs(cb, txs)
 }
+
 func (app *appConnConsensus) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
 	return app.appConn.DeliverTxWithCache(tx)
 }
 
-func (app *appConnConsensus) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
-	app.appConn.PrepareParallelTxs(cb, txs)
+func (app *appConnConsensus) EndParallelTxs() [][]byte {
+	return app.appConn.EndParallelTxs()
 }
 
 //------------------------------------------------

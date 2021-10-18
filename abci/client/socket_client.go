@@ -43,16 +43,6 @@ type socketClient struct {
 
 }
 
-func (cli *socketClient) EndParallelTxs() [][]byte {
-	return nil
-}
-func (cli *socketClient) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
-	return nil
-}
-
-func (cli *socketClient) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
-}
-
 func NewSocketClient(addr string, mustConnect bool) Client {
 	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
@@ -274,6 +264,17 @@ func (cli *socketClient) BeginBlockAsync(req types.RequestBeginBlock) *ReqRes {
 
 func (cli *socketClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	return cli.queueRequest(types.ToRequestEndBlock(req))
+}
+
+func (cli *socketClient) PrepareParallelTxs(_ types.AsyncCallBack, _ [][]byte) {
+}
+
+func (cli *socketClient) DeliverTxWithCache(_ types.RequestDeliverTx) types.ExecuteRes {
+	return nil
+}
+
+func (cli *socketClient) EndParallelTxs() [][]byte {
+	return nil
 }
 
 //----------------------------------------

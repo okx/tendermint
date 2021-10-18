@@ -31,17 +31,6 @@ type grpcClient struct {
 	resCb func(*types.Request, *types.Response) // listens to all callbacks
 }
 
-func (cli *grpcClient) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
-	return nil
-}
-
-func (cli *grpcClient) EndParallelTxs() [][]byte {
-	return nil
-}
-
-func (cli *grpcClient) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
-}
-
 func NewGRPCClient(addr string, mustConnect bool) Client {
 	cli := &grpcClient{
 		addr:        addr,
@@ -232,6 +221,17 @@ func (cli *grpcClient) EndBlockAsync(params types.RequestEndBlock) *ReqRes {
 		cli.StopForError(err)
 	}
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_EndBlock{EndBlock: res}})
+}
+
+func (cli *grpcClient) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
+}
+
+func (cli *grpcClient) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
+	return nil
+}
+
+func (cli *grpcClient) EndParallelTxs() [][]byte {
+	return nil
 }
 
 func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) *ReqRes {

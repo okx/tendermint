@@ -21,17 +21,6 @@ type localClient struct {
 	Callback
 }
 
-func (app *localClient) EndParallelTxs() [][]byte {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-	return app.Application.EndParallelTxs()
-}
-func (app *localClient) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-	return app.Application.DeliverTxWithCache(tx)
-}
-
 func NewLocalClient(mtx *sync.Mutex, app types.Application) Client {
 	if mtx == nil {
 		mtx = new(sync.Mutex)
@@ -48,10 +37,6 @@ func (app *localClient) SetResponseCallback(cb Callback) {
 	app.mtx.Lock()
 	app.Callback = cb
 	app.mtx.Unlock()
-}
-
-func (app *localClient) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
-	app.Application.PrepareParallelTxs(cb, txs)
 }
 
 // TODO: change types.Application to include Error()?
@@ -173,6 +158,22 @@ func (app *localClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 		types.ToRequestEndBlock(req),
 		types.ToResponseEndBlock(res),
 	)
+}
+
+func (app *localClient) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
+	app.Application.PrepareParallelTxs(cb, txs)
+}
+
+func (app *localClient) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+	return app.Application.DeliverTxWithCache(tx)
+}
+
+func (app *localClient) EndParallelTxs() [][]byte {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+	return app.Application.EndParallelTxs()
 }
 
 //-------------------------------------------------------

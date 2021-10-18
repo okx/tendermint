@@ -35,17 +35,6 @@ type PersistentKVStoreApplication struct {
 	logger log.Logger
 }
 
-func (app *PersistentKVStoreApplication) EndParallelTxs() [][]byte {
-	return nil
-}
-
-func (app *PersistentKVStoreApplication) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
-	return nil
-}
-
-func (app *PersistentKVStoreApplication) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
-}
-
 func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication {
 	name := "kvstore"
 	db, err := dbm.NewGoLevelDB(name, dbDir)
@@ -153,6 +142,17 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 // Update the validator set
 func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
+}
+
+func (app *PersistentKVStoreApplication) PrepareParallelTxs(_ types.AsyncCallBack, _ [][]byte) {
+}
+
+func (app *PersistentKVStoreApplication) DeliverTxWithCache(_ types.RequestDeliverTx) types.ExecuteRes {
+	return nil
+}
+
+func (app *PersistentKVStoreApplication) EndParallelTxs() [][]byte {
+	return nil
 }
 
 //---------------------------------------------

@@ -52,17 +52,6 @@ var _ Application = (*BaseApplication)(nil)
 type BaseApplication struct {
 }
 
-func (a BaseApplication) DeliverTxWithCache(_ RequestDeliverTx) ExecuteRes {
-	return nil
-}
-
-func (a BaseApplication) EndParallelTxs() [][]byte {
-	return nil
-}
-
-func (a BaseApplication) PrepareParallelTxs(_ AsyncCallBack, _ [][]byte) {
-}
-
 func NewBaseApplication() *BaseApplication {
 	return &BaseApplication{}
 }
@@ -101,6 +90,17 @@ func (BaseApplication) BeginBlock(req RequestBeginBlock) ResponseBeginBlock {
 
 func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
 	return ResponseEndBlock{}
+}
+
+func (a BaseApplication) DeliverTxWithCache(_ RequestDeliverTx) ExecuteRes {
+	return nil
+}
+
+func (a BaseApplication) PrepareParallelTxs(_ AsyncCallBack, _ [][]byte) {
+}
+
+func (a BaseApplication) EndParallelTxs() [][]byte {
+	return nil
 }
 
 //-------------------------------------------------------
