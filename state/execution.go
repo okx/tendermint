@@ -371,7 +371,7 @@ func execBlockOnProxyApp(
 			res := txReps[txIndex]
 			if res.Conflict(asCache) {
 				rerunIdx++
-				res = proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]}, false, res.GetEvmTxCounter())
+				res = proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]})
 				if proxyAppConn.Error() != nil {
 					panic(proxyAppConn.Error())
 					signal <- 0

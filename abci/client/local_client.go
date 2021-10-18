@@ -26,10 +26,10 @@ func (app *localClient) EndAsync() [][]byte {
 	defer app.mtx.Unlock()
 	return app.Application.FinalTx()
 }
-func (app *localClient) DeliverTxWithCache(tx types.RequestDeliverTx, needAnte bool, evmIdx uint32) types.ExecuteRes {
+func (app *localClient) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
-	return app.Application.DeliverTxWithCache(tx, needAnte, evmIdx)
+	return app.Application.DeliverTxWithCache(tx)
 }
 
 func NewLocalClient(mtx *sync.Mutex, app types.Application) Client {

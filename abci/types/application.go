@@ -37,7 +37,7 @@ type Application interface {
 	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain w validators/other info from TendermintCore
 	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
-	DeliverTxWithCache(RequestDeliverTx, bool, uint32) ExecuteRes
+	DeliverTxWithCache(RequestDeliverTx) ExecuteRes
 	FinalTx() [][]byte
 	EndBlock(RequestEndBlock) ResponseEndBlock // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                    // Commit the state and return the application Merkle root hash
@@ -53,7 +53,7 @@ var _ Application = (*BaseApplication)(nil)
 type BaseApplication struct {
 }
 
-func (a BaseApplication) DeliverTxWithCache(_ RequestDeliverTx, _ bool, _ uint32) ExecuteRes {
+func (a BaseApplication) DeliverTxWithCache(_ RequestDeliverTx) ExecuteRes {
 	return nil
 }
 
