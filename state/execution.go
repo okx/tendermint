@@ -173,15 +173,15 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		if deltas.Size() == 0 && centerMode && deltaMode == types.ConsumeDelta {
 			if bd, err := getDataFromDatacenter(blockExec.logger, block.Height); err == nil {
 				deltas = bd.Deltas
-				if deltas.Size() != 0 {
-					useDeltas = true
-				}
 			}
+		}
+		if deltas.Size() != 0 {
+			useDeltas = true
 		}
 	}
 
 	blockExec.logger.Info("Begin abci", "len(deltas)", deltas.Size(),
-		"FlagDelta", deltaMode, "FlagCenter", centerMode, "FlagFastQuery", centerMode)
+		"FlagDelta", deltaMode, "FlagCenter", centerMode, "FlagFastQuery", centerMode, "FlagUseDelta", useDeltas)
 
 	trc.pin("abci")
 	startTime := time.Now().UnixNano()
