@@ -161,7 +161,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if deltas == nil {
 		deltas = &types.Deltas{}
 	}
-	deltaLen := deltas.Size()
 	deltaMode := viper.GetString(types.FlagStateDelta)
 	fastQuery := viper.GetBool("fast-query")
 	centerMode := viper.GetBool(types.FlagDataCenter)
@@ -171,14 +170,17 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		batchOK = GetBatch(block.Height)
 	}
 	if batchOK {
-		if deltaLen == 0 && centerMode && deltaMode == types.ConsumeDelta {
+		if deltas.Size() == 0 && centerMode && deltaMode == types.ConsumeDelta {
 			if bd, err := getDataFromDatacenter(blockExec.logger, block.Height); err == nil {
 				deltas = bd.Deltas
+				if deltas.Size() != 0 {
+					useDeltas = true
+				}
 			}
 		}
 	}
 
-	blockExec.logger.Info("Begin abci", "len(deltas)", deltaLen,
+	blockExec.logger.Info("Begin abci", "len(deltas)", deltas.Size(),
 		"FlagDelta", deltaMode, "FlagCenter", centerMode, "FlagFastQuery", centerMode)
 
 	trc.pin("abci")
