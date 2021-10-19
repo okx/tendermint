@@ -358,25 +358,51 @@ func execBlockOnProxyApp(
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
 		return nil, err
 	}
+
+	ts := time.Now()
+	alreadyTx := 0
+
 	asCache := NewAsyncCache()
 	signal := make(chan int, 1)
 	rerunIdx := 0
+	tsss := time.Duration(0)
+	tssWrite := time.Duration(0)
+	tssReRun := time.Duration(0)
+
 	AsyncCb := func(execRes abci.ExecuteRes) {
+		alreadyTx++
+		tsq := time.Now()
+		defer func() {
+			tsss += time.Now().Sub(tsq)
+		}()
 		txReps[execRes.GetCounter()] = execRes
-		for txReps[txIndex] != nil {
+		if alreadyTx == len(block.Txs) {
+			fmt.Println("para end", time.Now().Sub(ts).Seconds())
+		} else {
+			return
+		}
+		for txReps[txIndex] != nil && len(txReps) == len(block.Txs) {
 			res := txReps[txIndex]
-			if res.Conflict(asCache) {
+
+			tss := time.Now()
+			conf := res.Conflict(asCache)
+			if conf {
+				tss := time.Now()
 				rerunIdx++
 				res = proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]})
 				if proxyAppConn.Error() != nil {
 					signal <- 0
 					panic(proxyAppConn.Error())
 				}
+				tssReRun += time.Now().Sub(tss)
+
 			}
 			txRs := res.GetResponse()
 			abciResponses.DeliverTxs[txIndex] = &txRs
 			res.Collect(asCache)
+			tss = time.Now()
 			res.Commit()
+			tssWrite += time.Now().Sub(tss)
 			if abciResponses.DeliverTxs[txIndex].Code == abci.CodeTypeOK {
 				validTxs++
 			} else {
@@ -389,8 +415,10 @@ func execBlockOnProxyApp(
 				PallTxs += len(abciResponses.DeliverTxs) - rerunIdx
 				logger.Info(fmt.Sprintf("BlockHeight %d With Tx %d : Paralle run %d, Conflected tx %d",
 					block.Height, len(block.Txs), len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
+				fmt.Println("handle end para", time.Now().Sub(ts).Seconds())
 				signal <- 0
 				return
+
 			}
 		}
 	}
@@ -399,6 +427,7 @@ func execBlockOnProxyApp(
 		proxyAppConn.PrepareParallelTxs(AsyncCb, transTxsToBytes(block.Txs))
 	}
 
+	tDe := time.Now()
 	// Run txs of block.
 	for _, tx := range block.Txs {
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
@@ -406,6 +435,7 @@ func execBlockOnProxyApp(
 			return nil, err
 		}
 	}
+	fmt.Println("deliverTxs", time.Now().Sub(tDe).Seconds())
 
 	if isAsync && len(block.Txs) > 0 {
 		//waiting for call back
@@ -413,12 +443,17 @@ func execBlockOnProxyApp(
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
 		}
+		tss := time.Now()
 		receiptsLogs := proxyAppConn.EndParallelTxs()
 		for index, v := range receiptsLogs {
 			abciResponses.DeliverTxs[index].Data = v
 		}
+
+		fmt.Println("endlll", block.Height, time.Now().Sub(tss))
 	}
 
+	fmt.Println("execTxsEnd", block.Height, "len(tx)", len(block.Txs), "reRun", rerunIdx, time.Now().Sub(ts).Seconds())
+	fmt.Println("callback", tsss, "tssWrite", tssWrite, "tssReRun", tssReRun)
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
