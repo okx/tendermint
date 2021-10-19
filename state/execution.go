@@ -451,7 +451,7 @@ func execBlockOnProxyApp(
 		fmt.Println("endlll", block.Height, time.Now().Sub(tss))
 	}
 
-	fmt.Println("para", block.Height, time.Now().Sub(ts).Seconds(), tsParaEnd, tsHandleEnd, tssReRun, rerunIdx, len(block.Txs))
+	fmt.Println("para", block.Height, time.Now().Sub(ts).Seconds(), tsParaEnd.Seconds(), tsHandleEnd.Seconds(), tssReRun.Seconds(), rerunIdx, len(block.Txs))
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
