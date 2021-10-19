@@ -1120,6 +1120,7 @@ func (cs *State) enterPrevote(height int64, round int) {
 	// Sign and broadcast vote as necessary
 	cs.doPrevote(height, round)
 
+	cs.tryRunBlock()
 	// Once `addVote` hits any +2/3 prevotes, we will go to PrevoteWait
 	// (so we have more time to try and collect +2/3 prevotes for a single block)
 }
@@ -1566,6 +1567,25 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
+}
+
+func (cs *State) tryRunBlock() {
+	// If a block is locked, ignore the current proposal block.
+	if cs.LockedBlock != nil {
+		return
+	}
+
+	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
+	if block == nil {
+		return
+	}
+
+	if err := cs.blockExec.ValidateBlock(cs.state, block); err != nil {
+		cs.Logger.Info(fmt.Sprintf("try to run an invalid block: %v", err))
+		return
+	}
+
+	cs.blockExec.TryApplyBlock(types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}, block, true)
 }
 
 func (cs *State) pruneBlocks(retainHeight int64) (uint64, error) {

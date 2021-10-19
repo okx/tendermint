@@ -2,6 +2,8 @@ package state
 
 import (
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tendermint/tendermint/trace"
@@ -40,7 +42,23 @@ type BlockExecutor struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	lastExecBlockInfo ExecBlockInfo
+	wg sync.WaitGroup
+
+	mainThreadRunningFlag int32
 }
+
+type ExecBlockInfo struct {
+	blockId types.BlockID
+	abciResponse *ABCIResponses
+	abciError error
+}
+
+var (
+	marlInitBlockFinished sync.Once
+	finishExecInitBlock bool = false
+)
 
 type BlockExecutorOption func(executor *BlockExecutor)
 
@@ -68,6 +86,12 @@ func NewBlockExecutor(
 		evpool:   evpool,
 		logger:   logger,
 		metrics:  NopMetrics(),
+		lastExecBlockInfo: ExecBlockInfo{
+			blockId:      types.BlockID{},
+			abciResponse: nil,
+			abciError:    nil,
+		},
+		mainThreadRunningFlag: 0,
 	}
 
 	for _, option := range options {
@@ -136,8 +160,8 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
-
 	trc := trace.NewTracer()
+	atomic.AddInt32(&blockExec.mainThreadRunningFlag,1)
 
 	defer func() {
 		trace.GetElapsedInfo().AddInfo(trace.Height, fmt.Sprintf("%d", block.Height))
@@ -155,10 +179,13 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
-	if err != nil {
-		return state, 0, ErrProxyAppConn(err)
+	blockExec.TryApplyBlock(blockID, block ,false)
+	blockExec.wg.Wait()
+	execInfo := blockExec.lastExecBlockInfo
+	if execInfo.abciError != nil {
+		return state, 0, execInfo.abciError
 	}
+	abciResponses := execInfo.abciResponse
 
 	fail.Fail() // XXX
 
@@ -172,7 +199,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
-	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
+	err := validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, 0, fmt.Errorf("error in validator updates: %v", err)
 	}
@@ -217,6 +244,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
+
+	marlInitBlockFinished.Do(func() {
+		finishExecInitBlock = true
+	})
+
+	atomic.AddInt32(&blockExec.mainThreadRunningFlag,-1)
 
 	return state, retainHeight, nil
 }
@@ -278,6 +311,57 @@ func (blockExec *BlockExecutor) Commit(
 	}
 
 	return res.Data, res.RetainHeight, err
+}
+
+func (blockExec *BlockExecutor) execBlock(
+	blockID types.BlockID,
+	block *types.Block,
+) {
+	defer func() {
+		if r := recover(); r != nil {
+			blockExec.lastExecBlockInfo.abciResponse = nil
+			blockExec.lastExecBlockInfo.abciError = r.(error)
+		}
+	}()
+
+	blockExec.lastExecBlockInfo.blockId = blockID
+	resp , err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	if err != nil {
+		resp = nil
+		err = ErrProxyAppConn(err)
+	}
+
+	blockExec.lastExecBlockInfo.abciResponse = resp
+	blockExec.lastExecBlockInfo.abciError = err
+}
+
+func (blockExec *BlockExecutor) TryApplyBlock(
+	blockID types.BlockID,
+	block *types.Block,
+	asyncModel bool,
+) {
+	fmt.Println("Is Async model: ", asyncModel)
+	if asyncModel && blockExec.mainThreadRunningFlag > 0 {
+		return
+	}
+
+	if !blockID.Equals(blockExec.lastExecBlockInfo.blockId) {
+		// reset checkState
+		if finishExecInitBlock {
+			blockExec.proxyApp.SetOptionSync(abci.RequestSetOption{
+				Key: "ResetDeliverState",
+			})
+		}
+		blockExec.wg.Wait() // wait the last async model thread exit
+	} else {
+		return
+	}
+
+	blockExec.wg.Add(1)
+	go func() {
+		defer blockExec.wg.Done()
+		blockExec.execBlock(blockID, block)
+	}()
 }
 
 //---------------------------------------------------------
