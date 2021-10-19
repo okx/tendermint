@@ -384,7 +384,6 @@ func execBlockOnProxyApp(
 		for txReps[txIndex] != nil && len(txReps) == len(block.Txs) {
 			res := txReps[txIndex]
 
-			tss := time.Now()
 			conf := res.Conflict(asCache)
 			if conf {
 				tss := time.Now()
@@ -397,10 +396,10 @@ func execBlockOnProxyApp(
 				tssReRun += time.Now().Sub(tss)
 
 			}
+			tss := time.Now()
 			txRs := res.GetResponse()
 			abciResponses.DeliverTxs[txIndex] = &txRs
 			res.Collect(asCache)
-			tss = time.Now()
 			res.Commit()
 			tssWrite += time.Now().Sub(tss)
 			if abciResponses.DeliverTxs[txIndex].Code == abci.CodeTypeOK {
@@ -448,11 +447,9 @@ func execBlockOnProxyApp(
 		for index, v := range receiptsLogs {
 			abciResponses.DeliverTxs[index].Data = v
 		}
-
-		fmt.Println("endlll", block.Height, time.Now().Sub(tss))
 	}
 
-	fmt.Println("para", block.Height, time.Now().Sub(ts).Seconds(), tsParaEnd.Seconds(), tsHandleEnd.Seconds(), tssReRun.Seconds(), rerunIdx, len(block.Txs))
+	fmt.Println("para", block.Height, time.Now().Sub(ts).Milliseconds(), tsParaEnd.Milliseconds(), tsHandleEnd.Milliseconds(), tssReRun.Milliseconds(), tssWrite.Milliseconds(), rerunIdx, len(block.Txs))
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
