@@ -377,6 +377,7 @@ func execBlockOnProxyApp(
 		txReps[execRes.GetCounter()] = execRes
 		if alreadyTx == len(block.Txs) {
 			tsParaEnd = time.Now().Sub(ts)
+			fmt.Println("begin-----")
 		} else {
 			return
 		}
@@ -422,9 +423,9 @@ func execBlockOnProxyApp(
 		}
 	}
 
-	if isAsync {
-		proxyAppConn.PrepareParallelTxs(AsyncCb, transTxsToBytes(block.Txs))
-	}
+	//if isAsync {
+	proxyAppConn.PrepareParallelTxs(AsyncCb, transTxsToBytes(block.Txs))
+	//}
 
 	tDe := time.Now()
 	// Run txs of block.
