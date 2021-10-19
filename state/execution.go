@@ -365,19 +365,18 @@ func execBlockOnProxyApp(
 	asCache := NewAsyncCache()
 	signal := make(chan int, 1)
 	rerunIdx := 0
-	tsss := time.Duration(0)
+	tsParaEnd := time.Duration(0)
+	tsHandleEnd := time.Duration(0)
+
 	tssWrite := time.Duration(0)
 	tssReRun := time.Duration(0)
 
 	AsyncCb := func(execRes abci.ExecuteRes) {
 		alreadyTx++
-		tsq := time.Now()
-		defer func() {
-			tsss += time.Now().Sub(tsq)
-		}()
+
 		txReps[execRes.GetCounter()] = execRes
 		if alreadyTx == len(block.Txs) {
-			fmt.Println("para end", time.Now().Sub(ts).Seconds())
+			tsParaEnd = time.Now().Sub(ts)
 		} else {
 			return
 		}
@@ -415,7 +414,7 @@ func execBlockOnProxyApp(
 				PallTxs += len(abciResponses.DeliverTxs) - rerunIdx
 				logger.Info(fmt.Sprintf("BlockHeight %d With Tx %d : Paralle run %d, Conflected tx %d",
 					block.Height, len(block.Txs), len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
-				fmt.Println("handle end para", time.Now().Sub(ts).Seconds())
+				tsHandleEnd = time.Now().Sub(ts)
 				signal <- 0
 				return
 
@@ -452,8 +451,7 @@ func execBlockOnProxyApp(
 		fmt.Println("endlll", block.Height, time.Now().Sub(tss))
 	}
 
-	fmt.Println("execTxsEnd", block.Height, "len(tx)", len(block.Txs), "reRun", rerunIdx, time.Now().Sub(ts).Seconds())
-	fmt.Println("callback", tsss, "tssWrite", tssWrite, "tssReRun", tssReRun)
+	fmt.Println("para", block.Height, time.Now().Sub(ts).Seconds(), tsParaEnd, tsHandleEnd, tssReRun, rerunIdx, len(block.Txs))
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
