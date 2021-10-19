@@ -442,7 +442,6 @@ func execBlockOnProxyApp(
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
 		}
-		tss := time.Now()
 		receiptsLogs := proxyAppConn.EndParallelTxs()
 		for index, v := range receiptsLogs {
 			abciResponses.DeliverTxs[index].Data = v
