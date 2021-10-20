@@ -449,7 +449,8 @@ func execBlockOnProxyApp(
 		}
 	}
 
-	fmt.Println("para", block.Height, time.Now().Sub(ts).Microseconds(), tsParaEnd.Microseconds(), tsHandleEnd.Microseconds(), "reRunTs", tssReRun.Microseconds(), "writeTs", tssWrite.Microseconds(), rerunIdx, len(block.Txs))
+	fmt.Println("para-height", block.Height, "Txts", time.Now().Sub(ts).Microseconds(), "first", tsParaEnd.Microseconds(), "second", tsHandleEnd.Microseconds(), "reRunTs", tssReRun.Microseconds(), "writeTs", tssWrite.Microseconds(), "runRunCnt", rerunIdx, "len(txs)",
+		len(block.Txs))
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
