@@ -305,11 +305,6 @@ func transTxsToBytes(txs types.Txs) [][]byte {
 	return ret
 }
 
-var (
-	AllTxs  int
-	PallTxs int
-)
-
 //---------------------------------------------------------
 // Helper functions for executing blocks and updating state
 

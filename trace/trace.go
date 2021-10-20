@@ -17,8 +17,8 @@ const (
 	CommitRound = "CommitRound"
 	Round       = "Round"
 	Evm         = "Evm"
-	Iavl         = "Iavl"
-	DeliverTxs   = "DeliverTxs"
+	Iavl        = "Iavl"
+	DeliverTxs  = "DeliverTxs"
 )
 
 type IElapsedTimeInfos interface {

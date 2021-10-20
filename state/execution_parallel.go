@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
@@ -64,8 +63,6 @@ func execBlockOnProxyAppAsync(
 
 			txIndex++
 			if txIndex == len(block.Txs) {
-				AllTxs += len(block.Txs)
-				PallTxs += len(abciResponses.DeliverTxs) - rerunIdx
 				logger.Info(fmt.Sprintf("BlockHeight %d With Tx %d : Paralle run %d, Conflected tx %d",
 					block.Height, len(block.Txs), len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
 				signal <- 0
