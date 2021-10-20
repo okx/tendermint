@@ -163,10 +163,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	startTime := time.Now().UnixNano()
+
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db, blockExec.isAsync)
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)
 	}
+	log.SetStart(false)
 
 	fail.Fail() // XXX
 
@@ -379,6 +381,9 @@ func execBlockOnProxyApp(
 		if alreadyTx == len(block.Txs) {
 			tsParaEnd = time.Now().Sub(ts)
 			fmt.Println("begin-----")
+			if block.Height == 5810778 {
+				log.SetStart(true)
+			}
 		} else {
 			return
 		}
