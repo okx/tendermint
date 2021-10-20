@@ -40,6 +40,8 @@ type BlockExecutor struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	isAsync bool
 }
 
 type BlockExecutorOption func(executor *BlockExecutor)
@@ -68,6 +70,7 @@ func NewBlockExecutor(
 		evpool:   evpool,
 		logger:   logger,
 		metrics:  NopMetrics(),
+		isAsync:  false,
 	}
 
 	for _, option := range options {
@@ -77,6 +80,10 @@ func NewBlockExecutor(
 	return res
 }
 
+func (blockExec *BlockExecutor) SetIsAsyncDeliverTx(sw bool) {
+	blockExec.isAsync = sw
+
+}
 func (blockExec *BlockExecutor) DB() dbm.DB {
 	return blockExec.db
 }
@@ -156,7 +163,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	var abciResponses *ABCIResponses
+	var err error
+	if blockExec.isAsync {
+		abciResponses, err = execBlockOnProxyAppAsync(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	} else {
+		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	}
+
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)
 	}
@@ -281,6 +295,14 @@ func (blockExec *BlockExecutor) Commit(
 	}
 
 	return res.Data, res.RetainHeight, err
+}
+
+func transTxsToBytes(txs types.Txs) [][]byte {
+	ret := make([][]byte, 0)
+	for _, v := range txs {
+		ret = append(ret, v)
+	}
+	return ret
 }
 
 //---------------------------------------------------------
