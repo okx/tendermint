@@ -163,7 +163,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db, blockExec.isAsync)
+	var abciResponses *ABCIResponses
+	var err error
+	if blockExec.isAsync {
+		abciResponses, err = execBlockOnProxyAppAsync(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	} else {
+		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	}
+
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)
 	}
@@ -313,20 +320,14 @@ func execBlockOnProxyApp(
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
 	stateDB dbm.DB,
-	isAsync bool,
 ) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
-
-	txReps := make([]abci.ExecuteRes, len(block.Txs))
 	abciResponses := NewABCIResponses(block)
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
-		if isAsync {
-			return
-		}
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
 			// TODO: make use of res.Log
 			// TODO: make use of this info
@@ -358,64 +359,12 @@ func execBlockOnProxyApp(
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
 		return nil, err
 	}
-	asCache := NewAsyncCache()
-	signal := make(chan int, 1)
-	rerunIdx := 0
-	AsyncCb := func(execRes abci.ExecuteRes) {
-		txReps[execRes.GetCounter()] = execRes
-		for txReps[txIndex] != nil {
-			res := txReps[txIndex]
-			if res.Conflict(asCache) {
-				rerunIdx++
-				res = proxyAppConn.DeliverTxWithCache(abci.RequestDeliverTx{Tx: block.Txs[res.GetCounter()]})
-				if proxyAppConn.Error() != nil {
-					signal <- 0
-					panic(proxyAppConn.Error())
-				}
-			}
-			txRs := res.GetResponse()
-			abciResponses.DeliverTxs[txIndex] = &txRs
-			res.Collect(asCache)
-			res.Commit()
-			if abciResponses.DeliverTxs[txIndex].Code == abci.CodeTypeOK {
-				validTxs++
-			} else {
-				invalidTxs++
-			}
-
-			txIndex++
-			if txIndex == len(block.Txs) {
-				AllTxs += len(block.Txs)
-				PallTxs += len(abciResponses.DeliverTxs) - rerunIdx
-				logger.Info(fmt.Sprintf("BlockHeight %d With Tx %d : Paralle run %d, Conflected tx %d",
-					block.Height, len(block.Txs), len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
-				signal <- 0
-				return
-			}
-		}
-	}
-
-	if isAsync {
-		proxyAppConn.PrepareParallelTxs(AsyncCb, transTxsToBytes(block.Txs))
-	}
 
 	// Run txs of block.
 	for _, tx := range block.Txs {
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
-		}
-	}
-
-	if isAsync && len(block.Txs) > 0 {
-		//waiting for call back
-		<-signal
-		if err := proxyAppConn.Error(); err != nil {
-			return nil, err
-		}
-		receiptsLogs := proxyAppConn.EndParallelTxs()
-		for index, v := range receiptsLogs {
-			abciResponses.DeliverTxs[index].Data = v
 		}
 	}
 
@@ -612,7 +561,7 @@ func ExecCommitBlock(
 	logger log.Logger,
 	stateDB dbm.DB,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB, false)
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err
