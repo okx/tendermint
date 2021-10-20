@@ -167,8 +167,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	batchOK := true
 	useDeltas := false
 	if fastQuery && deltaMode == types.ConsumeDelta {
-		// GetBatch get watchDB batch data from DataCenter in exchain.watcher
-		batchOK = GetBatch(block.Height)
+		if centerMode {
+			// GetBatch get watchDB batch data from DataCenter in exchain.watcher
+			batchOK = GetBatch(block.Height)
+		}
 	}
 	// only when getting batch success, can use deltas
 	// otherwise, do deliverTx
@@ -257,6 +259,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
+
+	// todo GetBatchP2P and save to DB
 
 	trc.pin("evpool")
 

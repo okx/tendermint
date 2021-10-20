@@ -355,8 +355,7 @@ func NewDeltaStore(db dbm.DB) *DeltaStore {
 }
 
 // SaveDeltas persists the given deltas to the underlying db.
-// todo make new store(DeltasStore) and move Deltas from BlockStore.db to DeltasStore.db
-func (bs *DeltaStore) SaveDeltas(deltas *types.Deltas, height int64) {
+func (ds *DeltaStore) SaveDeltas(deltas *types.Deltas, height int64) {
 	if deltas == nil {
 		return
 	}
@@ -365,12 +364,12 @@ func (bs *DeltaStore) SaveDeltas(deltas *types.Deltas, height int64) {
 		keyHeight = height
 		deltas.Height = height
 	}
-	bs.db.Set(calcDeltasKey(keyHeight), cdc.MustMarshalBinaryBare(deltas))
+	ds.db.Set(calcDeltasKey(keyHeight), cdc.MustMarshalBinaryBare(deltas))
 }
 
-func (bs *DeltaStore) LoadDeltas(height int64) *types.Deltas {
+func (ds *DeltaStore) LoadDeltas(height int64) *types.Deltas {
 	var deltas = new(types.Deltas)
-	bz, err := bs.db.Get(calcDeltasKey(height))
+	bz, err := ds.db.Get(calcDeltasKey(height))
 	if err != nil {
 		panic(err)
 	}
@@ -385,6 +384,60 @@ func (bs *DeltaStore) LoadDeltas(height int64) *types.Deltas {
 }
 
 //-----------------------------------------------------------------------------
+/*
+WatchStore is a simple low level store for watchDB, batch and dirtyAccount.
+Now base and height is invalid
+*/
+type WatchStore struct {
+	db dbm.DB
+
+	mtx    sync.RWMutex
+	base   int64
+	height int64
+}
+
+// NewWatchStore returns a new WatchStore with the given DB,
+// initialized to the last height that was committed to the DB.
+func NewWatchStore(db dbm.DB) *WatchStore {
+	return &WatchStore{
+		db: db,
+	}
+}
+
+// SaveWatch persists the given watchDB data to the underlying db.
+func (ws *WatchStore) SaveWatch(wd *types.WatchData, height int64) {
+	if wd == nil {
+		return
+	}
+	keyHeight := wd.Height
+	if keyHeight == 0 {
+		keyHeight = height
+		wd.Height = height
+	}
+	ws.db.Set(calcWatchKey(keyHeight), cdc.MustMarshalBinaryBare(wd))
+}
+
+func (ws *WatchStore) LoadWatch(height int64) *types.WatchData {
+	var wd = new(types.WatchData)
+	bz, err := ws.db.Get(calcWatchKey(height))
+	if err != nil {
+		panic(err)
+	}
+	if len(bz) == 0 {
+		return nil
+	}
+	err = cdc.UnmarshalBinaryBare(bz, wd)
+	if err != nil {
+		panic(errors.Wrap(err, "Error reading deltas"))
+	}
+	return wd
+}
+
+//-----------------------------------------------------------------------------
+
+func calcWatchKey(height int64) []byte {
+	return []byte(fmt.Sprintf("WH:%v", height))
+}
 
 func calcDeltasKey(height int64) []byte {
 	return []byte(fmt.Sprintf("DH:%v", height))

@@ -54,4 +54,23 @@ func (d *Deltas) Unmarshal(bs []byte) error {
 type WatchData struct {
 	DirtyAccount []byte `json:"dirty_account"`
 	Batches      []byte `json:"batches"`
+	Height       int64  `json:"height"`
+}
+
+// Size returns size of the deltas in bytes.
+func (wd *WatchData) Size() int {
+	if wd == nil {
+		return 0
+	}
+	return len(wd.DirtyAccount) + len(wd.Batches)
+}
+
+// Marshal returns the amino encoding.
+func (wd *WatchData) Marshal() ([]byte, error) {
+	return cdc.MarshalBinaryBare(wd)
+}
+
+// Unmarshal deserializes from amino encoded form.
+func (wd *WatchData) Unmarshal(bs []byte) error {
+	return cdc.UnmarshalBinaryBare(bs, wd)
 }
