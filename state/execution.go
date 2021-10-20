@@ -394,7 +394,7 @@ func execBlockOnProxyApp(
 					signal <- 0
 					panic(proxyAppConn.Error())
 				}
-				fmt.Println("runRunIndex", time.Now().Sub(tss).Microseconds())
+				fmt.Println("runRunIndex", res.GetCounter(), time.Now().Sub(tss).Microseconds())
 				tssReRun += time.Now().Sub(tss)
 
 			}
