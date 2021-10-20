@@ -16,8 +16,8 @@ const (
 	Elapsed      = "Elapsed"
 	CommitRound  = "CommitRound"
 	Round        = "Round"
+	Evm          = "Evm"
 
-	Evm 		= "Evm"
 )
 
 type IElapsedTimeInfos interface {
@@ -32,15 +32,6 @@ func SetInfoObject(e IElapsedTimeInfos)  {
 }
 
 var elapsedInfo IElapsedTimeInfos = &EmptyTimeInfo{}
-
-type EmptyTimeInfo struct {
-}
-
-func (e *EmptyTimeInfo) AddInfo(key string, info string) {
-}
-
-func (e *EmptyTimeInfo) Dump(logger log.Logger) {
-}
 
 func GetElapsedInfo() IElapsedTimeInfos {
 	return elapsedInfo
@@ -119,3 +110,11 @@ func (t *Tracer) Reset() {
 }
 
 
+type EmptyTimeInfo struct {
+}
+
+func (e *EmptyTimeInfo) AddInfo(key string, info string) {
+}
+
+func (e *EmptyTimeInfo) Dump(logger log.Logger) {
+}
