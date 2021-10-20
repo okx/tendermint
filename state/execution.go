@@ -269,6 +269,7 @@ func (blockExec *BlockExecutor) Commit(
 		"height", block.Height,
 		"txs", len(block.Txs),
 		"appHash", fmt.Sprintf("%X", res.Data),
+		"appHash", fmt.Sprintf("%X", state.LastResultsHash),
 	)
 
 	// Update mempool.
