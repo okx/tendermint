@@ -167,21 +167,28 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	batchOK := true
 	useDeltas := false
 	if fastQuery && deltaMode == types.ConsumeDelta {
+		// GetBatch get watchDB batch data from DataCenter in exchain.watcher
 		batchOK = GetBatch(block.Height)
 	}
+	// only when getting batch success, can use deltas
+	// otherwise, do deliverTx
 	if batchOK {
+		// if len(deltas) != 0, use deltas from p2p
+		// otherwise, get state-deltas from DataCenter
 		if deltas.Size() == 0 && centerMode && deltaMode == types.ConsumeDelta {
 			if bd, err := getDataFromDatacenter(blockExec.logger, block.Height); err == nil {
 				deltas = bd.Deltas
 			}
 		}
+		// when deltas not empty, use deltas
+		// otherwise, do deliverTx
 		if deltas.Size() != 0 {
 			useDeltas = true
 		}
 	}
 
 	blockExec.logger.Info("Begin abci", "len(deltas)", deltas.Size(),
-		"FlagDelta", deltaMode, "FlagCenter", centerMode, "FlagFastQuery", centerMode, "FlagUseDelta", useDeltas)
+		"FlagDelta", deltaMode, "FlagCenter", centerMode, "FlagFastQuery", fastQuery, "FlagUseDelta", useDeltas)
 
 	trc.pin("abci")
 	startTime := time.Now().UnixNano()
