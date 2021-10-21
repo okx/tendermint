@@ -429,19 +429,23 @@ func execBlockOnProxyApp(
 		}
 	}
 
+	tsP := time.Now()
 	//if isAsync {
 	proxyAppConn.PrepareParallelTxs(AsyncCb, transTxsToBytes(block.Txs))
 	//}
+	fmt.Println("prets", time.Now().Sub(tsP).Microseconds())
 	if block.Height == 5810778 && !isAsync {
 		log.SetStart(true)
 	}
 	tDe := time.Now()
 	// Run txs of block.
 	for _, tx := range block.Txs {
+		ts := time.Now()
 		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
 		}
+		fmt.Println("tsEnd", time.Now().Sub(ts).Microseconds())
 	}
 	fmt.Println("deliverTxs", time.Now().Sub(tDe).Seconds(), block.Height, isAsync)
 
