@@ -445,7 +445,9 @@ func execBlockOnProxyApp(
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
 		}
-		fmt.Println("tsEnd", time.Now().Sub(ts).Microseconds())
+		if log.Display() {
+			fmt.Println("tsEnd", time.Now().Sub(ts).Microseconds())
+		}
 	}
 	fmt.Println("deliverTxs", time.Now().Sub(tDe).Seconds(), block.Height, isAsync)
 
