@@ -318,7 +318,6 @@ func execBlockOnProxyApp(
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
 	stateDB dbm.DB,
-	isAsync bool,
 ) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
@@ -329,9 +328,6 @@ func execBlockOnProxyApp(
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
-		if isAsync {
-			return
-		}
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
 			// TODO: make use of res.Log
 			// TODO: make use of this info
@@ -419,8 +415,6 @@ func execBlockOnProxyApp(
 
 			txIndex++
 			if txIndex == len(block.Txs) {
-				AllTxs += len(block.Txs)
-				PallTxs += len(abciResponses.DeliverTxs) - rerunIdx
 				logger.Info(fmt.Sprintf("BlockHeight %d With Tx %d : Paralle run %d, Conflected tx %d",
 					block.Height, len(block.Txs), len(abciResponses.DeliverTxs)-rerunIdx, rerunIdx))
 				tsHandleEnd = time.Now().Sub(ts)
@@ -436,7 +430,7 @@ func execBlockOnProxyApp(
 	proxyAppConn.PrepareParallelTxs(AsyncCb, transTxsToBytes(block.Txs))
 	//}
 	fmt.Println("prets", time.Now().Sub(tsP).Microseconds())
-	if block.Height == 5810778 && !isAsync {
+	if block.Height == 5810778 {
 		log.SetStart(true)
 	}
 	tDe := time.Now()
@@ -451,9 +445,9 @@ func execBlockOnProxyApp(
 			fmt.Println("tsEnd", time.Now().Sub(ts).Microseconds())
 		}
 	}
-	fmt.Println("deliverTxs", time.Now().Sub(tDe).Seconds(), block.Height, isAsync)
+	fmt.Println("deliverTxs", time.Now().Sub(tDe).Seconds(), block.Height)
 
-	if isAsync && len(block.Txs) > 0 {
+	if len(block.Txs) > 0 {
 		//waiting for call back
 		<-signal
 		if err := proxyAppConn.Error(); err != nil {
@@ -660,7 +654,7 @@ func ExecCommitBlock(
 	logger log.Logger,
 	stateDB dbm.DB,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB, false)
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err
