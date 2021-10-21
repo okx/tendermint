@@ -164,7 +164,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	startTime := time.Now().UnixNano()
 
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db, blockExec.isAsync)
+	var abciResponses *ABCIResponses
+	var err error
+	if blockExec.isAsync {
+		abciResponses, err = execBlockOnProxyAppAsync(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	} else {
+		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	}
+
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)
 	}
@@ -300,11 +307,6 @@ func transTxsToBytes(txs types.Txs) [][]byte {
 	}
 	return ret
 }
-
-var (
-	AllTxs  int
-	PallTxs int
-)
 
 //---------------------------------------------------------
 // Helper functions for executing blocks and updating state
