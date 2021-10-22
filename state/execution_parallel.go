@@ -9,6 +9,10 @@ import (
 	dbm "github.com/tendermint/tm-db"
 )
 
+var (
+	FlagParalleledTx = "paralleled-tx"
+)
+
 func execBlockOnProxyAppAsync(
 	logger log.Logger,
 	proxyAppConn proxy.AppConnConsensus,
@@ -71,6 +75,11 @@ func execBlockOnProxyAppAsync(
 		}
 	}
 
+	// avoid panic when handle callback
+	proxyCb := func(req *abci.Request, res *abci.Response) {
+		return
+	}
+	proxyAppConn.SetResponseCallback(proxyCb)
 	proxyAppConn.PrepareParallelTxs(AsyncCb, transTxsToBytes(block.Txs))
 
 	// Run txs of block.
@@ -89,7 +98,9 @@ func execBlockOnProxyAppAsync(
 		}
 		receiptsLogs := proxyAppConn.EndParallelTxs()
 		for index, v := range receiptsLogs {
-			abciResponses.DeliverTxs[index].Data = v
+			if len(v) != 0 { // only update evm tx result
+				abciResponses.DeliverTxs[index].Data = v
+			}
 		}
 	}
 
