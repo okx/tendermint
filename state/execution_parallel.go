@@ -98,7 +98,9 @@ func execBlockOnProxyAppAsync(
 		}
 		receiptsLogs := proxyAppConn.EndParallelTxs()
 		for index, v := range receiptsLogs {
-			abciResponses.DeliverTxs[index].Data = v
+			if len(v) != 0 { // only update evm tx result
+				abciResponses.DeliverTxs[index].Data = v
+			}
 		}
 	}
 
