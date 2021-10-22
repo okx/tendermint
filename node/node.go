@@ -67,6 +67,13 @@ func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
 }
 
+// DefaultSplitBlockDBProvider returns a block database using the DBBackend and DBDir
+// specified in the ctx.Config.
+func DefaultSplitBlockDBProvider(ctx *DBContext) (dbm.DB, error) {
+	dbType := dbm.BackendType(ctx.Config.DBBackend)
+	return store.NewBlockDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
+}
+
 // GenesisDocProvider returns a GenesisDoc.
 // It allows the GenesisDoc to be pulled from sources other than the
 // filesystem, for instance from a distributed key-value store cluster.
@@ -187,7 +194,11 @@ type Node struct {
 
 func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
-	blockStoreDB, err = dbProvider(&DBContext{"blockstore", config})
+	if abci.SplitBlockDB() {
+		blockStoreDB, err = DefaultSplitBlockDBProvider(&DBContext{"blockstore", config})
+	} else {
+		blockStoreDB, err = dbProvider(&DBContext{"blockstore", config})
+	}
 	if err != nil {
 		return
 	}
