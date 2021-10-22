@@ -9,6 +9,10 @@ import (
 	dbm "github.com/tendermint/tm-db"
 )
 
+var (
+	FlagParalleledTx = "paralleled-tx"
+)
+
 func execBlockOnProxyAppAsync(
 	logger log.Logger,
 	proxyAppConn proxy.AppConnConsensus,
@@ -71,6 +75,11 @@ func execBlockOnProxyAppAsync(
 		}
 	}
 
+	// Execute transactions and get hash.
+	proxyCb := func(req *abci.Request, res *abci.Response) {
+		return
+	}
+	proxyAppConn.SetResponseCallback(proxyCb)
 	proxyAppConn.PrepareParallelTxs(AsyncCb, transTxsToBytes(block.Txs))
 
 	// Run txs of block.

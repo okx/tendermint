@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/trace"
-
+	"github.com/spf13/viper"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/trace"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
 )
@@ -70,7 +70,7 @@ func NewBlockExecutor(
 		evpool:   evpool,
 		logger:   logger,
 		metrics:  NopMetrics(),
-		isAsync:  false,
+		isAsync:  viper.GetBool(FlagParalleledTx),
 	}
 
 	for _, option := range options {
