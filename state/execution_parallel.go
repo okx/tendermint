@@ -75,7 +75,7 @@ func execBlockOnProxyAppAsync(
 		}
 	}
 
-	// Execute transactions and get hash.
+	// avoid panic when handle callback
 	proxyCb := func(req *abci.Request, res *abci.Response) {
 		return
 	}
