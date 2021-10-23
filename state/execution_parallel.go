@@ -1,7 +1,6 @@
 package state
 
 import (
-	"fmt"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
@@ -42,9 +41,7 @@ func execBlockOnProxyAppAsync(
 		return
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
-	fmt.Println("4999--kaishi")
-	proxyAppConn.PrepareParallelTxs(nil, transTxsToBytes(block.Txs))
-	fmt.Println("51---结束")
+	abciResponses.DeliverTxs = proxyAppConn.PrepareParallelTxs(transTxsToBytes(block.Txs))
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {

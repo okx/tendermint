@@ -3,7 +3,7 @@ package abcicli
 import (
 	"sync"
 
-	types "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -160,20 +160,8 @@ func (app *localClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	)
 }
 
-func (app *localClient) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
-	app.Application.PrepareParallelTxs(cb, txs)
-}
-
-func (app *localClient) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-	return app.Application.DeliverTxWithCache(tx)
-}
-
-func (app *localClient) EndParallelTxs() [][]byte {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-	return app.Application.EndParallelTxs()
+func (app *localClient) PrepareParallelTxs(txs [][]byte) []*types.ResponseDeliverTx {
+	return app.Application.PrepareParallelTxs(txs)
 }
 
 //-------------------------------------------------------

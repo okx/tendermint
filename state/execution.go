@@ -360,7 +360,7 @@ func execBlockOnProxyApp(
 
 	ts := time.Now()
 	tsP := time.Now()
-	proxyAppConn.PrepareParallelTxs(nil, transTxsToBytes(block.Txs))
+	_ = proxyAppConn.PrepareParallelTxs(transTxsToBytes(block.Txs))
 	fmt.Println("prets", time.Now().Sub(tsP).Microseconds())
 	if block.Height == 5810778 {
 		log.SetStart(true)

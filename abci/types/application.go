@@ -5,8 +5,8 @@ import (
 )
 
 type AsyncCacheInterface interface {
-	Push(key, value []byte)
-	Has(key []byte) bool
+	Push(txIndex int, key, value []byte)
+	Has(base, curr int, key []byte) bool
 }
 
 type ExecuteRes interface {
@@ -41,9 +41,7 @@ type Application interface {
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
 
-	PrepareParallelTxs(cb AsyncCallBack, txs [][]byte)
-	DeliverTxWithCache(RequestDeliverTx) ExecuteRes
-	EndParallelTxs() [][]byte
+	PrepareParallelTxs(txs [][]byte) []*ResponseDeliverTx
 }
 
 //-------------------------------------------------------
@@ -94,14 +92,7 @@ func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
 	return ResponseEndBlock{}
 }
 
-func (a BaseApplication) PrepareParallelTxs(_ AsyncCallBack, _ [][]byte) {
-}
-
-func (a BaseApplication) DeliverTxWithCache(_ RequestDeliverTx) ExecuteRes {
-	return nil
-}
-
-func (a BaseApplication) EndParallelTxs() [][]byte {
+func (a BaseApplication) PrepareParallelTxs(_ [][]byte) []*ResponseDeliverTx {
 	return nil
 }
 
