@@ -1,6 +1,7 @@
 package state
 
 import (
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -358,10 +359,7 @@ func execBlockOnProxyApp(
 		return nil, err
 	}
 
-	ts := time.Now()
-	tsP := time.Now()
 	_ = proxyAppConn.PrepareParallelTxs(transTxsToBytes(block.Txs))
-	fmt.Println("prets", time.Now().Sub(tsP).Microseconds())
 	if block.Height == 5810778 {
 		log.SetStart(true)
 	}
@@ -378,7 +376,6 @@ func execBlockOnProxyApp(
 		}
 	}
 
-	fmt.Println("para-height", block.Height, "Txts", time.Now().Sub(ts).Microseconds(), "len(txs)", len(block.Txs))
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
@@ -505,6 +502,9 @@ func updateState(
 	// TODO: allow app to upgrade version
 	nextVersion := state.Version
 
+	for k, v := range abciResponses.DeliverTxs {
+		fmt.Println("deliverTxs---", k, v.Code, hex.EncodeToString(v.Data))
+	}
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
 	return State{
