@@ -1,7 +1,7 @@
 package types // nolint: goimports
 
 import (
-	context "golang.org/x/net/context"
+	"golang.org/x/net/context"
 )
 
 type AsyncCacheInterface interface {
@@ -13,6 +13,8 @@ type ExecuteRes interface {
 	GetResponse() ResponseDeliverTx
 	Conflict(AsyncCacheInterface) bool
 	GetCounter() uint32
+	GetBase() int
+
 	Commit()
 	Collect(AsyncCacheInterface)
 }
