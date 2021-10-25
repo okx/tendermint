@@ -138,7 +138,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
 func (blockExec *BlockExecutor) ApplyBlock(
-	state State, blockID types.BlockID, block *types.Block, deltas *types.Deltas,
+	state State, blockID types.BlockID, block *types.Block, deltas *types.Deltas, wd *types.WatchData,
 ) (State, int64, error) {
 	trc := &Tracer{}
 	defer func() {
@@ -162,15 +162,20 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		deltas = &types.Deltas{}
 	}
 	deltaMode := viper.GetString(types.FlagStateDelta)
-	fastQuery := viper.GetBool("fast-query")
+	fastQuery := viper.GetBool(types.FlagFastQuery)
 	centerMode := viper.GetBool(types.FlagDataCenter)
 	batchOK := true
 	useDeltas := false
 	if fastQuery && deltaMode == types.ConsumeDelta {
-		if centerMode {
-			// GetBatch get watchDB batch data from DataCenter in exchain.watcher
-			batchOK = GetBatch(block.Height)
+		if wd.Size() == 0 {
+			if centerMode {
+				// GetBatch get watchDB batch data from DataCenter in exchain.watcher
+				batchOK = GetBatch(block.Height)
+			} else {
+				batchOK = false
+			}
 		}
+
 	}
 	// only when getting batch success, can use deltas
 	// otherwise, do deliverTx
@@ -184,7 +189,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		}
 		// when deltas not empty, use deltas
 		// otherwise, do deliverTx
-		if deltas.Size() != 0 {
+		if deltas.Size() != 0 && deltaMode == types.ConsumeDelta {
 			useDeltas = true
 		}
 	}
@@ -260,7 +265,11 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
 
-	// todo GetBatchP2P and save to DB
+	if !fastQuery {
+		wd = nil
+	} else if !useDeltas {
+		// todo deliverTx WatchData and let wd =
+	}
 
 	trc.pin("evpool")
 

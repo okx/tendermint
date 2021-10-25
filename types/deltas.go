@@ -17,6 +17,9 @@ const (
 	FlagDataCenter = "data-center-mode"
 	DataCenterUrl  = "data-center-url"
 	DataCenterStr  = "dataCenter"
+
+	// fast-query
+	FlagFastQuery = "fast-query"
 )
 
 type BlockDelta struct {
