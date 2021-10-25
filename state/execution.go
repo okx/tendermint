@@ -170,7 +170,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		if wd.Size() == 0 {
 			if centerMode {
 				// GetBatch get watchDB batch data from DataCenter in exchain.watcher
-				batchOK = GetBatch(block.Height)
+				batchOK = GetCenterBatch(block.Height)
 			} else {
 				batchOK = false
 			}
@@ -267,8 +267,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	if !fastQuery {
 		wd = nil
-	} else if !useDeltas {
-		// todo deliverTx WatchData and let wd =
+	} else {
+		if !useDeltas {
+			// get deliverTx WatchData and let wd = it
+			wd = GetWatchData()
+		} else {
+			// commitBatch with wd in exchain
+			UseWatchData(wd)
+		}
 	}
 
 	trc.pin("evpool")
