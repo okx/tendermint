@@ -721,6 +721,10 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	// size per tx, and set the initial capacity based off of that.
 	// txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max/mem.avgTxSize))
 	txs := make([]types.Tx, 0, mem.txs.Len())
+	defer func() {
+		mem.logger.Info("ReapMaxBytesMaxGas", "ProposingHeight", mem.height+1,
+			"MempoolTxs", mem.txs.Len(), "ReapTxs", len(txs))
+	}()
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 		// Check total size requirement
