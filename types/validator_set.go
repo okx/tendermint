@@ -560,7 +560,7 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 // are not allowed and will trigger an error if present in 'changes'.
 // The 'allowDeletes' flag is set to false by NewValidatorSet() and to true by UpdateWithChangeSet().
 func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes bool) error {
-
+	return nil
 	if len(changes) == 0 {
 		return nil
 	}
