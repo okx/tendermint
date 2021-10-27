@@ -12,6 +12,7 @@ type AsyncCacheInterface interface {
 type ExecuteRes interface {
 	GetResponse() ResponseDeliverTx
 	Conflict(AsyncCacheInterface) bool
+	Final() bool
 	GetCounter() uint32
 	GetBase() int
 

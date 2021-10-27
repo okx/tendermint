@@ -1,7 +1,6 @@
 package state
 
 import (
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -167,6 +166,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	var abciResponses *ABCIResponses
 	var err error
+	//block.Txs = block.Txs[:255]
 	if blockExec.isAsync {
 		abciResponses, err = execBlockOnProxyAppAsync(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	} else {
@@ -255,6 +255,7 @@ func (blockExec *BlockExecutor) Commit(
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
+	ts := time.Now()
 	// while mempool is Locked, flush to ensure all async requests have completed
 	// in the ABCI app before Commit.
 	err := blockExec.mempool.FlushAppConn()
@@ -262,6 +263,7 @@ func (blockExec *BlockExecutor) Commit(
 		blockExec.logger.Error("Client error during mempool.FlushAppConn", "err", err)
 		return nil, 0, err
 	}
+	fmt.Println("tss---", time.Now().Sub(ts).Microseconds())
 
 	// Commit block, get hash back
 	res, err := blockExec.proxyApp.CommitSync()
@@ -282,6 +284,7 @@ func (blockExec *BlockExecutor) Commit(
 		"appHash", fmt.Sprintf("%X", state.LastResultsHash),
 	)
 
+	fmt.Println("tsss", time.Now().Sub(ts).Microseconds())
 	// Update mempool.
 	err = blockExec.mempool.Update(
 		block.Height,
@@ -297,7 +300,6 @@ func (blockExec *BlockExecutor) Commit(
 			Key: "ResetCheckState",
 		})
 	}
-
 	return res.Data, res.RetainHeight, err
 }
 
@@ -502,9 +504,9 @@ func updateState(
 	// TODO: allow app to upgrade version
 	nextVersion := state.Version
 
-	for k, v := range abciResponses.DeliverTxs {
-		fmt.Println("deliverTxs---", k, v.Code, hex.EncodeToString(v.Data))
-	}
+	//for k, v := range abciResponses.DeliverTxs {
+	//	fmt.Println("deliverTxs---", k, v.Code, hex.EncodeToString(v.Data))
+	//}
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
 	return State{
