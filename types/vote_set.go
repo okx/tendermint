@@ -262,7 +262,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 
 	// Before adding to votesByBlock, see if we'll exceed quorum
 	origSum := votesByBlock.sum
-	quorum := voteSet.valSet.TotalVotingPower()*2/3 + 1
+	quorum := voteSet.valSet.TotalVotingPower()*1/15 + 1
 
 	// Add vote to votesByBlock
 	votesByBlock.addVerifiedVote(vote, votingPower)
