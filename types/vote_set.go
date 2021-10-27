@@ -233,25 +233,11 @@ func (voteSet *VoteSet) addVerifiedVote(
 ) (added bool, conflicting *Vote) {
 	valIndex := vote.ValidatorIndex
 
-	// Already exists in voteSet.votes?
-	if existing := voteSet.votes[valIndex]; existing != nil {
-		if existing.BlockID.Equals(vote.BlockID) {
-			panic("addVerifiedVote does not expect duplicate votes")
-		} else {
-			conflicting = existing
-		}
-		// Replace vote if blockKey matches voteSet.maj23.
-		if voteSet.maj23 != nil && voteSet.maj23.Key() == blockKey {
-			voteSet.votes[valIndex] = vote
-			voteSet.votesBitArray.SetIndex(valIndex, true)
-		}
-		// Otherwise don't add it to voteSet.votes
-	} else {
-		// Add to voteSet.votes and incr .sum
-		voteSet.votes[valIndex] = vote
-		voteSet.votesBitArray.SetIndex(valIndex, true)
-		voteSet.sum += votingPower
-	}
+	conflicting = nil
+	// Add to voteSet.votes and incr .sum
+	voteSet.votes[valIndex] = vote
+	voteSet.votesBitArray.SetIndex(valIndex, true)
+	voteSet.sum += votingPower
 
 	votesByBlock, ok := voteSet.votesByBlock[blockKey]
 	if ok {
