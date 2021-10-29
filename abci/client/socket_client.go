@@ -266,6 +266,17 @@ func (cli *socketClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	return cli.queueRequest(types.ToRequestEndBlock(req))
 }
 
+func (cli *socketClient) PrepareParallelTxs(_ types.AsyncCallBack, _ [][]byte) {
+}
+
+func (cli *socketClient) DeliverTxWithCache(_ types.RequestDeliverTx) types.ExecuteRes {
+	return nil
+}
+
+func (cli *socketClient) EndParallelTxs() [][]byte {
+	return nil
+}
+
 //----------------------------------------
 
 func (cli *socketClient) FlushSync() error {

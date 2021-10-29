@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tendermint/tendermint/trace"
+
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -144,6 +146,8 @@ type State struct {
 
 	// for reporting metrics
 	metrics *Metrics
+
+	trc *trace.Tracer
 }
 
 // StateOption sets an optional parameter on the State.
@@ -176,6 +180,7 @@ func NewState(
 		evpool:           evpool,
 		evsw:             tmevents.NewEventSwitch(),
 		metrics:          NopMetrics(),
+		trc:              trace.NewTracer(),
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -779,6 +784,10 @@ func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 	case cstypes.RoundStepNewHeight:
 		// NewRound event fired from enterNewRound.
 		// XXX: should we fire timeout here (for timeout commit)?
+		trace.GetElapsedInfo().AddInfo(trace.Produce, cs.trc.Format())
+		trace.GetElapsedInfo().Dump(cs.Logger.With("module", "main"))
+
+		cs.trc.Reset()
 		cs.enterNewRound(ti.Height, 0)
 	case cstypes.RoundStepNewRound:
 		cs.enterPropose(ti.Height, 0)
@@ -846,7 +855,9 @@ func (cs *State) enterNewRound(height int64, round int) {
 		return
 	}
 
-	track.set(height, cstypes.RoundStepNewRound, true)
+	cs.trc.Pin("NewRound-%d", round)
+
+	track.setTrace(height, cstypes.RoundStepNewRound, true)
 	if now := tmtime.Now(); cs.StartTime.After(now) {
 		logger.Info("Need to set a buffer and log message here for sanity.", "startTime", cs.StartTime, "now", now)
 	}
@@ -926,11 +937,13 @@ func (cs *State) enterPropose(height int64, round int) {
 			cs.Step))
 		return
 	}
+	cs.trc.Pin("Propose-%d", round)
+
 	logger.Info(fmt.Sprintf("enterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
-	track.set(height, cstypes.RoundStepNewRound, false)
+	track.setTrace(height, cstypes.RoundStepNewRound, false)
 	cs.calcProcessingTime(height, cstypes.RoundStepNewRound)
-	track.set(height, cstypes.RoundStepPropose, true)
+	track.setTrace(height, cstypes.RoundStepPropose, true)
 	defer func() {
 		// Done enterPropose:
 		cs.updateRoundStep(round, cstypes.RoundStepPropose)
@@ -1105,11 +1118,12 @@ func (cs *State) enterPrevote(height int64, round int) {
 			cs.Step))
 		return
 	}
+	cs.trc.Pin("Prevote-%d", round)
 
-	track.set(height, cstypes.RoundStepPropose, false)
+	track.setTrace(height, cstypes.RoundStepPropose, false)
 	cs.calcProcessingTime(height, cstypes.RoundStepPropose)
 
-	track.set(height, cstypes.RoundStepPrevote, true)
+	track.setTrace(height, cstypes.RoundStepPrevote, true)
 	defer func() {
 		// Done enterPrevote:
 		cs.updateRoundStep(round, cstypes.RoundStepPrevote)
@@ -1172,7 +1186,9 @@ func (cs *State) enterPrevoteWait(height int64, round int) {
 			cs.Step))
 		return
 	}
-	track.set(height, cstypes.RoundStepPrevoteWait, true)
+	cs.trc.Pin("PrevoteWait-%d", round)
+
+	track.setTrace(height, cstypes.RoundStepPrevoteWait, true)
 	if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
 		panic(fmt.Sprintf("enterPrevoteWait(%v/%v), but Prevotes does not have any +2/3 votes", height, round))
 	}
@@ -1208,12 +1224,14 @@ func (cs *State) enterPrecommit(height int64, round int) {
 		return
 	}
 
+	cs.trc.Pin("Precommit-%d", round)
+
 	logger.Info(fmt.Sprintf("enterPrecommit(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
-	track.set(height, cstypes.RoundStepPrevote, false)
+	track.setTrace(height, cstypes.RoundStepPrevote, false)
 	cs.calcProcessingTime(height, cstypes.RoundStepPrevote)
 
-	track.set(height, cstypes.RoundStepPrecommit, true)
+	track.setTrace(height, cstypes.RoundStepPrecommit, true)
 	defer func() {
 		// Done enterPrecommit:
 		cs.updateRoundStep(round, cstypes.RoundStepPrecommit)
@@ -1311,7 +1329,9 @@ func (cs *State) enterPrecommitWait(height int64, round int) {
 				height, round, cs.Height, cs.Round, cs.TriggeredTimeoutPrecommit))
 		return
 	}
-	track.set(height, cstypes.RoundStepPrecommitWait, true)
+	cs.trc.Pin("PrecommitWait-%d", round)
+
+	track.setTrace(height, cstypes.RoundStepPrecommitWait, true)
 	if !cs.Votes.Precommits(round).HasTwoThirdsAny() {
 		panic(fmt.Sprintf("enterPrecommitWait(%v/%v), but Precommits does not have any +2/3 votes", height, round))
 	}
@@ -1342,12 +1362,14 @@ func (cs *State) enterCommit(height int64, commitRound int) {
 			cs.Step))
 		return
 	}
+	cs.trc.Pin("%s-%d-%d", trace.RunTx, cs.Round, commitRound)
+
 	logger.Info(fmt.Sprintf("enterCommit(%v/%v). Current: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
 
-	track.set(height, cstypes.RoundStepPrecommit, false)
+	track.setTrace(height, cstypes.RoundStepPrecommit, false)
 	cs.calcProcessingTime(height, cstypes.RoundStepPrecommit)
 
-	track.set(height, cstypes.RoundStepCommit, true)
+	track.setTrace(height, cstypes.RoundStepCommit, true)
 	defer func() {
 		// Done enterCommit:
 		// keep cs.Round the same, commitRound points to the right Precommits set.
@@ -1503,10 +1525,6 @@ func (cs *State) finalizeCommit(height int64) {
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 
-	track.set(height, cstypes.RoundStepCommit, false)
-	cs.calcProcessingTime(height, cstypes.RoundStepCommit)
-	track.display(height)
-
 	var err error
 	var retainHeight int64
 	var deltas *types.Deltas
@@ -1539,6 +1557,10 @@ func (cs *State) finalizeCommit(height int64) {
 		cs.deltaStore.SaveDeltas(deltas, block.Height)
 	}
 
+	track.setTrace(height, cstypes.RoundStepCommit, false)
+	cs.calcProcessingTime(height, cstypes.RoundStepCommit)
+	track.display(height)
+
 	fail.Fail() // XXX
 
 	// Prune old heights, if requested by ABCI app.
@@ -1554,6 +1576,9 @@ func (cs *State) finalizeCommit(height int64) {
 	// must be called before we update state
 	cs.recordMetrics(height, block)
 
+	trace.GetElapsedInfo().AddInfo(trace.CommitRound, fmt.Sprintf("%d", cs.CommitRound))
+	trace.GetElapsedInfo().AddInfo(trace.Round, fmt.Sprintf("%d", cs.Round))
+
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
 
@@ -1564,6 +1589,7 @@ func (cs *State) finalizeCommit(height int64) {
 		cs.Logger.Error("Can't get private validator pubkey", "err", err)
 	}
 
+	cs.trc.Pin("Waiting")
 	// cs.StartTime is already set.
 	// Schedule Round0 to start soon.
 	cs.scheduleRound0(&cs.RoundState)

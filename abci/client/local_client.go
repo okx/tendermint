@@ -94,8 +94,11 @@ func (app *localClient) DeliverTxAsync(params types.RequestDeliverTx) *ReqRes {
 }
 
 func (app *localClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	isCloseCheckTxMutex := types.GetCloseCheckTxMutex()
+	if !isCloseCheckTxMutex {
+		app.mtx.Lock()
+		defer app.mtx.Unlock()
+	}
 
 	res := app.Application.CheckTx(req)
 	return app.callback(
@@ -160,6 +163,22 @@ func (app *localClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	)
 }
 
+func (app *localClient) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
+	app.Application.PrepareParallelTxs(cb, txs)
+}
+
+func (app *localClient) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+	return app.Application.DeliverTxWithCache(tx)
+}
+
+func (app *localClient) EndParallelTxs() [][]byte {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+	return app.Application.EndParallelTxs()
+}
+
 //-------------------------------------------------------
 
 func (app *localClient) FlushSync() error {
@@ -196,8 +215,10 @@ func (app *localClient) DeliverTxSync(req types.RequestDeliverTx) (*types.Respon
 }
 
 func (app *localClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	if !types.GetCloseCheckTxMutex() {
+		app.mtx.Lock()
+		defer app.mtx.Unlock()
+	}
 
 	res := app.Application.CheckTx(req)
 	return &res, nil

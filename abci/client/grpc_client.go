@@ -223,6 +223,17 @@ func (cli *grpcClient) EndBlockAsync(params types.RequestEndBlock) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_EndBlock{EndBlock: res}})
 }
 
+func (cli *grpcClient) PrepareParallelTxs(cb types.AsyncCallBack, txs [][]byte) {
+}
+
+func (cli *grpcClient) DeliverTxWithCache(tx types.RequestDeliverTx) types.ExecuteRes {
+	return nil
+}
+
+func (cli *grpcClient) EndParallelTxs() [][]byte {
+	return nil
+}
+
 func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) *ReqRes {
 	reqres := NewReqRes(req)
 	reqres.Response = res // Set response

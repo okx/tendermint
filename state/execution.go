@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/spf13/viper"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -10,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/trace"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
 	"io/ioutil"
@@ -47,6 +49,8 @@ type BlockExecutor struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	isAsync bool
 }
 
 type BlockExecutorOption func(executor *BlockExecutor)
@@ -75,6 +79,7 @@ func NewBlockExecutor(
 		evpool:   evpool,
 		logger:   logger,
 		metrics:  NopMetrics(),
+		isAsync:  viper.GetBool(FlagParalleledTx),
 	}
 
 	for _, option := range options {
@@ -84,6 +89,10 @@ func NewBlockExecutor(
 	return res
 }
 
+func (blockExec *BlockExecutor) SetIsAsyncDeliverTx(sw bool) {
+	blockExec.isAsync = sw
+
+}
 func (blockExec *BlockExecutor) DB() dbm.DB {
 	return blockExec.db
 }
@@ -114,6 +123,9 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 	// Fetch a limited amount of valid txs
 	maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
+	if blockExec.mempool.GetConfig().MaxGasUsedPerBlock > -1 {
+		maxGas = blockExec.mempool.GetConfig().MaxGasUsedPerBlock
+	}
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
 	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
@@ -140,24 +152,26 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block, deltas *types.Deltas,
 ) (State, int64, error) {
-	trc := &Tracer{}
+
+	trc := trace.NewTracer()
+
 	defer func() {
-		trc.dump(
-			fmt.Sprintf("ApplyBlock<%d>, tx<%d>", block.Height, len(block.Data.Txs)),
-			blockExec.logger.With("module", "main"),
-		)
+		trace.GetElapsedInfo().AddInfo(trace.Height, fmt.Sprintf("%d", block.Height))
+		trace.GetElapsedInfo().AddInfo(trace.Tx, fmt.Sprintf("%d", len(block.Data.Txs)))
+		trace.GetElapsedInfo().AddInfo(trace.RunTx, trc.Format())
+		trace.GetElapsedInfo().SetElapsedTime(trc.GetElapsedTime())
 
 		now := time.Now().UnixNano()
 		blockExec.metrics.IntervalTime.Set(float64(now-blockExec.metrics.lastBlockTime) / 1e6)
 		blockExec.metrics.lastBlockTime = now
 	}()
 
-	trc.pin("validateBlock")
+	trc.Pin("ValidateBlock")
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
 
-	trc.pin("getCenterDelta")
+	trc.Pin("getCenterDelta")
 	if deltas == nil {
 		deltas = &types.Deltas{}
 	}
@@ -183,7 +197,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	blockExec.logger.Info("Begin abci", "len(deltas)", deltas.Size(),
 		"FlagDelta", deltaMode, "FlagCenter", centerMode, "FlagFastQuery", centerMode, "FlagUseDelta", useDeltas)
 
-	trc.pin("abci")
+	trc.Pin("abci")
 	startTime := time.Now().UnixNano()
 	var abciResponses *ABCIResponses
 	var err error
@@ -195,7 +209,11 @@ func (blockExec *BlockExecutor) ApplyBlock(
 			panic(err)
 		}
 	} else {
-		abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+		if blockExec.isAsync {
+			abciResponses, err = execBlockOnProxyAppAsync(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+		} else {
+			abciResponses, err = execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+		}
 		bytes, err := types.Json.Marshal(abciResponses)
 		if err != nil {
 			panic(err)
@@ -208,6 +226,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	fail.Fail() // XXX
 
+	trc.Pin("saveResp")
+
 	// Save the results before we commit.
 	SaveABCIResponses(blockExec.db, block.Height, abciResponses)
 
@@ -215,8 +235,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1e6)
 	blockExec.metrics.AbciTime.Set(float64(endTime-startTime) / 1e6)
-
-	trc.pin("validate")
 
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
@@ -232,15 +250,13 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		blockExec.logger.Info("Updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 	}
 
-	trc.pin("updateState")
-
 	// Update the state with the block and responses.
 	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
 
-	trc.pin("commit")
+	trc.Pin("persist")
 	startTime = time.Now().UnixNano()
 
 	// Lock mempool, commit app state, update mempoool.
@@ -251,14 +267,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
 
-	trc.pin("evpool")
-
 	// Update evpool with the block and state.
 	blockExec.evpool.Update(block, state)
 
 	fail.Fail() // XXX
 
-	trc.pin("saveState")
+	trc.Pin("saveState")
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash
@@ -394,6 +408,14 @@ func (blockExec *BlockExecutor) Commit(
 	}
 
 	return res.Data, res.RetainHeight, err
+}
+
+func transTxsToBytes(txs types.Txs) [][]byte {
+	ret := make([][]byte, 0)
+	for _, v := range txs {
+		ret = append(ret, v)
+	}
+	return ret
 }
 
 //---------------------------------------------------------

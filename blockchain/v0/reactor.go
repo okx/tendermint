@@ -368,6 +368,7 @@ FOR_LOOP:
 				// TODO: same thing for app - but we would need a way to
 				// get the hash without persisting the state
 				var err error
+
 				state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first, deltas)
 				if err != nil {
 					// TODO This is bad, are we zombie?
