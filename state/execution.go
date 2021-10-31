@@ -150,7 +150,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
 func (blockExec *BlockExecutor) ApplyBlock(
-	state State, blockID types.BlockID, block *types.Block, deltas *types.Deltas,
+	state State, blockID types.BlockID, block *types.Block, deltas *types.Deltas, wd *types.WatchData,
 ) (State, int64, error) {
 
 	trc := trace.NewTracer()
@@ -176,26 +176,40 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		deltas = &types.Deltas{}
 	}
 	deltaMode := viper.GetString(types.FlagStateDelta)
-	fastQuery := viper.GetBool("fast-query")
+	fastQuery := viper.GetBool(types.FlagFastQuery)
 	centerMode := viper.GetBool(types.FlagDataCenter)
 	batchOK := true
 	useDeltas := false
 	if fastQuery && deltaMode == types.ConsumeDelta {
-		batchOK = GetBatch(block.Height)
+		if wd.Size() == 0 {
+			if centerMode {
+				// GetBatch get watchDB batch data from DataCenter in exchain.watcher
+				batchOK = GetCenterBatch(block.Height)
+			} else {
+				batchOK = false
+			}
+		}
+
 	}
+	// only when getting batch success, can use deltas
+	// otherwise, do deliverTx
 	if batchOK {
+		// if len(deltas) != 0, use deltas from p2p
+		// otherwise, get state-deltas from DataCenter
 		if deltas.Size() == 0 && centerMode && deltaMode == types.ConsumeDelta {
 			if bd, err := getDataFromDatacenter(blockExec.logger, block.Height); err == nil {
 				deltas = bd.Deltas
 			}
 		}
-		if deltas.Size() != 0 {
+		// when deltas not empty, use deltas
+		// otherwise, do deliverTx
+		if deltas.Size() != 0 && deltaMode == types.ConsumeDelta {
 			useDeltas = true
 		}
 	}
 
 	blockExec.logger.Info("Begin abci", "len(deltas)", deltas.Size(),
-		"FlagDelta", deltaMode, "FlagCenter", centerMode, "FlagFastQuery", centerMode, "FlagUseDelta", useDeltas)
+		"FlagDelta", deltaMode, "FlagCenter", centerMode, "FlagFastQuery", fastQuery, "FlagUseDelta", useDeltas)
 
 	trc.Pin("abci")
 	startTime := time.Now().UnixNano()
@@ -267,6 +281,19 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
 
+	if !fastQuery {
+		wd = nil
+	} else {
+		if !useDeltas {
+			// get deliverTx WatchData and let wd = it
+			wd = GetWatchData()
+		} else {
+			// commitBatch with wd in exchain
+			UseWatchData(wd)
+		}
+	}
+
+	trc.Pin("evpool")
 	// Update evpool with the block and state.
 	blockExec.evpool.Update(block, state)
 

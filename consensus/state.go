@@ -91,6 +91,9 @@ type State struct {
 	// store deltas
 	deltaStore sm.DeltaStore
 
+	// store watchData
+	watchStore sm.WatchStore
+
 	// create and execute blocks
 	blockExec *sm.BlockExecutor
 
@@ -160,6 +163,7 @@ func NewState(
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	deltaStore sm.DeltaStore,
+	watchStore sm.WatchStore,
 	txNotifier txNotifier,
 	evpool evidencePool,
 	options ...StateOption,
@@ -169,6 +173,7 @@ func NewState(
 		blockExec:        blockExec,
 		blockStore:       blockStore,
 		deltaStore:       deltaStore,
+		watchStore:       watchStore,
 		txNotifier:       txNotifier,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
@@ -437,12 +442,13 @@ func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.ID) error {
 }
 
 // AddProposalBlockPart inputs a part of the proposal block.
-func (cs *State) AddProposalBlockPart(height int64, round int, part *types.Part, deltas *types.Deltas, peerID p2p.ID) error {
-
+func (cs *State) AddProposalBlockPart(height int64, round int, part *types.Part, peerID p2p.ID) error {
+	deltas := &types.Deltas{}
+	wd := &types.WatchData{}
 	if peerID == "" {
-		cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part, deltas}, ""}
+		cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part, deltas, wd}, ""}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part, deltas}, peerID}
+		cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part, deltas, wd}, peerID}
 	}
 
 	// TODO: wait for event?!
@@ -454,7 +460,6 @@ func (cs *State) SetProposalAndBlock(
 	proposal *types.Proposal,
 	block *types.Block,
 	parts *types.PartSet,
-	deltas *types.Deltas,
 	peerID p2p.ID,
 ) error {
 	if err := cs.SetProposal(proposal, peerID); err != nil {
@@ -462,7 +467,7 @@ func (cs *State) SetProposalAndBlock(
 	}
 	for i := 0; i < parts.Total(); i++ {
 		part := parts.GetPart(i)
-		if err := cs.AddProposalBlockPart(proposal.Height, proposal.Round, part, deltas, peerID); err != nil {
+		if err := cs.AddProposalBlockPart(proposal.Height, proposal.Round, part, peerID); err != nil {
 			return err
 		}
 	}
@@ -1008,6 +1013,7 @@ func (cs *State) defaultDecideProposal(height int64, round int) {
 	var block *types.Block
 	var blockParts *types.PartSet
 	var deltas *types.Deltas
+	var wd *types.WatchData
 
 	// Decide on block
 	if cs.ValidBlock != nil {
@@ -1024,8 +1030,16 @@ func (cs *State) defaultDecideProposal(height int64, round int) {
 	// Decide on Deltas
 	if cs.Deltas != nil {
 		deltas = cs.Deltas
+		if viper.GetBool(types.FlagFastQuery) {
+			if cs.WatchData != nil {
+				wd = cs.WatchData
+			} else {
+				wd = &types.WatchData{}
+			}
+		}
 	} else {
 		deltas = &types.Deltas{}
+		wd = &types.WatchData{}
 	}
 
 	// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
@@ -1041,7 +1055,7 @@ func (cs *State) defaultDecideProposal(height int64, round int) {
 		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
 		for i := 0; i < blockParts.Total(); i++ {
 			part := blockParts.GetPart(i)
-			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part, deltas}, ""})
+			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part, deltas, wd}, ""})
 		}
 		cs.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
 		cs.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
@@ -1528,13 +1542,22 @@ func (cs *State) finalizeCommit(height int64) {
 	var err error
 	var retainHeight int64
 	var deltas *types.Deltas
+	var wd *types.WatchData
 	deltaMode := viper.GetString(types.FlagStateDelta)
+	fastQuery := viper.GetBool(types.FlagFastQuery)
 	if deltaMode != types.ConsumeDelta {
 		deltas = &types.Deltas{}
+		wd = &types.WatchData{}
 	} else {
 		deltas = cs.Deltas
 		if deltas == nil || deltas.Height != block.Height {
 			deltas = &types.Deltas{}
+		}
+		if fastQuery {
+			wd = cs.WatchData
+			if wd == nil {
+				wd = &types.WatchData{}
+			}
 		}
 	}
 
@@ -1542,7 +1565,8 @@ func (cs *State) finalizeCommit(height int64) {
 		stateCopy,
 		types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()},
 		block,
-		deltas)
+		deltas,
+		wd)
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
 		err := tmos.Kill()
@@ -1555,6 +1579,11 @@ func (cs *State) finalizeCommit(height int64) {
 	if deltaMode != types.NoDelta && len(deltas.DeltasBytes) > 0 {
 		deltas.Height = block.Height
 		cs.deltaStore.SaveDeltas(deltas, block.Height)
+	}
+	// persists the given WatchData to the underlying db.
+	if fastQuery && wd != nil {
+		wd.Height = block.Height
+		cs.watchStore.SaveWatch(wd, block.Height)
 	}
 
 	track.setTrace(height, cstypes.RoundStepCommit, false)

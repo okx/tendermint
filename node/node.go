@@ -185,7 +185,8 @@ type Node struct {
 	prometheusSrv    *http.Server
 }
 
-func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, deltaStore *store.DeltaStore, stateDB dbm.DB, err error) {
+func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore,
+	deltaStore *store.DeltaStore, watchStore *store.WatchStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
 	blockStoreDB, err = dbProvider(&DBContext{"blockstore", config})
 	if err != nil {
@@ -199,6 +200,13 @@ func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.Block
 		return
 	}
 	deltaStore = store.NewDeltaStore(deltaStoreDB)
+
+	var watchStoreDB dbm.DB
+	watchStoreDB, err = dbProvider(&DBContext{"watchstore", config})
+	if err != nil {
+		return
+	}
+	watchStore = store.NewWatchStore(watchStoreDB)
 
 	stateDB, err = dbProvider(&DBContext{"state", config})
 	if err != nil {
@@ -261,12 +269,13 @@ func doHandshake(
 	state sm.State,
 	blockStore sm.BlockStore,
 	deltaStore sm.DeltaStore,
+	watchStore sm.WatchStore,
 	genDoc *types.GenesisDoc,
 	eventBus types.BlockEventPublisher,
 	proxyApp proxy.AppConns,
 	consensusLogger log.Logger) error {
 
-	handshaker := cs.NewHandshaker(stateDB, state, blockStore, deltaStore, genDoc)
+	handshaker := cs.NewHandshaker(stateDB, state, blockStore, deltaStore, watchStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
 	handshaker.SetEventBus(eventBus)
 	if err := handshaker.Handshake(proxyApp); err != nil {
@@ -349,12 +358,13 @@ func createBlockchainReactor(config *cfg.Config,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
 	deltaStore *store.DeltaStore,
+	watchStore *store.WatchStore,
 	fastSync bool,
 	logger log.Logger) (bcReactor p2p.Reactor, err error) {
 
 	switch config.FastSync.Version {
 	case "v0":
-		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, deltaStore, fastSync)
+		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, deltaStore, watchStore, fastSync)
 	case "v1":
 		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, deltaStore, fastSync)
 	case "v2":
@@ -372,6 +382,7 @@ func createConsensusReactor(config *cfg.Config,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	deltaStore sm.DeltaStore,
+	watchStore sm.WatchStore,
 	mempool *mempl.CListMempool,
 	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
@@ -386,6 +397,7 @@ func createConsensusReactor(config *cfg.Config,
 		blockExec,
 		blockStore,
 		deltaStore,
+		watchStore,
 		mempool,
 		evidencePool,
 		cs.StateMetrics(csMetrics),
@@ -561,7 +573,7 @@ func NewNode(config *cfg.Config,
 	logger log.Logger,
 	options ...Option) (*Node, error) {
 
-	blockStore, deltasStore, stateDB, err := initDBs(config, dbProvider)
+	blockStore, deltasStore, watchStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -595,7 +607,7 @@ func NewNode(config *cfg.Config,
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
-	if err := doHandshake(stateDB, state, blockStore, deltasStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
+	if err := doHandshake(stateDB, state, blockStore, deltasStore, watchStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
 		return nil, err
 	}
 
@@ -647,14 +659,14 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlockchainReactor
-	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, deltasStore, fastSync, logger)
+	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, deltasStore, watchStore, fastSync, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create blockchain reactor")
 	}
 
 	// Make ConsensusReactor
 	consensusReactor, consensusState := createConsensusReactor(
-		config, state, blockExec, blockStore, deltasStore, mempool, evidencePool,
+		config, state, blockExec, blockStore, deltasStore, watchStore, mempool, evidencePool,
 		privValidator, csMetrics, fastSync, eventBus, consensusLogger,
 	)
 
