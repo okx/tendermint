@@ -66,7 +66,7 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 	}
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartsHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
-	state, _, err := blockExec.ApplyBlock(state, blockID, block)
+	state, _, err := blockExec.ApplyBlock(state, blockID, block, &types.Deltas{})
 	if err != nil {
 		return state, types.BlockID{}, err
 	}
@@ -278,7 +278,7 @@ func (app *testApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	return abci.ResponseCheckTx{}
 }
 
-func (app *testApp) Commit() abci.ResponseCommit {
+func (app *testApp) Commit(req abci.RequestCommit) abci.ResponseCommit {
 	return abci.ResponseCommit{}
 }
 

@@ -15,6 +15,7 @@ require (
 	github.com/golang/protobuf v1.4.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/gtank/merlin v0.1.1
+	github.com/json-iterator/go v1.1.9
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/magiconair/properties v1.8.1
 	github.com/minio/highwayhash v1.0.0
@@ -25,12 +26,12 @@ require (
 	github.com/snikch/goodman v0.0.0-20171125024755-10e37e294daa
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.6.3
-	github.com/stretchr/testify v1.5.1
-	github.com/tendermint/go-amino v0.15.1
+	github.com/stretchr/testify v1.6.1
+	github.com/tendermint/go-amino v0.14.1
 	github.com/tendermint/tm-db v0.5.2
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
 	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
 	google.golang.org/grpc v1.29.1
 )
 
-replace github.com/tendermint/tm-db => github.com/okex/tm-db v0.5.2-exchain1
+replace github.com/tendermint/tm-db => ../tm-db

@@ -78,7 +78,7 @@ type mockBlockApplier struct {
 
 // XXX: Add whitelist/blacklist?
 func (mba *mockBlockApplier) ApplyBlock(
-	state sm.State, blockID types.BlockID, block *types.Block,
+	state sm.State, blockID types.BlockID, block *types.Block, deltas *types.Deltas,
 ) (sm.State, int64, error) {
 	state.LastBlockHeight++
 	return state, 0, nil
@@ -103,7 +103,7 @@ func (sio *mockSwitchIo) sendStatusResponse(height int64, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
+func (sio *mockSwitchIo) sendBlockToPeer(block *types.Block, deltas *types.Deltas, peerID p2p.ID) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numBlockResponse++
@@ -522,7 +522,7 @@ func newReactorStore(
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
 
-		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock, &types.Deltas{})
 		if err != nil {
 			panic(errors.Wrap(err, "error apply block"))
 		}

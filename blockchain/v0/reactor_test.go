@@ -112,7 +112,7 @@ func newBlockchainReactor(
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
 
-		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock, &types.Deltas{})
 		if err != nil {
 			panic(errors.Wrap(err, "error apply block"))
 		}
@@ -378,7 +378,7 @@ func (app *testApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	return abci.ResponseCheckTx{}
 }
 
-func (app *testApp) Commit() abci.ResponseCommit {
+func (app *testApp) Commit(req abci.RequestCommit) abci.ResponseCommit {
 	return abci.ResponseCommit{}
 }
 

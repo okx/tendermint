@@ -361,7 +361,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, &types.Deltas{}, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)
@@ -387,7 +387,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, &types.Deltas{}, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)
@@ -436,7 +436,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, &types.Deltas{}, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)
@@ -498,7 +498,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, &types.Deltas{}, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)
@@ -742,7 +742,7 @@ func applyBlock(stateDB dbm.DB, st sm.State, blk *types.Block, proxyApp proxy.Ap
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	blkID := types.BlockID{Hash: blk.Hash(), PartsHeader: blk.MakePartSet(testPartSize).Header()}
-	newState, _, err := blockExec.ApplyBlock(st, blkID, blk)
+	newState, _, err := blockExec.ApplyBlock(st, blkID, blk, &types.Deltas{})
 	if err != nil {
 		panic(err)
 	}
@@ -948,7 +948,7 @@ type badApp struct {
 	onlyLastHashIsWrong bool
 }
 
-func (app *badApp) Commit() abci.ResponseCommit {
+func (app *badApp) Commit(abci.RequestCommit) abci.ResponseCommit {
 	app.height++
 	if app.onlyLastHashIsWrong {
 		if app.height == app.numBlocks {
