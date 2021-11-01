@@ -412,6 +412,7 @@ func (blockExec *BlockExecutor) Commit(
 		"height", block.Height,
 		"txs", len(block.Txs),
 		"appHash", fmt.Sprintf("%X", res.Data),
+		"blockLen", block.Size(),
 		"inDeltasLen", len(deltas.DeltasBytes),
 		"outDeltasLen", len(res.Deltas.DeltasByte),
 	)
